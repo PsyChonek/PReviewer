@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Custom styles for the PR Reviewer app */
+.code-diff {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.diff-add { 
+    background-color: #f0fff4; 
+    color: #22863a; 
+}
+
+.diff-remove { 
+    background-color: #ffeef0; 
+    color: #d73a49; 
+}
+
+.diff-header { 
+    background-color: #f6f8fa; 
+    color: #6f42c1; 
+    font-weight: bold; 
+}
+
+.stats-card {
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+.output-text {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.loading-animation {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
