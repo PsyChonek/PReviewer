@@ -5,6 +5,7 @@ import requests
 import json
 import subprocess
 import threading
+import time
 
 class ModernButton(tk.Frame):
     """A custom button widget with modern styling and animations."""
@@ -232,7 +233,7 @@ class AIPrReviewerApp:
                                      width=100, height=32, bg='#ffffff')
         self.browse_btn.grid(row=0, column=2, padx=(8, 0), pady=2)
 
-        # From Branch (Base)
+        # From Branch (Source with changes)
         tk.Label(repo_frame, text="From Branch:", width=15, anchor='w', bg='#ffffff', fg='#586069',
                 font=('Arial', 10)).grid(row=1, column=0, sticky=tk.W, pady=2)
         
@@ -259,7 +260,7 @@ class AIPrReviewerApp:
         self.refresh_btn.grid(row=1, column=2, padx=(8, 0), pady=2)
         self.refresh_btn.config_state(tk.DISABLED)  # Disabled until repo is selected
 
-        # To Branch (Target)
+        # To Branch (Target where changes are missing)
         tk.Label(repo_frame, text="To Branch:", width=15, anchor='w', bg='#ffffff', fg='#586069',
                 font=('Arial', 10)).grid(row=2, column=0, sticky=tk.W, pady=2)
         
@@ -287,14 +288,95 @@ class AIPrReviewerApp:
         button_frame = tk.Frame(control_frame, bg='#f6f8fa')
         button_frame.pack(pady=15)
         
+        # Main review button
         self.review_button = ModernButton(button_frame, text="🚀 Start AI Review", 
                                         command=self.start_review_thread,
                                         bg_color="#FF3B30", hover_color="#D70015", 
                                         active_color="#B8000F", text_color="white",
                                         font=("system", 14, "bold"),
                                         width=200, height=50, bg='#f6f8fa')
-        self.review_button.pack()
+        self.review_button.pack(pady=(0, 5))
         self.review_button.config_state(tk.DISABLED)  # Disabled until branches are selected
+        
+        # Stop button (initially hidden)
+        self.stop_button = ModernButton(button_frame, text="⏹️ Stop Review", 
+                                       command=self.stop_review,
+                                       bg_color="#FF9500", hover_color="#CC7700", 
+                                       active_color="#B36600", text_color="white",
+                                       font=("system", 12, "bold"),
+                                       width=180, height=40, bg='#f6f8fa')
+        # Don't pack the stop button initially - it will be shown when review starts
+        
+        # Quick connection test button
+        self.test_button = ModernButton(button_frame, text="🔍 Test Ollama Connection", 
+                                       command=self.test_ollama_connection,
+                                       bg_color="#007AFF", hover_color="#0051D0", 
+                                       active_color="#003D82", text_color="white",
+                                       font=("system", 10, "bold"),
+                                       width=180, height=32, bg='#f6f8fa')
+        self.test_button.pack()
+
+        # Speed statistics and progress frame
+        self.stats_frame = tk.Frame(control_frame, bg='#f6f8fa')
+        self.stats_frame.pack(fill=tk.X, pady=(10, 5))
+        
+        # Progress bar with percentage
+        self.progress_container = tk.Frame(self.stats_frame, bg='#f6f8fa')
+        self.progress_container.pack(fill=tk.X, pady=(0, 5))
+        
+        # Progress bar background
+        self.progress_bg = tk.Frame(self.progress_container, bg='#e1e4e8', height=6, relief='flat', bd=0)
+        self.progress_bg.pack(fill=tk.X, padx=20)
+        
+        # Progress bar fill
+        self.progress_fill = tk.Frame(self.progress_bg, bg='#0366d6', height=6, relief='flat', bd=0)
+        
+        # Progress percentage label
+        self.progress_percent = tk.Label(self.progress_container, text="", fg="#586069", 
+                                       font=('Arial', 8, 'bold'), bg='#f6f8fa', anchor='center')
+        
+        # Speed statistics frame
+        self.speed_stats_frame = tk.Frame(self.stats_frame, bg='#f6f8fa')
+        self.speed_stats_frame.pack(fill=tk.X)
+        
+        # Create columns for different stats
+        stats_columns = tk.Frame(self.speed_stats_frame, bg='#f6f8fa')
+        stats_columns.pack()
+        
+        # Time stats
+        time_frame = tk.Frame(stats_columns, bg='#f6f8fa')
+        time_frame.pack(side=tk.LEFT, padx=10)
+        
+        tk.Label(time_frame, text="⏱️ Time", fg="#586069", font=('Arial', 8, 'bold'), bg='#f6f8fa').pack()
+        self.time_stat = tk.Label(time_frame, text="--", fg="#24292e", font=('SF Mono', 9) if tk.TkVersion >= 8.5 else ('Monaco', 9), bg='#f6f8fa')
+        self.time_stat.pack()
+        
+        # Speed stats
+        speed_frame = tk.Frame(stats_columns, bg='#f6f8fa')
+        speed_frame.pack(side=tk.LEFT, padx=10)
+        
+        tk.Label(speed_frame, text="🚀 Speed", fg="#586069", font=('Arial', 8, 'bold'), bg='#f6f8fa').pack()
+        self.speed_stat = tk.Label(speed_frame, text="--", fg="#24292e", font=('SF Mono', 9) if tk.TkVersion >= 8.5 else ('Monaco', 9), bg='#f6f8fa')
+        self.speed_stat.pack()
+        
+        # Tokens stats
+        tokens_frame = tk.Frame(stats_columns, bg='#f6f8fa')
+        tokens_frame.pack(side=tk.LEFT, padx=10)
+        
+        tk.Label(tokens_frame, text="📊 Tokens", fg="#586069", font=('Arial', 8, 'bold'), bg='#f6f8fa').pack()
+        self.tokens_stat = tk.Label(tokens_frame, text="--", fg="#24292e", font=('SF Mono', 9) if tk.TkVersion >= 8.5 else ('Monaco', 9), bg='#f6f8fa')
+        self.tokens_stat.pack()
+        
+        # Model stats
+        model_frame = tk.Frame(stats_columns, bg='#f6f8fa')
+        model_frame.pack(side=tk.LEFT, padx=10)
+        
+        tk.Label(model_frame, text="🤖 Model", fg="#586069", font=('Arial', 8, 'bold'), bg='#f6f8fa').pack()
+        self.model_stat = tk.Label(model_frame, text="--", fg="#24292e", font=('SF Mono', 9) if tk.TkVersion >= 8.5 else ('Monaco', 9), bg='#f6f8fa')
+        self.model_stat.pack()
+        
+        # Hide stats initially
+        self.hide_stats()
 
         # Status frame with better styling
         status_frame = tk.Frame(control_frame, bg='#f6f8fa')
@@ -340,6 +422,11 @@ class AIPrReviewerApp:
         
         # Initial welcome message
         self.show_welcome_message()
+        
+        # Threading control
+        self.review_thread = None
+        self.stop_review_flag = threading.Event()
+        self.current_request = None  # Store current requests session for cancellation
 
     def _create_output_toolbar(self, parent):
         """Create a toolbar with output controls."""
@@ -508,6 +595,72 @@ class AIPrReviewerApp:
             if width > 1:
                 self.progress_bar.configure(width=int(width * 0.3))
                 self.master.after(100, self._animate_progress)
+    
+    def show_stats(self):
+        """Show the speed statistics panel."""
+        self.stats_frame.pack(fill=tk.X, pady=(10, 5))
+    
+    def hide_stats(self):
+        """Hide the speed statistics panel."""
+        self.stats_frame.pack_forget()
+        
+    def reset_stats(self):
+        """Reset all statistics to default values."""
+        self.time_stat.config(text="--")
+        self.speed_stat.config(text="--")
+        self.tokens_stat.config(text="--")
+        self.model_stat.config(text="--")
+        self.progress_fill.place_forget()
+        self.progress_percent.config(text="")
+        self.hide_stats()
+    
+    def update_progress_bar(self, percentage):
+        """Update the progress bar with a specific percentage."""
+        if percentage < 0:
+            percentage = 0
+        elif percentage > 100:
+            percentage = 100
+            
+        # Update progress bar
+        if percentage > 0:
+            self.progress_fill.place(relwidth=percentage/100, relheight=1.0)
+            self.progress_percent.config(text=f"{percentage:.0f}%")
+            self.progress_percent.pack(pady=(2, 0))
+        else:
+            self.progress_fill.place_forget()
+            self.progress_percent.config(text="")
+    
+    def update_speed_stats(self, elapsed_time=None, tokens_count=None, model_name=None, phase=""):
+        """Update speed statistics with current values."""
+        if elapsed_time is not None:
+            if elapsed_time < 60:
+                self.time_stat.config(text=f"{elapsed_time:.1f}s")
+            else:
+                minutes = int(elapsed_time // 60)
+                seconds = elapsed_time % 60
+                self.time_stat.config(text=f"{minutes}m {seconds:.0f}s")
+        
+        if tokens_count is not None and elapsed_time is not None and elapsed_time > 0:
+            tokens_per_sec = tokens_count / elapsed_time
+            if tokens_per_sec >= 1:
+                self.speed_stat.config(text=f"{tokens_per_sec:.1f} t/s")
+            else:
+                self.speed_stat.config(text=f"{tokens_per_sec:.2f} t/s")
+        
+        if tokens_count is not None:
+            if tokens_count >= 1000:
+                self.tokens_stat.config(text=f"{tokens_count/1000:.1f}k")
+            else:
+                self.tokens_stat.config(text=f"{tokens_count}")
+        
+        if model_name is not None:
+            # Truncate long model names
+            display_name = model_name if len(model_name) <= 12 else model_name[:12] + "..."
+            self.model_stat.config(text=display_name)
+        
+        # Show stats panel if any data was provided
+        if any(x is not None for x in [elapsed_time, tokens_count, model_name]):
+            self.show_stats()
 
     def show_welcome_message(self):
         """Display initial instructions in the output area with enhanced formatting."""
@@ -524,7 +677,7 @@ class AIPrReviewerApp:
         steps = [
             "1. Configure Ollama URL and Model above (defaults should work for local installation)",
             "2. Browse and select your Git repository",
-            "3. Choose the From Branch (base for comparison) and To Branch (target with changes)", 
+            "3. Choose the From Branch (branch with new changes) and To Branch (main will be auto-selected if available)", 
             "4. Click 'Start AI Review' to analyze the differences"
         ]
         
@@ -625,7 +778,13 @@ class AIPrReviewerApp:
                 
                 # Update target branch dropdown (branches + HEAD)
                 branch_options = branches + ["HEAD"]
-                self._update_option_menu(self.target_branch_entry, self.target_branch_var, branch_options, "HEAD")
+                # Default to common main branches in order of preference, otherwise use "HEAD"
+                default_target = "HEAD"  # fallback
+                for main_branch in ["main", "master", "develop"]:
+                    if main_branch in branches:
+                        default_target = main_branch
+                        break
+                self._update_option_menu(self.target_branch_entry, self.target_branch_var, branch_options, default_target)
                 
                 # Enable review button with modern styling
                 self.review_button.config_state(tk.NORMAL)
@@ -689,11 +848,157 @@ class AIPrReviewerApp:
         self.status_label.config(text=message, fg=final_color)
         self.master.update_idletasks() # Refresh GUI immediately
 
+    def test_ollama_connection(self):
+        """Test Ollama connection and model availability quickly."""
+        ollama_url = self.ollama_url_entry.get().strip()
+        ollama_model = self.ollama_model_entry.get().strip()
+        
+        if not ollama_url or not ollama_model:
+            messagebox.showerror("Configuration Error", "Please provide both Ollama URL and Model name.")
+            return
+        
+        # Clear output and show test results
+        self.output_text.config(state=tk.NORMAL)
+        self.output_text.delete(1.0, tk.END)
+        
+        self.output_text.insert(tk.END, "🔍 Ollama Connection Test\n", "header1")
+        self.output_text.insert(tk.END, "━" * 50 + "\n\n", "separator")
+        
+        self.output_text.insert(tk.END, f"Testing connection to: {ollama_url}\n", "info")
+        self.output_text.insert(tk.END, f"Using model: {ollama_model}\n\n", "info")
+        
+        self.update_status("Testing connection...", "blue")
+        self.master.update_idletasks()
+        
+        try:
+            # Test 1: Check if Ollama server is running
+            self.output_text.insert(tk.END, "1️⃣ Testing server connectivity...", "info")
+            self.master.update_idletasks()
+            
+            version_url = ollama_url.replace('/api/generate', '/api/version')
+            start_time = time.time()
+            
+            try:
+                response = requests.get(version_url, timeout=(3, 5))
+                elapsed = time.time() - start_time
+                
+                if response.status_code == 200:
+                    self.output_text.insert(tk.END, f" ✅ ({elapsed:.1f}s)\n", "success")
+                    if response.headers.get('content-type', '').startswith('application/json'):
+                        try:
+                            version_data = response.json()
+                            self.output_text.insert(tk.END, f"   Version: {version_data.get('version', 'Unknown')}\n", "info")
+                        except:
+                            pass
+                else:
+                    self.output_text.insert(tk.END, f" ⚠️ Status {response.status_code} ({elapsed:.1f}s)\n", "warning")
+                    
+            except requests.exceptions.ConnectionError:
+                self.output_text.insert(tk.END, " ❌ Connection failed\n", "error")
+                self.output_text.insert(tk.END, "   • Make sure Ollama is running: ollama serve\n", "warning")
+                self.output_text.insert(tk.END, "   • Check if port 11434 is available\n", "warning")
+                self.update_status("Connection failed", "red")
+                return
+                
+            except requests.exceptions.Timeout:
+                self.output_text.insert(tk.END, " ⏰ Timeout (>3s)\n", "error")
+                
+            # Test 2: Check model availability with a quick request
+            self.output_text.insert(tk.END, "\n2️⃣ Testing model availability...", "info")
+            self.master.update_idletasks()
+            
+            start_time = time.time()
+            try:
+                test_response = requests.post(ollama_url, json={
+                    "model": ollama_model,
+                    "prompt": "Test",
+                    "stream": False
+                }, timeout=(5, 15))
+                
+                elapsed = time.time() - start_time
+                
+                if test_response.status_code == 200:
+                    self.output_text.insert(tk.END, f" ✅ ({elapsed:.1f}s)\n", "success")
+                    try:
+                        response_data = test_response.json()
+                        if 'response' in response_data:
+                            response_text = response_data['response'][:50]
+                            self.output_text.insert(tk.END, f"   Sample: \"{response_text}...\"\n", "info")
+                    except:
+                        pass
+                elif test_response.status_code == 404:
+                    self.output_text.insert(tk.END, " ❌ Model not found\n", "error")
+                    self.output_text.insert(tk.END, f"   • Download model: ollama pull {ollama_model}\n", "warning")
+                    self.output_text.insert(tk.END, f"   • List available models: ollama list\n", "warning")
+                else:
+                    self.output_text.insert(tk.END, f" ❌ Status {test_response.status_code}\n", "error")
+                    
+            except requests.exceptions.Timeout:
+                self.output_text.insert(tk.END, " ⏰ Timeout (>15s)\n", "warning")
+                self.output_text.insert(tk.END, "   • Model may be loading or system is slow\n", "info")
+                
+            # Test 3: Performance check
+            self.output_text.insert(tk.END, "\n3️⃣ Quick performance test...", "info")
+            self.master.update_idletasks()
+            
+            start_time = time.time()
+            try:
+                perf_response = requests.post(ollama_url, json={
+                    "model": ollama_model,
+                    "prompt": "Hello, respond with just 'Hi'",
+                    "stream": True
+                }, timeout=(5, 20), stream=True)
+                
+                if perf_response.status_code == 200:
+                    tokens = 0
+                    first_token_time = None
+                    
+                    for line in perf_response.iter_lines():
+                        if line:
+                            try:
+                                chunk_data = json.loads(line.decode('utf-8'))
+                                if 'response' in chunk_data and chunk_data['response']:
+                                    if first_token_time is None:
+                                        first_token_time = time.time()
+                                    tokens += 1
+                                if chunk_data.get('done', False):
+                                    break
+                            except:
+                                continue
+                    
+                    total_time = time.time() - start_time
+                    if first_token_time:
+                        first_token_delay = first_token_time - start_time
+                        tokens_per_sec = tokens / total_time if total_time > 0 else 0
+                        self.output_text.insert(tk.END, f" ✅ ({total_time:.1f}s)\n", "success")
+                        self.output_text.insert(tk.END, f"   First token: {first_token_delay:.1f}s, Speed: {tokens_per_sec:.1f} t/s\n", "info")
+                    else:
+                        self.output_text.insert(tk.END, f" ⚠️ No response received\n", "warning")
+                else:
+                    self.output_text.insert(tk.END, f" ❌ Status {perf_response.status_code}\n", "error")
+                    
+            except requests.exceptions.Timeout:
+                self.output_text.insert(tk.END, " ⏰ Timeout (>20s)\n", "warning")
+                
+            # Summary
+            self.output_text.insert(tk.END, "\n" + "━" * 50 + "\n", "separator")
+            self.output_text.insert(tk.END, "✅ Connection test completed!\n", "success")
+            self.output_text.insert(tk.END, "You can now try running a code review.\n", "info")
+            
+            self.update_status("Connection test completed", "green")
+            
+        except Exception as e:
+            self.output_text.insert(tk.END, f"\n❌ Test failed: {str(e)}\n", "error")
+            self.update_status("Test failed", "red")
+        
+        finally:
+            self.output_text.config(state=tk.DISABLED)
+
     def start_review_thread(self):
         """Starts the review process in a separate thread to keep the GUI responsive."""
         repo_path = self.repo_path_entry.get()
-        base_branch = self.base_branch_var.get()
-        target_branch = self.target_branch_var.get()
+        source_branch = self.base_branch_var.get()  # Branch with new changes
+        target_branch = self.target_branch_var.get()  # Branch where changes are missing
         
         # Get current Ollama configuration from GUI
         ollama_url = self.ollama_url_entry.get().strip()
@@ -716,7 +1021,7 @@ class AIPrReviewerApp:
             messagebox.showerror("Input Error", "The provided path does not appear to be a Git repository.")
             return
             
-        if base_branch == "Select repository first..." or target_branch == "Select repository first...":
+        if source_branch == "Select repository first..." or target_branch == "Select repository first...":
             messagebox.showerror("Input Error", "Please select valid branches for comparison.")
             return
 
@@ -724,58 +1029,176 @@ class AIPrReviewerApp:
         self.output_text.config(state=tk.NORMAL)
         self.output_text.delete(1.0, tk.END)
         self.show_progress(True)
+        self.reset_stats()
+        self.show_stats()
+        self.update_progress_bar(0)
         self.update_status("Processing...", "blue")
         self.output_status.config(text="Processing", fg="#f66a0a")
+        
+        # Update UI for review state
         self.review_button.config_state(tk.DISABLED)
+        self.stop_button.pack(pady=(0, 5))  # Show stop button
+        self.test_button.pack_forget()  # Hide test button during review
+        
+        # Reset stop flag
+        self.stop_review_flag.clear()
 
         # Start the review in a new thread, passing the GUI config
-        threading.Thread(target=self._run_review, args=(repo_path, base_branch, target_branch, ollama_url, ollama_model)).start()
+        self.review_thread = threading.Thread(target=self._run_review, args=(repo_path, source_branch, target_branch, ollama_url, ollama_model))
+        self.review_thread.start()
 
-    def _run_review(self, repo_path, base_branch, target_branch, ollama_url, ollama_model):
+    def stop_review(self):
+        """Stop the currently running review process."""
+        if self.review_thread and self.review_thread.is_alive():
+            # Set the stop flag
+            self.stop_review_flag.set()
+            
+            # Cancel current request if any
+            if self.current_request:
+                try:
+                    # Note: requests doesn't have a direct cancel method, but we can close the session
+                    pass
+                except:
+                    pass
+            
+            # Update UI immediately
+            self.output_text.config(state=tk.NORMAL)
+            self.output_text.insert(tk.END, "\n🛑 Review stopped by user\n", "warning")
+            self.output_text.insert(tk.END, "━" * 50 + "\n", "separator")
+            self.output_text.config(state=tk.DISABLED)
+            
+            self.update_status("Review stopped", "orange")
+            self.output_status.config(text="Stopped", fg="#FF9500")
+            
+            # Reset UI state
+            self._reset_review_ui()
+            
+    def _reset_review_ui(self):
+        """Reset UI to initial state after review completion or stop."""
+        self.show_progress(False)
+        self.review_button.config_state(tk.NORMAL)
+        self.stop_button.pack_forget()  # Hide stop button
+        self.test_button.pack()  # Show test button again
+        self.review_thread = None
+        self.current_request = None
+
+    def _run_review(self, repo_path, source_branch, target_branch, ollama_url, ollama_model):
         """Contains the core logic for Git diff and Ollama API call with enhanced output formatting."""
         original_cwd = os.getcwd()
+        review_start_time = time.time()
+        
         try:
             os.chdir(repo_path)
+
+            # Check for stop signal
+            if self.stop_review_flag.is_set():
+                return
+
+            # Initialize stats tracking
+            self.update_speed_stats(model_name=ollama_model)
+            self.update_progress_bar(5)  # 5% - Started
 
             # Review header with enhanced formatting
             self.output_text.insert(tk.END, "🔍 AI Code Review Analysis\n", "header1")
             self.output_text.insert(tk.END, "━" * 60 + "\n\n", "separator")
             
+            # Check for stop signal
+            if self.stop_review_flag.is_set():
+                return
+            
             # Configuration details
             self.output_text.insert(tk.END, "📊 Review Configuration\n", "header2")
             config_details = f"""• Repository: {os.path.basename(repo_path)}
 • Path: {repo_path}
-• Comparing: {base_branch} → {target_branch}
+• Comparing: {target_branch} → {source_branch}
 • AI Model: {ollama_model}
 • Endpoint: {ollama_url}
 """
             self.output_text.insert(tk.END, config_details, "info")
             self.output_text.insert(tk.END, "\n")
 
-            self.update_status(f"Generating diff from '{base_branch}' to '{target_branch}'...", "blue")
+            self.update_progress_bar(15)  # 15% - Config displayed
+            
+            # Check for stop signal
+            if self.stop_review_flag.is_set():
+                return
+                
+            self.update_status(f"Generating diff from '{target_branch}' to '{source_branch}'...", "blue")
             self.output_status.config(text="Generating diff...", fg="#f66a0a")
+            self.master.update_idletasks()
             
             # Generate diff section
             self.output_text.insert(tk.END, "🔄 Generating Code Diff...\n", "header2")
-            pr_diff = self._get_git_diff(base_branch, target_branch)
+            self.output_text.insert(tk.END, f"• Source branch: {source_branch}\n", "info")
+            self.output_text.insert(tk.END, f"• Target branch: {target_branch}\n", "info")
+            self.output_text.insert(tk.END, "• Finding differences...\n", "info")
+            self.master.update_idletasks()
+            
+            diff_start_time = time.time()
+            pr_diff = self._get_git_diff(target_branch, source_branch)
+            diff_elapsed = time.time() - diff_start_time
+            
+            # Check for stop signal
+            if self.stop_review_flag.is_set():
+                return
+            
+            self.update_progress_bar(35)  # 35% - Diff generated
+            self.update_speed_stats(elapsed_time=time.time() - review_start_time)
 
             if not pr_diff:
                 self.output_text.insert(tk.END, "❌ No diff generated or found.\n", "warning")
                 self.output_text.insert(tk.END, "The branches may be identical or have no common history.\n", "info")
                 self.update_status("Review Finished (No Diff)", "orange")
                 self.output_status.config(text="No changes found", fg="#f66a0a")
+                self.update_progress_bar(100)
                 return
 
             self.output_text.insert(tk.END, "✅ Diff generated successfully.\n", "success")
             self.output_text.insert(tk.END, f"📈 Found changes to analyze.\n\n", "info")
             
-            # AI Analysis section
+            # Check for stop signal before AI analysis
+            if self.stop_review_flag.is_set():
+                return
+            
+            # AI Analysis section with enhanced progress tracking
             self.output_text.insert(tk.END, "🤖 AI Analysis in Progress...\n", "header2")
-            self.update_status("Calling Ollama model...", "blue")
-            self.output_status.config(text="AI analyzing...", fg="#f66a0a")
+            self.update_status("Preparing AI request...", "blue")
+            self.output_status.config(text="Preparing request...", fg="#f66a0a")
+            self.master.update_idletasks()
+            
+            # Show what we're about to send to the AI
+            self.output_text.insert(tk.END, f"📤 Preparing prompt for AI model ({ollama_model})...\n", "info")
+            self.master.update_idletasks()
+            
+            self.update_progress_bar(45)  # 45% - About to call AI
+            
+            # Check for stop signal before AI call
+            if self.stop_review_flag.is_set():
+                return
             
             prompt = AI_PROMPT_TEMPLATE.format(diff=pr_diff)
+            
+            # Update status to show API call
+            self.update_status("Calling Ollama API...", "blue")
+            self.output_status.config(text="Calling AI model...", fg="#f66a0a")
+            self.master.update_idletasks()
+            
+            ai_start_time = time.time()
             ai_feedback = self._call_ollama_api(prompt, ollama_url, ollama_model)
+            ai_elapsed = time.time() - ai_start_time
+            
+            # Check for stop signal after AI call
+            if self.stop_review_flag.is_set():
+                return
+            
+            total_elapsed = time.time() - review_start_time
+            
+            # Final stats update after AI completion
+            if ai_feedback:
+                estimated_tokens = len(ai_feedback.split())  # Rough token estimation
+                self.update_speed_stats(elapsed_time=total_elapsed, tokens_count=estimated_tokens, model_name=ollama_model)
+            
+            self.update_progress_bar(90)  # 90% - AI analysis complete
 
             # Results section with enhanced formatting
             self.output_text.insert(tk.END, "\n" + "═" * 60 + "\n", "separator")
@@ -785,22 +1208,36 @@ class AIPrReviewerApp:
             if ai_feedback:
                 # Format the AI feedback with better structure
                 self._format_ai_feedback(ai_feedback)
+                self.update_progress_bar(100)  # 100% - Complete
                 self.update_status("Review Complete", "green")
                 self.output_status.config(text="Complete", fg="#34C759")
+                
+                # Final timing summary
+                self.output_text.insert(tk.END, f"\n⏱️ Performance Summary:\n", "header2")
+                performance_summary = f"""• Total Time: {total_elapsed:.1f}s
+• Diff Generation: {diff_elapsed:.1f}s
+• AI Analysis: {ai_elapsed:.1f}s
+• Model: {ollama_model}
+"""
+                self.output_text.insert(tk.END, performance_summary, "info")
+                
             else:
                 self.output_text.insert(tk.END, "❌ AI review failed to generate feedback.\n", "error")
+                self.update_progress_bar(0)
                 self.update_status("Review Failed", "red")
                 self.output_status.config(text="Failed", fg="#d73a49")
 
         except Exception as e:
-            self.output_text.insert(tk.END, f"\n💥 An unexpected error occurred:\n", "error")
-            self.output_text.insert(tk.END, f"{str(e)}\n", "code")
-            self.update_status("An Error Occurred", "red")
-            self.output_status.config(text="Error", fg="#d73a49")
+            if not self.stop_review_flag.is_set():  # Only show error if not stopped by user
+                self.output_text.insert(tk.END, f"\n💥 An unexpected error occurred:\n", "error")
+                self.output_text.insert(tk.END, f"{str(e)}\n", "code")
+                self.update_progress_bar(0)
+                self.update_status("An Error Occurred", "red")
+                self.output_status.config(text="Error", fg="#d73a49")
         finally:
             os.chdir(original_cwd)
-            self.show_progress(False)
-            self.review_button.config_state(tk.NORMAL)
+            if not self.stop_review_flag.is_set():  # Only clean up UI if not already done by stop
+                self._reset_review_ui()
             # Make output read-only after review
             self.output_text.config(state=tk.DISABLED)
     
@@ -856,21 +1293,30 @@ class AIPrReviewerApp:
     def _get_git_diff(self, base_branch, target_commit="HEAD"):
         """
         Generates the git diff between the base_branch and target_commit.
+        Shows what changes exist in target_commit that are missing from base_branch.
         Assumes the script is run within a Git repository.
         """
         try:
+            self.output_text.insert(tk.END, "🔍 Debug: Git diff process starting...\n", "info")
+            self.master.update_idletasks()
+            
             # Use only local branches: verify the base branch exists locally (unless it's HEAD)
             if base_branch != "HEAD":
                 self.update_status(f"Using local base branch '{base_branch}'...", "blue")
+                self.output_text.insert(tk.END, f"• Verifying base branch '{base_branch}' exists locally...\n", "info")
+                self.master.update_idletasks()
                 try:
                     # Verify local branch exists
                     subprocess.run(["git", "rev-parse", "--verify", f"refs/heads/{base_branch}"], check=True, capture_output=True, text=True, encoding='utf-8')
+                    self.output_text.insert(tk.END, f"✅ Base branch '{base_branch}' found\n", "success")
                 except subprocess.CalledProcessError:
-                    self.output_text.insert(tk.END, f"Error: local base branch '{base_branch}' not found. Please provide a local branch name.\n")
+                    self.output_text.insert(tk.END, f"❌ Error: local base branch '{base_branch}' not found. Please provide a local branch name.\n", "error")
                     return None
 
             # Verify target exists (could be branch or HEAD)
             if target_commit != "HEAD":
+                self.output_text.insert(tk.END, f"• Verifying target '{target_commit}'...\n", "info")
+                self.master.update_idletasks()
                 # Get available branches from the base dropdown
                 base_menu = self.base_branch_entry['menu']
                 available_branches = []
@@ -885,57 +1331,281 @@ class AIPrReviewerApp:
                 if target_commit in available_branches:
                     try:
                         subprocess.run(["git", "rev-parse", "--verify", f"refs/heads/{target_commit}"], check=True, capture_output=True, text=True, encoding='utf-8')
+                        self.output_text.insert(tk.END, f"✅ Target '{target_commit}' found\n", "success")
                     except subprocess.CalledProcessError:
-                        self.output_text.insert(tk.END, f"Error: target branch '{target_commit}' not found locally.\n")
+                        self.output_text.insert(tk.END, f"❌ Error: target branch '{target_commit}' not found locally.\n", "error")
                         return None
+            else:
+                self.output_text.insert(tk.END, f"✅ Using HEAD as target\n", "success")
 
+            self.master.update_idletasks()
+            
             # Find the merge base (common ancestor) against the base branch
+            self.output_text.insert(tk.END, "• Finding common ancestor (merge base)...\n", "info")
+            self.update_status("Finding merge base...", "blue")
+            self.master.update_idletasks()
+            
             merge_base_cmd = ["git", "merge-base", base_branch, target_commit]
             merge_base_result = subprocess.run(merge_base_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
             merge_base_commit = merge_base_result.stdout.strip()
+            
+            self.output_text.insert(tk.END, f"✅ Merge base: {merge_base_commit[:8]}...\n", "success")
+            self.output_text.insert(tk.END, "• Generating diff...\n", "info")
+            self.update_status("Computing diff...", "blue")
+            self.master.update_idletasks()
 
             diff_command = ["git", "diff", "--no-prefix", "-U3", merge_base_commit, target_commit]
             result = subprocess.run(diff_command, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             diff_output = result.stdout.strip()
             
+            if diff_output:
+                lines_count = len(diff_output.split('\n'))
+                chars_count = len(diff_output)
+                self.output_text.insert(tk.END, f"✅ Diff generated successfully ({lines_count} lines, {chars_count} chars)\n", "success")
+            else:
+                self.output_text.insert(tk.END, "⚠️ No differences found between branches\n", "warning")
+            
             return diff_output
         except subprocess.CalledProcessError as e:
-            self.output_text.insert(tk.END, f"Error executing git command: {e.cmd}\n")
-            self.output_text.insert(tk.END, f"Stdout: {e.stdout}\n")
-            self.output_text.insert(tk.END, f"Stderr: {e.stderr}\n")
+            self.output_text.insert(tk.END, f"❌ Error executing git command: {e.cmd}\n", "error")
+            self.output_text.insert(tk.END, f"Return code: {e.returncode}\n", "code")
+            if e.stdout:
+                self.output_text.insert(tk.END, f"Stdout: {e.stdout}\n", "code")
+            if e.stderr:
+                self.output_text.insert(tk.END, f"Stderr: {e.stderr}\n", "code")
             return None
         except Exception as e:
-            self.output_text.insert(tk.END, f"Error getting diff: {e}\n")
+            self.output_text.insert(tk.END, f"❌ Error getting diff: {e}\n", "error")
             return None
 
     def _call_ollama_api(self, prompt_text, ollama_url, ollama_model):
-        """Sends the prompt to the Ollama API using GUI-configured values with enhanced error formatting."""
+        """Sends the prompt to the Ollama API using GUI-configured values with enhanced error formatting and progress tracking."""
         try:
-            response = requests.post(ollama_url, json={
-                "model": ollama_model,
-                "prompt": prompt_text,
-                "stream": False
-            }, timeout=600)
-            response.raise_for_status()
-            return response.json()['response']
+            # Check for stop signal before starting
+            if self.stop_review_flag.is_set():
+                self.output_text.insert(tk.END, f"\n🛑 API call stopped by user\n", "warning")
+                return ""  # Return empty response to indicate cancellation
+            
+            # Debug output - show request details
+            self.output_text.insert(tk.END, "🔧 Debug Information:\n", "header2")
+            debug_info = f"""• Model: {ollama_model}
+• API URL: {ollama_url}
+• Prompt Length: {len(prompt_text)} characters
+• Connection Timeout: 10 seconds
+• Request Timeout: 120 seconds
+"""
+            self.output_text.insert(tk.END, debug_info, "info")
+            self.output_text.insert(tk.END, "\n🚀 Testing Ollama connection...\n", "info")
+            
+            # Update status to show we're testing the connection
+            self.update_status("Testing Ollama connection...", "blue")
+            self.master.update_idletasks()
+            
+            # First, test if Ollama is running with a quick version check
+            version_url = ollama_url.replace('/api/generate', '/api/version')
+            try:
+                self.output_text.insert(tk.END, f"• Checking {version_url}...\n", "info")
+                self.master.update_idletasks()
+                
+                version_response = requests.get(version_url, timeout=(5, 10))
+                if version_response.status_code == 200:
+                    self.output_text.insert(tk.END, "✅ Ollama server is responding\n", "success")
+                else:
+                    self.output_text.insert(tk.END, f"⚠️ Unexpected response code: {version_response.status_code}\n", "warning")
+            except requests.exceptions.ConnectionError:
+                self.output_text.insert(tk.END, "❌ Cannot connect to Ollama server\n", "error")
+                self.output_text.insert(tk.END, f"Make sure Ollama is running: ollama serve\n", "warning")
+                raise
+            except requests.exceptions.Timeout:
+                self.output_text.insert(tk.END, "⏰ Connection timeout - Ollama server may be slow\n", "warning")
+                self.output_text.insert(tk.END, "Continuing with API call...\n", "info")
+            
+            # Test if model is available
+            try:
+                self.output_text.insert(tk.END, f"• Testing model '{ollama_model}' availability...\n", "info")
+                self.master.update_idletasks()
+                
+                # Try a very small test prompt to verify model works
+                test_response = requests.post(ollama_url, json={
+                    "model": ollama_model,
+                    "prompt": "Hi",
+                    "stream": False
+                }, timeout=(10, 30))  # 10s connection, 30s read timeout for test
+                
+                if test_response.status_code == 200:
+                    self.output_text.insert(tk.END, f"✅ Model '{ollama_model}' is ready\n", "success")
+                else:
+                    self.output_text.insert(tk.END, f"⚠️ Model test returned code: {test_response.status_code}\n", "warning")
+                    if test_response.status_code == 404:
+                        self.output_text.insert(tk.END, f"❌ Model '{ollama_model}' not found. Run: ollama pull {ollama_model}\n", "error")
+                        return None
+                        
+            except requests.exceptions.ConnectionError:
+                self.output_text.insert(tk.END, "❌ Connection lost during model test\n", "error")
+                raise
+            except requests.exceptions.Timeout:
+                self.output_text.insert(tk.END, "⏰ Model test timeout - but continuing with main request\n", "warning")
+            except Exception as e:
+                self.output_text.insert(tk.END, f"⚠️ Model test failed: {str(e)}\n", "warning")
+                self.output_text.insert(tk.END, "Continuing with main request...\n", "info")
+            
+            self.output_text.insert(tk.END, "\n🚀 Sending main request to Ollama...\n", "info")
+            
+            # Update status to show we're making the API call
+            self.update_status("Sending request to Ollama API...", "blue")
+            self.master.update_idletasks()
+            
+            start_time = time.time()
+            
+            # Try streaming first for better user experience
+            try:
+                return self._call_ollama_streaming(prompt_text, ollama_url, ollama_model, start_time)
+            except Exception as e:
+                # Fall back to non-streaming if streaming fails
+                self.output_text.insert(tk.END, f"⚠️ Streaming failed, falling back to standard request: {str(e)}\n", "warning")
+                return self._call_ollama_standard(prompt_text, ollama_url, ollama_model, start_time)
+            
         except requests.exceptions.ConnectionError:
             self.output_text.insert(tk.END, "❌ Connection Error\n", "error")
             self.output_text.insert(tk.END, f"Could not connect to Ollama at {ollama_url}\n\n", "info")
             
             self.output_text.insert(tk.END, "🔧 Troubleshooting Steps:\n", "header2")
             troubleshoot = f"""1. Ensure Ollama is installed and running locally
-2. Verify the model '{ollama_model}' has been downloaded
-3. Start Ollama by running: ollama serve
-4. Download the model by running: ollama pull {ollama_model}
+2. Start Ollama by running: ollama serve
+3. Verify the model '{ollama_model}' has been downloaded: ollama pull {ollama_model}
+4. Check if Ollama is running: curl {ollama_url.replace('/api/generate', '/api/version')}
+5. Try a different port if running on custom port
+6. Check firewall settings if running on different machine
 """
             self.output_text.insert(tk.END, troubleshoot, "warning")
+            return None
+        except requests.exceptions.Timeout:
+            self.output_text.insert(tk.END, "⏰ Request Timeout\n", "error")
+            self.output_text.insert(tk.END, "The AI model took too long to respond (>2 minutes)\n", "info")
+            self.output_text.insert(tk.END, "Consider using a smaller model or check system resources\n", "warning")
             return None
         except requests.exceptions.RequestException as e:
             self.output_text.insert(tk.END, "❌ API Request Error\n", "error")
             self.output_text.insert(tk.END, f"Error details: {str(e)}\n", "code")
             if hasattr(e, 'response') and e.response:
+                self.output_text.insert(tk.END, f"HTTP Status: {e.response.status_code}\n", "code")
                 self.output_text.insert(tk.END, f"API Response: {e.response.text}\n", "code")
             return None
+        except json.JSONDecodeError as e:
+            self.output_text.insert(tk.END, "❌ JSON Decode Error\n", "error")
+            self.output_text.insert(tk.END, f"Could not parse API response as JSON: {str(e)}\n", "code")
+            return None
+        except Exception as e:
+            self.output_text.insert(tk.END, "❌ Unexpected Error\n", "error")
+            self.output_text.insert(tk.END, f"Error: {str(e)}\n", "code")
+            return None
+    
+    def _call_ollama_streaming(self, prompt_text, ollama_url, ollama_model, start_time):
+        """Make a streaming request to Ollama API with real-time progress."""
+        self.output_text.insert(tk.END, "� Using streaming mode for real-time updates...\n", "info")
+        self.master.update_idletasks()
+        
+        response = requests.post(ollama_url, json={
+            "model": ollama_model,
+            "prompt": prompt_text,
+            "stream": True
+        }, timeout=(10, 120), stream=True)  # 10s connection, 2min read timeout
+        
+        response.raise_for_status()
+        
+        # Track response progress
+        full_response = ""
+        chunk_count = 0
+        last_update = time.time()
+        
+        self.output_text.insert(tk.END, "⏳ Receiving streamed response", "warning")
+        
+        for line in response.iter_lines():
+            # Check for stop signal
+            if self.stop_review_flag.is_set():
+                self.output_text.insert(tk.END, f"\n🛑 Streaming stopped by user\n", "warning")
+                return ""  # Return empty response to indicate cancellation
+            
+            if line:
+                try:
+                    chunk_data = json.loads(line.decode('utf-8'))
+                    if 'response' in chunk_data:
+                        chunk_text = chunk_data['response']
+                        full_response += chunk_text
+                        chunk_count += 1
+                        
+                        # Update progress every 0.5 seconds or every 10 chunks
+                        current_time = time.time()
+                        if current_time - last_update > 0.5 or chunk_count % 10 == 0:
+                            # Gradually increase progress from 50% to 85% during streaming
+                            progress = min(85, 50 + (chunk_count / 10) * 2)
+                            self.update_progress_bar(progress)
+                            
+                            elapsed = current_time - start_time
+                            self.update_status(f"Receiving AI response... {chunk_count} tokens in {elapsed:.1f}s", "blue")
+                            last_update = current_time
+                            
+                            # Update stats every 2 seconds during streaming
+                            if chunk_count % 20 == 0:
+                                self.update_speed_stats(elapsed_time=elapsed, tokens_count=chunk_count, model_name=ollama_model)
+                            
+                            self.master.update_idletasks()
+                    
+                    # Check if this is the final chunk
+                    if chunk_data.get('done', False):
+                        break
+                        
+                except json.JSONDecodeError:
+                    continue
+        
+        elapsed_time = time.time() - start_time
+        self.output_text.insert(tk.END, f"\n✅ Streaming completed in {elapsed_time:.2f} seconds\n", "success")
+        self.output_text.insert(tk.END, f"📊 Received {chunk_count} chunks\n", "info")
+        self.output_text.insert(tk.END, f"📝 Total Response Length: {len(full_response)} characters\n", "info")
+        self.output_text.insert(tk.END, "\n", "")
+        
+        # Final stats update
+        self.update_speed_stats(elapsed_time=elapsed_time, tokens_count=chunk_count, model_name=ollama_model)
+        
+        return full_response
+    
+    def _call_ollama_standard(self, prompt_text, ollama_url, ollama_model, start_time):
+        """Make a standard non-streaming request to Ollama API."""
+        # Check for stop signal before starting
+        if self.stop_review_flag.is_set():
+            self.output_text.insert(tk.END, f"\n🛑 Request stopped by user\n", "warning")
+            return ""  # Return empty response to indicate cancellation
+            
+        self.output_text.insert(tk.END, "⏳ Waiting for AI model response (non-streaming)...\n", "warning")
+        self.master.update_idletasks()
+        
+        response = requests.post(ollama_url, json={
+            "model": ollama_model,
+            "prompt": prompt_text,
+            "stream": False
+        }, timeout=(10, 120))  # 10s connection, 2min read timeout
+        
+        elapsed_time = time.time() - start_time
+        
+        # Debug response information
+        self.output_text.insert(tk.END, f"✅ Response received in {elapsed_time:.2f} seconds\n", "success")
+        self.output_text.insert(tk.END, f"📊 Response Status: {response.status_code}\n", "info")
+        self.output_text.insert(tk.END, f"📦 Response Size: {len(response.text)} characters\n", "info")
+        
+        response.raise_for_status()
+        
+        # Parse and validate response
+        response_data = response.json()
+        if 'response' not in response_data:
+            self.output_text.insert(tk.END, "⚠️ Warning: Unexpected response format\n", "warning")
+            self.output_text.insert(tk.END, f"Raw response: {response.text[:200]}...\n", "code")
+            return None
+            
+        ai_response = response_data['response']
+        self.output_text.insert(tk.END, f"📝 AI Response Length: {len(ai_response)} characters\n", "info")
+        self.output_text.insert(tk.END, "\n", "")
+        
+        return ai_response
 
 # --- Main application execution ---
 if __name__ == "__main__":
