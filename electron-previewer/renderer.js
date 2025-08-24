@@ -54,14 +54,16 @@ function estimateTokens(text) {
         finalEstimate = Math.ceil(baseEstimate * 0.75); // Scale down by 25%
     }
     
-    // Debug logging (remove this in production)
-    console.log(`Token Estimation Debug:
+    // Debug logging (only if DEBUG is true)
+    if (DEBUG) {
+        console.log(`Token Estimation Debug:
     - Characters: ${characterCount}
     - Words: ${wordCount}  
     - Char-based estimate (÷9): ${charBasedEstimate}
     - Word-based estimate (×0.7): ${wordBasedEstimate}
     - Base estimate (min): ${baseEstimate}
     - Final estimate (with scaling): ${finalEstimate}`);
+    }
     
     return finalEstimate;
 }
