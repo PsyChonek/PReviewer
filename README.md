@@ -1,6 +1,6 @@
 # PReviewer - Local AI-Powered Pull Request Reviewer
 
-A desktop application that uses local AI models (via Ollama) to analyze Git repository changes and provide intelligent code review feedback. Built with Python and Tkinter for a modern, user-friendly experience.
+A desktop application that uses local AI models (via Ollama) to analyze Git repository changes and provide intelligent code review feedback. Available in two versions: a Python/Tkinter application and a modern Electron application with DaisyUI styling.
 
 ## 🚀 Features
 
@@ -11,10 +11,19 @@ A desktop application that uses local AI models (via Ollama) to analyze Git repo
 - **Export Options**: Save review results to text or markdown files
 - **Progress Tracking**: Real-time status updates and progress indicators
 - **Comprehensive Output**: Detailed analysis with formatted feedback
+- **Two Application Versions**:
+  - **Python/Tkinter**: Classic desktop application
+  - **Electron**: Modern web-based UI with DaisyUI and Tailwind CSS
 
 ## 📋 Description
 
-PReviewer is a desktop GUI application that automates code review processes by leveraging local AI models. It analyzes Git diffs between branches and provides detailed feedback on:
+PReviewer is a desktop GUI application that automates code review processes by leveraging local AI models. It's available in two versions:
+
+**Python/Tkinter Version**: A traditional desktop application built with Python and Tkinter.
+
+**Electron Version**: A modern web-based application built with Electron, featuring DaisyUI components and Tailwind CSS for a sleek, responsive interface.
+
+Both versions analyze Git diffs between branches and provide detailed feedback on:
 
 - **Code Quality**: Identifies potential bugs, security vulnerabilities, and performance issues
 - **Best Practices**: Suggests improvements based on coding standards
@@ -27,7 +36,8 @@ The application works entirely locally using Ollama, ensuring your code never le
 
 ### Prerequisites
 
-- **Python 3.8+** with Tkinter support
+- **Python 3.8+** with Tkinter support (for Python version)
+- **Node.js 18+** and **npm** (for Electron version)
 - **Git** installed and accessible from command line
 - **Ollama** for running local AI models
 
@@ -67,9 +77,13 @@ ollama pull mistral          # Alternative general-purpose model
 ollama pull phi3:mini        # Lightweight option
 ```
 
-### 3. Setup Python Environment
+### 3. Setup Application
 
-#### Option A: Using pip (recommended)
+Choose between the Python/Tkinter version or the modern Electron version:
+
+#### Option A: Python/Tkinter Version
+
+##### Using pip (recommended)
 
 ```bash
 # Clone the repository
@@ -83,7 +97,7 @@ pip install requests
 python3 pr_reviwer_app.py
 ```
 
-#### Option B: Using virtual environment
+##### Using virtual environment
 
 ```bash
 # Create virtual environment
@@ -95,6 +109,23 @@ pip install requests
 
 # Run the application
 python3 pr_reviwer_app.py
+```
+
+#### Option B: Electron Version (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/PsyChonek/PReviewer.git
+cd PReviewer/electron-previewer
+
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Or build and run in production mode
+npm start
 ```
 
 ### 4. Fix Tkinter Issues (macOS with pyenv)
@@ -130,6 +161,8 @@ If you encounter `ModuleNotFoundError: No module named '_tkinter'` on macOS:
 
 ## 🎯 How to Use
 
+### Using the Python/Tkinter Application
+
 1. **Start Ollama**: Ensure Ollama is running with `ollama serve`
 2. **Launch PReviewer**: Run `python3 pr_reviwer_app.py`
 3. **Configure Settings**:
@@ -141,16 +174,39 @@ If you encounter `ModuleNotFoundError: No module named '_tkinter'` on macOS:
    - **To Branch**: Target branch (usually `main` or `master`)
 6. **Start Review**: Click "🚀 Start AI Review" to analyze the changes
 
+### Using the Electron Application
+
+1. **Start Ollama**: Ensure Ollama is running with `ollama serve`
+2. **Launch PReviewer**: Run `npm run dev` or `npm start`
+3. **Configure Settings**:
+   - Ollama URL (default: `http://localhost:11434/api/generate`)
+   - AI Model (choose from available models)
+4. **Select Repository**: Click "Browse" to select your Git repository folder
+5. **Choose Branches**: Select from and to branches using the dropdowns
+6. **Start Review**: Click "Start AI Review" to analyze the changes
+
+Both versions provide the same core functionality with different user interfaces.
+
 ## 📁 Project Structure
 
 ```text
 PReviewer/
-├── pr_reviwer_app.py          # Main application file
+├── pr_reviwer_app.py          # Python/Tkinter application
 ├── README.md                  # This file
-└── __pycache__/               # Python cache files
+├── __pycache__/               # Python cache files
+└── electron-previewer/        # Electron application
+    ├── main.js                # Main Electron process
+    ├── renderer.js            # Renderer process
+    ├── preload.js             # Preload script
+    ├── index.html             # Main UI
+    ├── style.css              # Tailwind CSS styles
+    ├── package.json           # Node.js dependencies
+    └── node_modules/          # Installed packages
 ```
 
 ## 🔧 Configuration
+
+### Python/Tkinter Configuration
 
 The application allows you to configure:
 
@@ -159,7 +215,26 @@ The application allows you to configure:
 - **Repository Path**: Any local Git repository
 - **Branch Selection**: Any local branches in the repository
 
+### Electron Configuration
+
+The Electron version includes additional configuration options and npm scripts:
+
+**Available npm scripts:**
+
+- `npm run dev`: Development mode with hot-reloading and Tailwind CSS watching
+- `npm start`: Production mode with optimized CSS build
+- `npm run build-css`: Build and watch Tailwind CSS in development
+- `npm run build-css-prod`: Build optimized CSS for production
+- `npm run build`: Create distributable packages (requires electron-builder setup)
+
+**Dependencies:**
+
+- **Runtime**: Axios for HTTP requests, Simple-git for Git operations
+- **Development**: Tailwind CSS, DaisyUI, Electron, and development tools
+
 ## 🎨 Features Overview
+
+### Python/Tkinter Application
 
 - **Modern UI**: GitHub-inspired design with clean, intuitive interface
 - **Syntax Highlighting**: Colored output for different types of feedback
@@ -169,24 +244,50 @@ The application allows you to configure:
 - **Context Menus**: Right-click for additional options
 - **Error Handling**: Comprehensive error messages and troubleshooting tips
 
+### Electron Application
+
+- **Modern Web UI**: Built with DaisyUI and Tailwind CSS
+- **Responsive Design**: Adapts to different window sizes
+- **Real-time Updates**: Live progress tracking during analysis
+- **Enhanced UX**: Smooth animations and modern components
+- **Export Functionality**: Save results in multiple formats
+- **Cross-platform**: Runs on Windows, macOS, and Linux
+
 ## 🚨 Troubleshooting
 
-### Ollama Connection Issues
+### Common Issues (Both Versions)
+
+#### Ollama Connection Issues
 
 - Ensure Ollama is running: `ollama serve`
 - Verify the model is downloaded: `ollama list`
 - Check the API URL in the configuration
 
-### Git Repository Issues
+#### Git Repository Issues
 
 - Ensure the selected folder is a Git repository (contains `.git` folder)
 - Verify branches exist locally using `git branch`
 
-### Python/Tkinter Issues
+### Python/Tkinter Specific Issues
+
+#### Python/Tkinter Issues
 
 - Follow the macOS Tkinter setup instructions above
 - Ensure Python 3.8+ is installed
 - Install required packages: `pip install requests`
+
+### Electron Specific Issues
+
+#### Node.js and npm Issues
+
+- Ensure Node.js 18+ is installed: `node --version`
+- Clear npm cache if installation fails: `npm cache clean --force`
+- Delete `node_modules` and `package-lock.json`, then run `npm install` again
+
+#### Build Issues
+
+- For CSS build issues, ensure Tailwind CSS is properly installed
+- If development mode doesn't work, try running `npm run build-css-prod` first
 
 ## 📝 License
 
