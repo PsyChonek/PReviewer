@@ -12,5 +12,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
   callOllamaAPI: (config) => ipcRenderer.invoke('call-ollama-api', config),
   
-  testOllamaConnection: (config) => ipcRenderer.invoke('test-ollama-connection', config)
+  testOllamaConnection: (config) => ipcRenderer.invoke('test-ollama-connection', config),
+  
+  // Progress listeners
+  onOllamaProgress: (callback) => {
+    ipcRenderer.on('ollama-progress', callback);
+    return () => ipcRenderer.removeListener('ollama-progress', callback);
+  }
 });

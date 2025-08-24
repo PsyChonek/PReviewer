@@ -53,6 +53,15 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        #connection-test-result {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-base-100">
@@ -62,56 +71,29 @@
             <a class="btn btn-ghost text-xl">🔍 AI PR Reviewer</a>
         </div>
         <div class="flex-none">
-            <div class="dropdown dropdown-end">
-                <div tabindex="0" role="button" class="btn btn-ghost">
-                    <div class="indicator">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                </div>
-                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 text-base-content rounded-box w-52">
-                    <li><a onclick="clearOutput()">Clear Output</a></li>
-                    <li><a onclick="exportOutput()">Export Results</a></li>
-                </ul>
-            </div>
         </div>
     </div>
 
     <div class="container mx-auto px-4 py-6 max-w-7xl">
-        <!-- Configuration Section -->
+        <!-- Repository & Branches Section -->
         <div class="card bg-base-200 shadow-xl mb-6">
             <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Configuration
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Ollama Configuration -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text font-medium">Ollama URL</span>
-                        </label>
-                        <input type="text" id="ollama-url" placeholder="http://localhost:11434/api/generate" 
-                               class="input input-bordered w-full" value="http://localhost:11434/api/generate" />
-                    </div>
-                    
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text font-medium">Ollama Model</span>
-                        </label>
-                        <input type="text" id="ollama-model" placeholder="codellama" 
-                               class="input input-bordered w-full" value="codellama" />
-                    </div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="card-title text-2xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 1 4 4 4-4" />
+                        </svg>
+                        Repository & Branches
+                    </h2>
+                    <button class="btn btn-ghost btn-sm" onclick="openConfigModal()" title="Open Configuration">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Settings
+                    </button>
                 </div>
-                
-                <!-- Repository Section -->
-                <div class="divider">Repository & Branches</div>
                 
                 <div class="grid grid-cols-1 gap-4">
                     <div class="form-control">
@@ -147,7 +129,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Action Buttons -->
                 <div class="card-actions justify-center mt-6">
                     <button class="btn btn-success btn-lg" id="start-review-btn" onclick="startReview()" disabled>
@@ -156,15 +138,56 @@
                     <button class="btn btn-warning btn-lg hidden" id="stop-review-btn" onclick="stopReview()">
                         ⏹️ Stop Review
                     </button>
-                    <button class="btn btn-info btn-lg" onclick="testConnection()">
-                        🔍 Test Connection
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Preview Section -->
+        <div id="token-preview" class="card bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg mb-6 hidden">
+            <div class="card-body">
+                <div class="flex items-center gap-2 mb-3">
+                    <h3 class="text-lg font-bold">📊 Review Preview</h3>
+                    <button class="btn btn-xs btn-ghost" onclick="previewTokenEstimate()" title="Refresh Preview">
+                        🔄
                     </button>
+                </div>
+                
+                <div class="text-sm mb-4">
+                    <p id="preview-status" class="font-medium text-gray-700">Analyzing changes...</p>
+                    <div id="preview-cost-warning" class="text-orange-600 mt-1 hidden"></div>
+                </div>
+                
+                <div id="preview-details" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">Diff Size</div>
+                        <div class="font-semibold" id="preview-diff-size">--</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">Input Tokens</div>
+                        <div class="font-semibold text-blue-600" id="preview-input-tokens">--</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">Est. Response</div>
+                        <div class="font-semibold text-green-600" id="preview-output-tokens">--</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">Total Est.</div>
+                        <div class="font-semibold text-purple-600" id="preview-total-estimate">--</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">Status</div>
+                        <div class="font-semibold text-emerald-600">Ready</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Statistics Section -->
-        <div id="stats-section" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 hidden">
+        <div id="stats-section" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 hidden">
             <div class="stats-card card bg-base-100 shadow">
                 <div class="card-body text-center p-4">
                     <div class="stat-title">Time</div>
@@ -190,6 +213,77 @@
                 <div class="card-body text-center p-4">
                     <div class="stat-title">Model</div>
                     <div class="stat-value text-lg" id="model-stat">--</div>
+                </div>
+            </div>
+            
+            <div class="stats-card card bg-base-100 shadow">
+                <div class="card-body text-center p-4">
+                    <div class="stat-title">Stage</div>
+                    <div class="stat-value text-lg" id="stage-stat">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Info Section -->
+        <div id="debug-section" class="card bg-base-200 shadow-lg mb-6 hidden">
+            <div class="card-body">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">🔧 Debug Information</h3>
+                    <button class="btn btn-sm btn-ghost" onclick="toggleDebugDetails()">
+                        <span id="debug-toggle-text">Show Details</span>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="stat">
+                        <div class="stat-title">Request Size</div>
+                        <div class="stat-value text-sm" id="request-size-stat">--</div>
+                    </div>
+                    
+                    <div class="stat">
+                        <div class="stat-title">Response Time</div>
+                        <div class="stat-value text-sm" id="response-time-stat">--</div>
+                    </div>
+                    
+                    <div class="stat">
+                        <div class="stat-title">Data Transfer</div>
+                        <div class="stat-value text-sm" id="transfer-stat">--</div>
+                    </div>
+                </div>
+                
+                <div id="debug-details" class="mt-4 hidden">
+                    <div class="divider">Detailed Metrics</div>
+                    <div class="text-sm space-y-2">
+                        <div class="flex justify-between">
+                            <span>Upload Progress:</span>
+                            <span id="upload-progress">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Processing Stage:</span>
+                            <span id="processing-stage">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Last Update:</span>
+                            <span id="last-update">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Tokens/Second:</span>
+                            <span id="tokens-per-second">--</span>
+                        </div>
+                        <div class="divider">Token Analysis</div>
+                        <div class="flex justify-between">
+                            <span>Estimated Input Tokens:</span>
+                            <span id="estimated-input-tokens">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Estimated Output Tokens:</span>
+                            <span id="estimated-output-tokens">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Actual Response Tokens:</span>
+                            <span id="actual-tokens">--</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -258,6 +352,129 @@
             <div class="py-4 text-center">
                 <div class="loading-animation mx-auto mb-4"></div>
                 <p id="loading-text">Initializing...</p>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Configuration Modal -->
+    <dialog id="config-modal" class="modal">
+        <div class="modal-box max-w-2xl">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+            <h3 class="font-bold text-lg mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Configuration Settings
+            </h3>
+            
+            <div class="space-y-6">
+                <!-- Ollama Configuration -->
+                <div>
+                    <h4 class="text-md font-semibold mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Ollama Settings
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Ollama URL</span>
+                                <span class="label-text-alt text-info cursor-help" title="The URL endpoint for your Ollama server">ℹ️</span>
+                            </label>
+                            <input type="text" id="ollama-url" placeholder="http://localhost:11434/api/generate" 
+                                   class="input input-bordered w-full" value="http://localhost:11434/api/generate" />
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Default: http://localhost:11434/api/generate</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Ollama Model</span>
+                                <span class="label-text-alt text-info cursor-help" title="The Ollama model to use for code review">ℹ️</span>
+                            </label>
+                            <input type="text" id="ollama-model" placeholder="codellama" 
+                                   class="input input-bordered w-full" value="codellama" />
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Recommended: codellama, deepseek-coder, or codegemma</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prompt Configuration -->
+                <div class="divider">Prompt Settings</div>
+                
+                <div>
+                    <h4 class="text-md font-semibold mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        AI Prompts
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Base System Prompt</span>
+                                <span class="label-text-alt text-info cursor-help" title="The main instructions for the AI reviewer">ℹ️</span>
+                            </label>
+                            <textarea id="base-prompt" placeholder="Enter the base system prompt for the AI..." 
+                                      class="textarea textarea-bordered h-32 w-full font-mono text-sm"></textarea>
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">This sets the main behavior and context for the AI reviewer</span>
+                                <button type="button" class="btn btn-xs btn-ghost" onclick="resetToDefaultPrompts()">
+                                    Reset to Default
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Additional User Instructions</span>
+                                <span class="label-text-alt text-info cursor-help" title="Custom instructions to append to the base prompt">ℹ️</span>
+                            </label>
+                            <textarea id="user-prompt" placeholder="Enter any additional instructions..." 
+                                      class="textarea textarea-bordered h-24 w-full font-mono text-sm"></textarea>
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Optional: Add specific requirements or focus areas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Test -->
+                <div class="divider">Connection</div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-center">
+                        <button type="button" class="btn btn-outline btn-info" id="test-connection-btn" onclick="testConnection()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span id="test-btn-text">Test Connection</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Test Result Display -->
+                    <div id="connection-test-result" class="hidden">
+                        <div class="alert" id="test-result-alert">
+                            <div id="test-result-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-primary" onclick="saveConfiguration()">Save Settings</button>
+                <form method="dialog">
+                    <button class="btn">Close</button>
+                </form>
             </div>
         </div>
     </dialog>

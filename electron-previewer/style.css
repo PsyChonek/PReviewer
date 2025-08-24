@@ -56,3 +56,18 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Toast notifications styling */
+#toast-container {
+    position: fixed !important;
+    top: 1rem !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 40 !important; /* Below modals (z-50) but above most content */
+    pointer-events: none; /* Don't block clicks on underlying elements */
+}
+
+#toast-container .alert {
+    pointer-events: auto; /* Re-enable clicks on the alert itself */
+    margin-bottom: 0.5rem;
+}
