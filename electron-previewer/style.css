@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/utilities" layer(utilities);
 @plugin "daisyui";
 
 /* Custom styles for the PR Reviewer app */
