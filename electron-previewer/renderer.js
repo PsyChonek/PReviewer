@@ -1,3 +1,6 @@
+// Debug mode - can be dynamically controlled via settings
+window.DEBUG = false;
+
 // Global state
 let currentRepoPath = null;
 let reviewInProgress = false;
@@ -55,7 +58,7 @@ function estimateTokens(text) {
     }
     
     // Debug logging (only if DEBUG is true)
-    if (DEBUG) {
+    if (window.DEBUG) {
         console.log(`Token Estimation Debug:
     - Characters: ${characterCount}
     - Words: ${wordCount}  
@@ -409,7 +412,15 @@ async function previewTokenEstimate() {
 
 async function loadBranches(repoPath) {
     try {
+        if (window.DEBUG) {
+            console.log(`🔍 Loading branches for repository: ${repoPath}`);
+        }
+        
         const branches = await window.electronAPI.getGitBranches(repoPath);
+        
+        if (window.DEBUG) {
+            console.log(`📋 Found ${branches.length} branches:`, branches);
+        }
         
         const fromBranchSelect = document.getElementById('from-branch');
         const toBranchSelect = document.getElementById('to-branch');
@@ -601,6 +612,17 @@ async function startReview() {
     const toBranch = document.getElementById('to-branch').value;
     const ollamaUrl = document.getElementById('ollama-url').value.trim();
     const ollamaModel = document.getElementById('ollama-model').value.trim();
+    
+    if (window.DEBUG) {
+        console.log('🚀 Starting review with configuration:', {
+            repoPath,
+            fromBranch,
+            toBranch,
+            ollamaUrl,
+            ollamaModel,
+            debugMode: window.DEBUG
+        });
+    }
     
     // Validation
     if (!repoPath) {
@@ -1036,6 +1058,7 @@ function saveConfiguration() {
     const ollamaModel = document.getElementById('ollama-model').value.trim();
     const basePrompt = document.getElementById('base-prompt').value.trim();
     const userPrompt = document.getElementById('user-prompt').value.trim();
+    const debugEnabled = document.getElementById('debug-enabled').checked;
     
     if (!ollamaUrl || !ollamaModel) {
         showAlert('Please fill in all required configuration fields', 'error');
@@ -1047,6 +1070,17 @@ function saveConfiguration() {
     localStorage.setItem('ollama-model', ollamaModel);
     localStorage.setItem('base-prompt', basePrompt);
     localStorage.setItem('user-prompt', userPrompt);
+    localStorage.setItem('debug-enabled', debugEnabled.toString());
+    
+    // Update the global DEBUG constant
+    window.DEBUG = debugEnabled;
+    
+    // Log debug mode change
+    if (debugEnabled) {
+        console.log('🐛 Debug mode enabled - detailed logging activated');
+    } else {
+        console.log('🔇 Debug mode disabled - detailed logging deactivated');
+    }
     
     showAlert('Configuration saved successfully!', 'success');
     
@@ -1063,6 +1097,7 @@ function loadConfiguration() {
     const savedModel = localStorage.getItem('ollama-model');
     const savedBasePrompt = localStorage.getItem('base-prompt');
     const savedUserPrompt = localStorage.getItem('user-prompt');
+    const savedDebugEnabled = localStorage.getItem('debug-enabled');
     
     if (savedUrl) {
         document.getElementById('ollama-url').value = savedUrl;
@@ -1081,6 +1116,17 @@ function loadConfiguration() {
     
     if (savedUserPrompt) {
         document.getElementById('user-prompt').value = savedUserPrompt;
+    }
+    
+    // Load debug setting
+    const debugEnabled = savedDebugEnabled === 'true';
+    document.getElementById('debug-enabled').checked = debugEnabled;
+    // Update the global DEBUG constant
+    window.DEBUG = debugEnabled;
+    
+    // Log debug status
+    if (window.DEBUG) {
+        console.log('🐛 Debug mode enabled - detailed logging active');
     }
 }
 

@@ -93,20 +93,22 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
     // Use streaming endpoint for real-time progress
     const streamUrl = url.replace('/api/generate', '/api/generate');
     
+    // Calculate request size for data transfer tracking
+    const requestData = { model: model, prompt: prompt, stream: true };
+    const requestSize = JSON.stringify(requestData).length;
+    
     // Send request started progress
     event.sender.send('ollama-progress', { 
       stage: 'sending', 
       progress: 50, 
       message: 'Sending request to AI model...',
       timestamp: Date.now(),
-      modelSize: prompt.length
+      modelSize: prompt.length,
+      bytesUploaded: requestSize,
+      totalBytes: requestSize
     });
 
-    const response = await axios.post(streamUrl, {
-      model: model,
-      prompt: prompt,
-      stream: true // Enable streaming
-    }, {
+    const response = await axios.post(streamUrl, requestData, {
       timeout: 120000, // 2 minutes timeout
       responseType: 'stream'
     });
@@ -121,8 +123,12 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
     return new Promise((resolve, reject) => {
       let buffer = '';
       let lastProgressUpdate = Date.now();
+      let bytesReceived = 0;
       
       response.data.on('data', (chunk) => {
+        const chunkSize = chunk.length;
+        bytesReceived += chunkSize;
+        
         buffer += chunk.toString();
         const lines = buffer.split('\n');
         buffer = lines.pop(); // Keep incomplete line in buffer
@@ -155,7 +161,8 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
                     tokens: totalTokens,
                     tokensPerSecond: tokensPerSecond,
                     processingTime: elapsed,
-                    responsePreview: responseText.substring(0, 50) + '...'
+                    responsePreview: responseText.substring(0, 50) + '...',
+                    bytesReceived: bytesReceived
                   });
                   
                   lastProgressUpdate = now;
@@ -172,7 +179,8 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
                   timestamp: Date.now(),
                   responseTime,
                   tokens: totalTokens,
-                  tokensPerSecond: totalTokens / (responseTime / 1000)
+                  tokensPerSecond: totalTokens / (responseTime / 1000),
+                  bytesReceived: bytesReceived
                 });
                 
                 resolve(responseText);
