@@ -187,23 +187,6 @@ If you encounter `ModuleNotFoundError: No module named '_tkinter'` on macOS:
 
 Both versions provide the same core functionality with different user interfaces.
 
-## 📁 Project Structure
-
-```text
-PReviewer/
-├── pr_reviwer_app.py          # Python/Tkinter application
-├── README.md                  # This file
-├── __pycache__/               # Python cache files
-└── electron-previewer/        # Electron application
-    ├── main.js                # Main Electron process
-    ├── renderer.js            # Renderer process
-    ├── preload.js             # Preload script
-    ├── index.html             # Main UI
-    ├── style.css              # Tailwind CSS styles
-    ├── package.json           # Node.js dependencies
-    └── node_modules/          # Installed packages
-```
-
 ## 🔧 Configuration
 
 ### Python/Tkinter Configuration
