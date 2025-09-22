@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getGitDiff: (repoPath, baseBranch, targetBranch) =>
     ipcRenderer.invoke('get-git-diff', repoPath, baseBranch, targetBranch),
 
+  fixGitOwnership: (repoPath) => ipcRenderer.invoke('fix-git-ownership', repoPath),
+
   callOllamaAPI: (config) => ipcRenderer.invoke('call-ollama-api', config),
 
   testOllamaConnection: (config) => ipcRenderer.invoke('test-ollama-connection', config),

@@ -68,6 +68,13 @@ ipcMain.handle('get-git-branches', async (event, repoPath) => {
         '1. Select a folder that contains a .git directory\n' +
         '2. Initialize a Git repository with "git init" if needed\n' +
         '3. Ensure the selected path is the repository root';
+    } else if (error.message.includes('dubious ownership')) {
+      errorMessage += '\n\nDubious ownership detected (common with mounted drives):\n' +
+        '1. This repository is on a mounted drive or network share\n' +
+        '2. Git blocks access for security reasons\n' +
+        '3. Run this command to fix it:\n' +
+        `   git config --global --add safe.directory "${repoPath}"\n` +
+        '4. Or use the "Fix Ownership" button below to run it automatically';
     } else if (error.message.includes('permission') || error.message.includes('access')) {
       errorMessage += '\n\nTroubleshooting steps:\n' +
         '1. Check folder permissions and user access rights\n' +
@@ -76,6 +83,22 @@ ipcMain.handle('get-git-branches', async (event, repoPath) => {
     }
 
     throw new Error(errorMessage);
+  }
+});
+
+// IPC handler to fix git dubious ownership
+ipcMain.handle('fix-git-ownership', async (event, repoPath) => {
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+
+    const command = `git config --global --add safe.directory "${repoPath}"`;
+    await execAsync(command);
+
+    return { success: true, message: 'Git ownership fixed successfully!' };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 });
 

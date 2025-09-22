@@ -151,7 +151,7 @@ function showAlert(message, type = 'info') {
         'warning': 'alert-warning',
         'info': 'alert-info'
     };
-    
+
     // Create or get the toast container
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
@@ -160,7 +160,7 @@ function showAlert(message, type = 'info') {
         toastContainer.className = 'toast toast-top toast-center z-40';
         document.body.appendChild(toastContainer);
     }
-    
+
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert ${alertClasses[type]} shadow-lg max-w-md`;
     alertDiv.innerHTML = `
@@ -169,10 +169,10 @@ function showAlert(message, type = 'info') {
         </svg>
         <span>${message}</span>
     `;
-    
+
     // Add to toast container instead of body
     toastContainer.appendChild(alertDiv);
-    
+
     // Add entrance animation
     alertDiv.style.opacity = '0';
     alertDiv.style.transform = 'translateY(-20px)';
@@ -181,7 +181,7 @@ function showAlert(message, type = 'info') {
         alertDiv.style.opacity = '1';
         alertDiv.style.transform = 'translateY(0)';
     });
-    
+
     setTimeout(() => {
         // Add exit animation
         alertDiv.style.opacity = '0';
@@ -192,6 +192,92 @@ function showAlert(message, type = 'info') {
             }
         }, 300);
     }, 5000);
+}
+
+function showDubiousOwnershipAlert(message, repoPath) {
+    // Create or get the toast container
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast toast-top toast-center z-40';
+        document.body.appendChild(toastContainer);
+    }
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning shadow-lg max-w-lg';
+    alertDiv.innerHTML = `
+        <div class="flex flex-col gap-2 w-full">
+            <div class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6 mt-1" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                <div class="flex-1">
+                    <div class="font-bold">Git Ownership Issue</div>
+                    <div class="text-sm whitespace-pre-wrap">${message}</div>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button class="btn btn-sm btn-success" onclick="fixGitOwnership('${repoPath}')">
+                    Fix Ownership
+                </button>
+                <button class="btn btn-sm btn-ghost" onclick="this.closest('.alert').remove()">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Add to toast container
+    toastContainer.appendChild(alertDiv);
+
+    // Add entrance animation
+    alertDiv.style.opacity = '0';
+    alertDiv.style.transform = 'translateY(-20px)';
+    requestAnimationFrame(() => {
+        alertDiv.style.transition = 'all 0.3s ease';
+        alertDiv.style.opacity = '1';
+        alertDiv.style.transform = 'translateY(0)';
+    });
+}
+
+async function fixGitOwnership(repoPath) {
+    try {
+        // Show loading state
+        const fixBtn = document.querySelector('[onclick*="fixGitOwnership"]');
+        if (fixBtn) {
+            fixBtn.disabled = true;
+            fixBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Fixing...';
+        }
+
+        const result = await window.electronAPI.fixGitOwnership(repoPath);
+
+        if (result.success) {
+            showAlert(result.message, 'success');
+            // Remove the ownership alert
+            const ownershipAlert = document.querySelector('.alert-warning');
+            if (ownershipAlert) ownershipAlert.remove();
+
+            // Try to reload branches automatically
+            setTimeout(() => {
+                loadBranches(repoPath);
+            }, 1000);
+        } else {
+            showAlert(`Failed to fix ownership: ${result.error}`, 'error');
+            if (fixBtn) {
+                fixBtn.disabled = false;
+                fixBtn.innerHTML = 'Fix Ownership';
+            }
+        }
+    } catch (error) {
+        console.error('Error fixing git ownership:', error);
+        showAlert(`Error fixing ownership: ${error.message}`, 'error');
+        const fixBtn = document.querySelector('[onclick*="fixGitOwnership"]');
+        if (fixBtn) {
+            fixBtn.disabled = false;
+            fixBtn.innerHTML = 'Fix Ownership';
+        }
+    }
 }
 
 function updateStatus(message, showInProgress = false) {
@@ -575,6 +661,11 @@ async function loadBranches(repoPath) {
                 '1. Navigate to a folder with a .git directory\n' +
                 '2. Initialize Git in this folder: "git init"\n' +
                 '3. Clone a repository: "git clone <url>"';
+        } else if (error.message.includes('dubious ownership')) {
+            userMessage = error.message; // Use the detailed message from main.js
+            // Show a special alert with a fix button for dubious ownership
+            showDubiousOwnershipAlert(userMessage, repoPath);
+            return; // Don't show the regular alert
         } else if (error.message.includes('no branches') || error.message.includes('no refs found')) {
             userMessage = 'No branches found in this repository.\n\n' +
                 'This repository might be:\n' +
