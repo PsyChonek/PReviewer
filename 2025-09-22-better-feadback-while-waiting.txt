@@ -1,0 +1,1346 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: /Users/danielvazac/Repos/PReviewer         │
+╰───────────────────────────────────────────────────╯
+
+ Tips for getting started:
+
+  Run /init to create a CLAUDE.md file with instructions for Claude
+  Use Claude to help with file analysis, editing, bash commands and git
+  Be as specific as you would with another engineer for the best results
+  ✔ Run /terminal-setup to set up terminal integration
+
+> better feadback while waiting 
+  25.5s
+  Speed
+  --
+  Tokens
+  --
+  Model
+  gpt-4.1-mini
+  Stage
+  preparing
+  🔧 Debug Information
+  Request Size
+  --
+  Response Time
+  --
+  Data Transfer
+  --
+  Detailed Metrics
+  Upload Progress:
+  --
+  Processing Stage:
+  token-estimation
+  Last Update:
+  16:07:49
+  Tokens/Second:
+  --
+  Token Analysis
+  Estimated Input Tokens:
+  4.1K
+  Estimated Output Tokens:
+  358
+  Actual Response Tokens:
+  --
+
+⏺ I'll help you improve the feedback while waiting. Let me first examine the current codebase to understand how waiting
+  states and feedback are currently implemented.
+
+⏺ Search(pattern: "**/*loading*")
+  ⎿  Found 3 files (ctrl+o to expand)
+
+⏺ Search(pattern: "**/*spinner*")
+  ⎿  Found 0 files 
+
+⏺ Search(pattern: "**/*wait*")
+  ⎿  Found 27 files (ctrl+o to expand)
+
+⏺ Search(pattern: "loading|spinner|waiting|feedback")
+  ⎿  Found 6 files (ctrl+o to expand)
+
+⏺ Read(renderer.js)
+  ⎿  Read 1680 lines (ctrl+o to expand)
+
+⏺ Read(index.html)
+  ⎿  Read 588 lines (ctrl+o to expand)
+
+⏺ Read(style.css)
+  ⎿  Read 107 lines (ctrl+o to expand)
+
+⏺ Based on my analysis, I've identified several areas where waiting feedback can be improved in this PR Reviewer application.
+   Here are the key improvement opportunities:
+
+  Current Waiting Feedback Issues:
+
+  1. Limited Progress Detail - While there's a progress bar, it only shows percentage without specific stage information
+  2. Generic Loading States - Simple spinner without context about what's happening
+  3. Missing Real-time Updates - Some operations don't provide continuous feedback
+  4. Poor Visual Hierarchy - Loading states could be more prominent and informative
+
+  Specific Improvements to Implement:
+
+⏺ Let me start by enhancing the progress indicators and loading states:
+
+⏺ Update(style.css)
+  ⎿  Updated style.css with 102 additions                                                                
+        57        100% { transform: rotate(360deg); }
+        58    }
+        59    
+        60 +  /* Enhanced loading animations */
+        61 +  @keyframes pulse-soft {
+        62 +      0%, 100% { opacity: 1; }
+        63 +      50% { opacity: 0.7; }
+        64 +  }
+        65 +  
+        66 +  @keyframes slideInRight {
+        67 +      from { transform: translateX(100%); opacity: 0; }
+        68 +      to { transform: translateX(0); opacity: 1; }
+        69 +  }
+        70 +  
+        71 +  @keyframes progressGlow {
+        72 +      0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+        73 +      50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.8), 0 0 25px rgba(59, 130, 246, 0.4); }
+        74 +  }
+        75 +  
+        76 +  /* Stage indicator styles */
+        77 +  .stage-indicator {
+        78 +      display: flex;
+        79 +      align-items: center;
+        80 +      gap: 0.75rem;
+        81 +      padding: 0.75rem 1rem;
+        82 +      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        83 +      border-radius: 0.75rem;
+        84 +      border-left: 4px solid #3b82f6;
+        85 +      animation: slideInRight 0.3s ease-out;
+        86 +      transition: all 0.3s ease;
+        87 +  }
+        88 +  
+        89 +  .stage-indicator.active {
+        90 +      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        91 +      border-left-color: #2563eb;
+        92 +      animation: progressGlow 2s ease-in-out infinite;
+        93 +  }
+        94 +  
+        95 +  .stage-spinner {
+        96 +      width: 16px;
+        97 +      height: 16px;
+        98 +      border: 2px solid #e5e7eb;
+        99 +      border-top: 2px solid #3b82f6;
+       100 +      border-radius: 50%;
+       101 +      animation: spin 1s linear infinite;
+       102 +  }
+       103 +  
+       104 +  .stage-text {
+       105 +      font-weight: 500;
+       106 +      color: #374151;
+       107 +      flex-grow: 1;
+       108 +  }
+       109 +  
+       110 +  .stage-time {
+       111 +      font-size: 0.875rem;
+       112 +      color: #6b7280;
+       113 +      font-weight: 400;
+       114 +  }
+       115 +  
+       116 +  /* Skeleton loading styles */
+       117 +  .skeleton {
+       118 +      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+       119 +      background-size: 200% 100%;
+       120 +      animation: shimmer 1.5s infinite;
+       121 +  }
+       122 +  
+       123 +  @keyframes shimmer {
+       124 +      0% { background-position: 200% 0; }
+       125 +      100% { background-position: -200% 0; }
+       126 +  }
+       127 +  
+       128 +  .skeleton-text {
+       129 +      height: 1rem;
+       130 +      border-radius: 0.25rem;
+       131 +      margin-bottom: 0.5rem;
+       132 +  }
+       133 +  
+       134 +  .skeleton-button {
+       135 +      height: 2.5rem;
+       136 +      border-radius: 0.5rem;
+       137 +      width: 8rem;
+       138 +  }
+       139 +  
+       140 +  /* Enhanced progress bar */
+       141 +  .progress-enhanced {
+       142 +      position: relative;
+       143 +      overflow: hidden;
+       144 +  }
+       145 +  
+       146 +  .progress-enhanced::after {
+       147 +      content: '';
+       148 +      position: absolute;
+       149 +      top: 0;
+       150 +      left: -100%;
+       151 +      width: 100%;
+       152 +      height: 100%;
+       153 +      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+       154 +      animation: progressShine 2s infinite;
+       155 +  }
+       156 +  
+       157 +  @keyframes progressShine {
+       158 +      0% { left: -100%; }
+       159 +      100% { left: 100%; }
+       160 +  }
+       161 +  
+       162    /* Toast notifications styling */
+       163    #toast-container {
+       164        position: fixed !important;
+
+⏺ Now let me enhance the HTML to include better progress feedback sections:
+
+⏺ Update(index.html)
+  ⎿  Updated index.html with 30 additions and 7 removals                                                                  
+       291                </div>
+       292            </div>
+       293    
+       294 -          <!-- Progress Section -->
+       294 +          <!-- Enhanced Progress Section -->
+       295            <section id="progress-section" class="card bg-base-100 shadow-lg mb-6 hidden" aria-label="Review 
+             progress" role="region">
+       296                <div class="card-body">
+       297 -                  <div class="flex justify-between items-center mb-2">
+       298 -                      <span class="text-sm font-medium">Progress</span>
+       299 -                      <span class="text-sm" id="progress-text" aria-live="polite">0%</span>
+       297 +                  <div class="flex justify-between items-center mb-4">
+       298 +                      <h3 class="text-lg font-semibold flex items-center gap-2">
+       299 +                          <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24
+           +  24">
+       300 +                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 
+           + 10V3L4 14h7v7l9-11h-7z"></path>
+       301 +                          </svg>
+       302 +                          Review Progress
+       303 +                      </h3>
+       304 +                      <div class="flex items-center gap-2">
+       305 +                          <span class="text-lg font-bold text-blue-600" id="progress-text" 
+           + aria-live="polite">0%</span>
+       306 +                          <span class="text-sm text-gray-500" id="elapsed-time">0s</span>
+       307 +                      </div>
+       308                    </div>
+       309 -                  <progress class="progress progress-primary w-full" id="progress-bar" value="0" max="100" 
+           - aria-describedby="status-text"></progress>
+       310 -                  <div class="text-center mt-2">
+       311 -                      <span class="text-sm" id="status-text" aria-live="polite">Ready</span>
+       309 +  
+       310 +                  <!-- Enhanced Progress Bar -->
+       311 +                  <div class="mb-4">
+       312 +                      <progress class="progress progress-primary w-full progress-enhanced" id="progress-bar" 
+           + value="0" max="100"></progress>
+       313                    </div>
+       314 +  
+       315 +                  <!-- Stage Indicators -->
+       316 +                  <div id="stage-indicators" class="space-y-2">
+       317 +                      <!-- Stages will be dynamically populated -->
+       318 +                  </div>
+       319 +  
+       320 +                  <!-- Current Status -->
+       321 +                  <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+       322 +                      <div class="flex items-center gap-2">
+       323 +                          <div id="status-spinner" class="stage-spinner hidden"></div>
+       324 +                          <span class="text-sm font-medium" id="status-text" aria-live="polite">Ready</span>
+       325 +                      </div>
+       326 +                      <div id="substatus-text" class="text-xs text-gray-600 mt-1 hidden"></div>
+       327 +                  </div>
+       328                </div>
+       329            </section>
+       330    
+
+⏺ Now let me add skeleton loading states for the repository selection:
+
+⏺ Update(index.html)
+  ⎿  Updated index.html with 5 additions and 1 removal                                                            
+       118                                <select id="from-branch" class="select select-bordered w-full" disabled 
+             aria-describedby="from-branch-help">
+       119                                    <option>Select repository first...</option>
+       120                                </select>
+       121 +                              <!-- Skeleton loader for branches -->
+       122 +                              <div id="from-branch-skeleton" class="skeleton skeleton-button w-full 
+           + hidden"></div>
+       123                                <div id="from-branch-help" class="label-text-alt text-sm text-gray-500 
+             mt-1">Branch containing the changes to review</div>
+       124                            </div>
+       125 -                          
+       125 +  
+       126                            <div class="form-control">
+       127                                <label class="label" for="to-branch">
+       128                                    <span class="label-text font-medium">To Branch (Target)</span>
+     ...
+       128                                <select id="to-branch" class="select select-bordered w-full" disabled 
+             aria-describedby="to-branch-help">
+       129                                    <option>Select repository first...</option>
+       130                                </select>
+       131 +                              <!-- Skeleton loader for branches -->
+       132 +                              <div id="to-branch-skeleton" class="skeleton skeleton-button w-full 
+           + hidden"></div>
+       133                                <div id="to-branch-help" class="label-text-alt text-sm text-gray-500 
+             mt-1">Target branch to compare against (usually main/master)</div>
+       134                            </div>
+       135                        </div>
+
+⏺ Now let me enhance the JavaScript to implement better loading states and progress feedback:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 82 additions and 6 removals                                                                 
+       314        }
+       315    }
+       316    
+       317 -  function updateProgress(percentage, text = '') {
+       317 +  function updateProgress(percentage, text = '', stage = null, substatus = null) {
+       318        const progressBar = document.getElementById('progress-bar');
+       319        const progressText = document.getElementById('progress-text');
+       320        const progressSection = document.getElementById('progress-section');
+       321 -      
+       321 +      const elapsedTimeEl = document.getElementById('elapsed-time');
+       322 +      const statusSpinner = document.getElementById('status-spinner');
+       323 +      const substatusEl = document.getElementById('substatus-text');
+       324 +  
+       325        if (progressBar) {
+       326            progressBar.value = percentage;
+       327 -          
+       327 +  
+       328            // Add smooth animation
+       329            progressBar.style.transition = 'value 0.3s ease';
+       330        }
+       331 -      
+       331 +  
+       332        if (progressText) {
+       333            progressText.textContent = `${Math.round(percentage)}%`;
+       334        }
+       335 -      
+       335 +  
+       336 +      // Update elapsed time
+       337 +      if (reviewStartTime && elapsedTimeEl) {
+       338 +          const elapsed = (Date.now() - reviewStartTime) / 1000;
+       339 +          if (elapsed < 60) {
+       340 +              elapsedTimeEl.textContent = `${elapsed.toFixed(1)}s`;
+       341 +          } else {
+       342 +              const minutes = Math.floor(elapsed / 60);
+       343 +              const seconds = elapsed % 60;
+       344 +              elapsedTimeEl.textContent = `${minutes}m ${seconds.toFixed(0)}s`;
+       345 +          }
+       346 +      }
+       347 +  
+       348 +      // Show/hide status spinner
+       349 +      if (percentage > 0 && percentage < 100) {
+       350 +          statusSpinner.classList.remove('hidden');
+       351 +      } else {
+       352 +          statusSpinner.classList.add('hidden');
+       353 +      }
+       354 +  
+       355 +      // Update substatus
+       356 +      if (substatus && substatusEl) {
+       357 +          substatusEl.textContent = substatus;
+       358 +          substatusEl.classList.remove('hidden');
+       359 +      } else if (substatusEl) {
+       360 +          substatusEl.classList.add('hidden');
+       361 +      }
+       362 +  
+       363        if (text) {
+       364            updateStatus(text, percentage < 100);
+       365        }
+       366 -      
+       366 +  
+       367 +      // Update stage indicators
+       368 +      if (stage) {
+       369 +          updateStageIndicators(stage, percentage);
+       370 +      }
+       371 +  
+       372        if (percentage > 0) {
+       373            progressSection.classList.remove('hidden');
+       374        } else {
+     ...
+       341        }
+       342    }
+       343    
+       344 +  function updateStageIndicators(currentStage, progress) {
+       345 +      const stageContainer = document.getElementById('stage-indicators');
+       346 +  
+       347 +      const stages = [
+       348 +          { id: 'init', name: 'Initializing', range: [0, 15] },
+       349 +          { id: 'diff', name: 'Generating Diff', range: [15, 35] },
+       350 +          { id: 'prepare', name: 'Preparing Analysis', range: [35, 45] },
+       351 +          { id: 'ai', name: 'AI Processing', range: [45, 95] },
+       352 +          { id: 'format', name: 'Formatting Results', range: [95, 100] }
+       353 +      ];
+       354 +  
+       355 +      // Clear existing indicators
+       356 +      stageContainer.innerHTML = '';
+       357 +  
+       358 +      stages.forEach(stage => {
+       359 +          const stageEl = document.createElement('div');
+       360 +          const isActive = currentStage === stage.id;
+       361 +          const isCompleted = progress > stage.range[1];
+       362 +          const isInProgress = progress >= stage.range[0] && progress <= stage.range[1];
+       363 +  
+       364 +          stageEl.className = `stage-indicator ${isActive || isInProgress ? 'active' : ''}`;
+       365 +  
+       366 +          let icon = '';
+       367 +          if (isCompleted) {
+       368 +              icon = '<div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"><svg 
+           + class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 
+           + 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg></div>';
+       369 +          } else if (isActive || isInProgress) {
+       370 +              icon = '<div class="stage-spinner"></div>';
+       371 +          } else {
+       372 +              icon = '<div class="w-4 h-4 bg-gray-300 rounded-full"></div>';
+       373 +          }
+       374 +  
+       375 +          stageEl.innerHTML = `
+       376 +              ${icon}
+       377 +              <span class="stage-text">${stage.name}</span>
+       378 +              ${isInProgress ? `<span class="stage-time">${Math.round(progress)}%</span>` : ''}
+       379 +          `;
+       380 +  
+       381 +          stageContainer.appendChild(stageEl);
+       382 +      });
+       383 +  }
+       384 +  
+       385    function showStats() {
+       386        document.getElementById('stats-section').classList.remove('hidden');
+       387    }
+
+⏺ Now let me update the branch loading function to show skeleton loading states:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 4 additions and 1 removal                                  
+       683    }
+       684    
+       685    async function loadBranches(repoPath) {
+       686 +      // Show skeleton loading states
+       687 +      showBranchLoadingState(true);
+       688 +  
+       689        try {
+       690            if (window.DEBUG) {
+       691                console.log(`🔍 Loading branches for repository: ${repoPath}`);
+       692            }
+       693 -          
+       693 +  
+       694            const branches = await window.electronAPI.getGitBranches(repoPath);
+       695            
+       696            if (window.DEBUG) {
+
+⏺ Now let me add the helper function for branch loading states and enhance progress updates throughout the code:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 77 additions                                                                    
+       167        }
+       168    }
+       169    
+       170 +  // Loading State Functions
+       171 +  function showBranchLoadingState(show) {
+       172 +      const fromBranchSelect = document.getElementById('from-branch');
+       173 +      const toBranchSelect = document.getElementById('to-branch');
+       174 +      const fromSkeleton = document.getElementById('from-branch-skeleton');
+       175 +      const toSkeleton = document.getElementById('to-branch-skeleton');
+       176 +  
+       177 +      if (show) {
+       178 +          // Hide selects, show skeletons
+       179 +          fromBranchSelect.classList.add('hidden');
+       180 +          toBranchSelect.classList.add('hidden');
+       181 +          fromSkeleton.classList.remove('hidden');
+       182 +          toSkeleton.classList.remove('hidden');
+       183 +      } else {
+       184 +          // Show selects, hide skeletons
+       185 +          fromBranchSelect.classList.remove('hidden');
+       186 +          toBranchSelect.classList.remove('hidden');
+       187 +          fromSkeleton.classList.add('hidden');
+       188 +          toSkeleton.classList.add('hidden');
+       189 +      }
+       190 +  }
+       191 +  
+       192 +  function showLoadingToast(message, persistent = false) {
+       193 +      const toastContainer = document.getElementById('toast-container') || createToastContainer();
+       194 +  
+       195 +      const toastId = 'loading-toast-' + Date.now();
+       196 +      const toast = document.createElement('div');
+       197 +      toast.id = toastId;
+       198 +      toast.className = 'alert alert-info shadow-lg max-w-md';
+       199 +      toast.innerHTML = `
+       200 +          <div class="flex items-center gap-3">
+       201 +              <div class="stage-spinner"></div>
+       202 +              <span>${message}</span>
+       203 +          </div>
+       204 +      `;
+       205 +  
+       206 +      toastContainer.appendChild(toast);
+       207 +  
+       208 +      // Add entrance animation
+       209 +      toast.style.opacity = '0';
+       210 +      toast.style.transform = 'translateY(-20px)';
+       211 +      requestAnimationFrame(() => {
+       212 +          toast.style.transition = 'all 0.3s ease';
+       213 +          toast.style.opacity = '1';
+       214 +          toast.style.transform = 'translateY(0)';
+       215 +      });
+       216 +  
+       217 +      if (!persistent) {
+       218 +          setTimeout(() => {
+       219 +              if (toast.parentNode) {
+       220 +                  toast.style.opacity = '0';
+       221 +                  toast.style.transform = 'translateY(-20px)';
+       222 +                  setTimeout(() => toast.remove(), 300);
+       223 +              }
+       224 +          }, 3000);
+       225 +      }
+       226 +  
+       227 +      return toastId;
+       228 +  }
+       229 +  
+       230 +  function hideLoadingToast(toastId) {
+       231 +      const toast = document.getElementById(toastId);
+       232 +      if (toast) {
+       233 +          toast.style.opacity = '0';
+       234 +          toast.style.transform = 'translateY(-20px)';
+       235 +          setTimeout(() => toast.remove(), 300);
+       236 +      }
+       237 +  }
+       238 +  
+       239 +  function createToastContainer() {
+       240 +      const toastContainer = document.createElement('div');
+       241 +      toastContainer.id = 'toast-container';
+       242 +      toastContainer.className = 'toast toast-top toast-center z-40';
+       243 +      document.body.appendChild(toastContainer);
+       244 +      return toastContainer;
+       245 +  }
+       246 +  
+       247    // Utility Functions
+       248    function showAlert(message, type = 'info') {
+       249        const alertClasses = {
+
+⏺ Now let me update the branch loading completion to hide the skeleton:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 6 additions and 1 removal                            
+       822            setTimeout(previewTokenEstimate, 100);
+       823            
+       824            updateStatus('Repository loaded successfully');
+       825 -          
+       825 +  
+       826 +          // Hide skeleton loading states
+       827 +          showBranchLoadingState(false);
+       828 +  
+       829        } catch (error) {
+       830 +          // Hide skeleton loading states on error too
+       831 +          showBranchLoadingState(false);
+       832            console.error('Error loading branches:', error);
+       833    
+       834            let userMessage = `Error loading branches: ${error.message}`;
+
+⏺ Now let me update the progress calls throughout the review process to use the enhanced progress function:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 4 additions and 4 removals                                                           
+       1314            appendOutput(`• Endpoint: ${aiConfig.url}\n\n`, 'info');
+       1315        }
+       1316        
+       1317 -      updateProgress(10, 'Initializing review process...');
+       1317 +      updateProgress(10, 'Initializing review process...', 'init', 'Setting up analysis environment');
+       1318        updateStats(0, 0, modelName, 'initializing');
+       1319 -      
+       1319 +  
+       1320        // Start real-time updates
+       1321        progressUpdateInterval = setInterval(() => {
+       1322            if (reviewInProgress) {
+     ...
+       1324                updateStats(elapsed, null, modelName, null);
+       1325            }
+       1326        }, 100); // Update every 100ms for smooth real-time feel
+       1327 +  
+       1328 +      updateProgress(15, 'Generating diff...', 'diff', 'Analyzing code changes between branches');
+       1329        
+       1330 -      updateProgress(15, 'Generating diff...');
+       1331 -      
+       1330        // Generate diff
+       1331        appendOutput('🔄 Generating Code Diff...\n', 'subheader');
+       1332        appendOutput(`• Source branch: ${fromBranch}\n`, 'info');
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                                                                
+       1357        appendOutput('✅ Diff generated successfully.\n', 'success');
+       1358        appendOutput(`📈 Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
+       1359        
+       1360 -      updateProgress(35, 'Preparing AI analysis...');
+       1360 +      updateProgress(35, 'Preparing AI analysis...', 'prepare', 'Estimating tokens and building prompt');
+       1361        updateStats((Date.now() - reviewStartTime) / 1000, null, modelName, 'preparing');
+       1362        
+       1363        // Calculate estimated tokens for the prompt
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                                                                   
+       1418        if (ollamaProgressHandler) ollamaProgressHandler();
+       1419        if (azureProgressHandler) azureProgressHandler();
+       1420        
+       1421 -      updateProgress(95, 'Formatting results...');
+       1421 +      updateProgress(95, 'Formatting results...', 'format', 'Processing AI response and generating output');
+       1422        updateStats(totalElapsed, null, modelName, 'formatting');
+       1423        
+       1424        // Display results - let the AI response speak for itself with proper Markdown
+
+⏺ Let me update the repository selection function to use loading toast and add one more improvement to the AI processing
+  section:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 6 additions and 1 removal                                             
+       645    
+       646    // Repository Functions
+       647    async function selectRepository() {
+       648 +      let loadingToastId = null;
+       649        try {
+       650            const repoPath = await window.electronAPI.selectDirectory();
+       651            if (repoPath) {
+       652                currentRepoPath = repoPath;
+       653                document.getElementById('repo-path').value = repoPath;
+       654 -              
+       654 +  
+       655 +              loadingToastId = showLoadingToast('Loading repository branches...', true);
+       656                updateStatus('Loading repository branches...', true);
+       657                await loadBranches(repoPath);
+       658 +  
+       659 +              if (loadingToastId) hideLoadingToast(loadingToastId);
+       660                showAlert('Repository loaded successfully!', 'success');
+       661            }
+       662        } catch (error) {
+       663 +          if (loadingToastId) hideLoadingToast(loadingToastId);
+       664            console.error('Error selecting repository:', error);
+       665    
+       666            let userMessage = error.message;
+
+⏺ Now let me add a progress update for the AI processing stage:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 3 additions and 1 removal                                              
+       1392            stage: 'token-estimation'
+       1393        });
+       1394        
+       1395 +      updateProgress(45, 'Starting AI analysis...', 'ai', 'Sending prompt to AI model');
+       1396 +  
+       1397        const aiStartTime = Date.now();
+       1398        let aiFeedback;
+       1399 -      
+       1399 +  
+       1400        try {
+       1401            if (provider === 'azure') {
+       1402                aiFeedback = await window.electronAPI.callAzureAI({
+
+⏺ Perfect! I've successfully implemented better feedback while waiting across the PR Reviewer application. Here are the key
+  improvements I made:
+
+  Enhanced Waiting Feedback Features:
+
+  1. Animated Progress Indicators
+
+  - Added detailed stage-by-stage progress with visual indicators
+  - Each stage shows completion status (pending, active, completed)
+  - Smooth animations for better visual feedback
+
+  2. Enhanced Progress Section
+
+  - Real-time elapsed time display
+  - Stage-specific progress indicators with icons
+  - Substatus messages for additional context
+  - Glowing animations for active stages
+
+  3. Skeleton Loading States
+
+  - Added skeleton loaders for branch dropdowns during repository loading
+  - Provides immediate visual feedback that something is happening
+
+  4. Loading Toast Notifications
+
+  - Persistent loading toasts for long-running operations
+  - Animated spinners in notifications
+  - Automatic dismissal with smooth transitions
+
+  5. Better Visual Feedback
+
+  - Enhanced CSS animations (shimmer, glow, slide-in effects)
+  - Improved progress bar with shine animation
+  - Status spinners that show/hide contextually
+
+  6. Detailed Progress Stages
+
+  The progress now shows specific stages:
+  - Initializing (0-15%): Setting up analysis environment
+  - Generating Diff (15-35%): Analyzing code changes between branches
+  - Preparing Analysis (35-45%): Estimating tokens and building prompt
+  - AI Processing (45-95%): Sending prompt to AI model
+  - Formatting Results (95-100%): Processing AI response and generating output
+
+  7. Contextual Information
+
+  - Substatus text provides additional details
+  - Real-time elapsed time tracking
+  - Better loading state management
+
+  The application now provides much more informative and engaging feedback during waiting periods, helping users understand
+  exactly what's happening at each step of the process.
+
+> Before 
+   Starting AI analysis... are two loading circles
+
+⏺ I see the issue! There are two loading spinners showing up before the "Starting AI analysis..." stage. Let me fix this by
+  checking where the duplicate spinners are coming from and ensuring proper coordination between the different loading
+  indicators.
+
+⏺ Search(pattern: "loading loading-spinner", output_mode: "content")
+  ⎿  Found 2 lines (ctrl+o to expand)
+
+⏺ The issue is that we have both the new status-spinner (with our custom stage-spinner class) and the existing DaisyUI
+  loading spinner in the updateStatus function. Let me fix this by updating the updateStatus function to work better with our
+   new progress system:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 3 removals                                                              
+       384    function updateStatus(message, showInProgress = false) {
+       385        const statusEl = document.getElementById('status-text');
+       386        if (statusEl) {
+       387 +          // Don't add spinner here since we have our own status-spinner element
+       388            statusEl.textContent = message;
+       389 -          if (showInProgress) {
+       390 -              statusEl.innerHTML = `<span class="loading loading-spinner loading-sm"></span> ${message}`;
+       391 -          }
+       389        }
+       390    }
+       391    
+
+⏺ Now let me also check if there are any other places where we might have duplicate loading indicators by looking at the
+  places where progress is being updated during the review process:
+
+⏺ Search(pattern: "updateStatus.*true", output_mode: "content")
+  ⎿  Found 2 lines (ctrl+o to expand)
+
+⏺ Perfect! Now I need to update these calls since we removed the spinner functionality from updateStatus. Let me fix these:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                                              
+       651                document.getElementById('repo-path').value = repoPath;
+       652    
+       653                loadingToastId = showLoadingToast('Loading repository branches...', true);
+       654 -              updateStatus('Loading repository branches...', true);
+       654 +              updateStatus('Loading repository branches...');
+       655                await loadBranches(repoPath);
+       656    
+       657                if (loadingToastId) hideLoadingToast(loadingToastId);
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                                                 
+       706        }
+       707        
+       708        try {
+       709 -          updateStatus('Analyzing changes...', true);
+       709 +          updateStatus('Analyzing changes...');
+       710            
+       711            // Generate diff for preview
+       712            const diff = await window.electronAPI.getGitDiff(repoPath, toBranch, fromBranch);
+
+⏺ Now let me also check if there are any other calls to updateStatus with the showInProgress parameter that we might have
+  missed:
+
+⏺ Search(pattern: "updateStatus.*showInProgress", output_mode: "content")
+  ⎿  Found 1 line (ctrl+o to expand)
+
+⏺ Good! Now let me also check the places where updateProgress is called to make sure we're properly managing the stage
+  indicators. Let me look at the key progress update calls to ensure they're passing the right stage information:
+
+⏺ Search(pattern: "updateProgress.*text.*percentage < 100", output_mode: "content")
+  ⎿  Found 0 lines 
+
+⏺ Let me check the updateProgress call within the function itself to understand the flow better:
+
+⏺ Search(pattern: "updateStatus.*percentage.*100", output_mode: "content")
+  ⎿  Found 1 line (ctrl+o to expand)
+
+> Review completed but still stuck AI processing and formating Initializing
+  Generating Diff
+  Preparing Analysis
+  AI Processing
+  95%
+  Formatting Results
+  95%
+  Review completed
+
+⏺ I see the issue! The problem is that the stage indicators are getting stuck because they're not being properly updated when
+   the review completes. The stages are showing "AI Processing" and "Formatting Results" both at 95%, and they're not
+  transitioning to completion properly. Let me fix this:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                                                           
+       1475                appendOutput(`• Response Estimation: Off by ${Math.abs(estimationDiff)} tokens 
+              (${estimationAccuracy}%)\n`, 'warning');
+       1476            }
+       1477            
+       1478 -          updateProgress(100, 'Review completed successfully!');
+       1478 +          updateProgress(100, 'Review completed successfully!', 'complete', 'AI analysis finished');
+       1479            showAlert('Review completed successfully!', 'success');
+       1480        } else {
+       1481            appendOutput('❌ AI review failed to generate feedback.\n', 'error');
+
+⏺ Now I need to add the 'complete' stage to the stage indicators and fix the updateStageIndicators function to handle
+  completion properly:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 3 additions and 2 removals                             
+       458            { id: 'init', name: 'Initializing', range: [0, 15] },
+       459            { id: 'diff', name: 'Generating Diff', range: [15, 35] },
+       460            { id: 'prepare', name: 'Preparing Analysis', range: [35, 45] },
+       461 -          { id: 'ai', name: 'AI Processing', range: [45, 95] },
+       462 -          { id: 'format', name: 'Formatting Results', range: [95, 100] }
+       461 +          { id: 'ai', name: 'AI Processing', range: [45, 90] },
+       462 +          { id: 'format', name: 'Formatting Results', range: [90, 99] },
+       463 +          { id: 'complete', name: 'Review Complete', range: [99, 100] }
+       464        ];
+       465    
+       466        // Clear existing indicators
+
+⏺ Now let me also fix the logic to better handle the stage progression and completion state:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 13 additions and 5 removals                                                                 
+       469        stages.forEach(stage => {
+       470            const stageEl = document.createElement('div');
+       471            const isActive = currentStage === stage.id;
+       472 -          const isCompleted = progress > stage.range[1];
+       473 -          const isInProgress = progress >= stage.range[0] && progress <= stage.range[1];
+       472 +          const isCompleted = progress > stage.range[1] || (progress === 100 && stage.id !== 'complete');
+       473 +          const isInProgress = (progress >= stage.range[0] && progress <= stage.range[1]) || isActive;
+       474 +          const isCurrentlyComplete = progress === 100 && stage.id === 'complete';
+       475    
+       476 -          stageEl.className = `stage-indicator ${isActive || isInProgress ? 'active' : ''}`;
+       476 +          stageEl.className = `stage-indicator ${(isActive || isInProgress || isCurrentlyComplete) 
+           +  ? 'active' : ''}`;
+       477    
+       478            let icon = '';
+       479 -          if (isCompleted) {
+       479 +          if (isCompleted || isCurrentlyComplete) {
+       480                icon = '<div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"><svg 
+             class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 
+             8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg></div>';
+       481            } else if (isActive || isInProgress) {
+       482                icon = '<div class="stage-spinner"></div>';
+     ...
+       483                icon = '<div class="w-4 h-4 bg-gray-300 rounded-full"></div>';
+       484            }
+       485    
+       486 +          let timeDisplay = '';
+       487 +          if (isInProgress && !isCompleted && !isCurrentlyComplete) {
+       488 +              timeDisplay = `<span class="stage-time">${Math.round(progress)}%</span>`;
+       489 +          } else if (isCompleted || isCurrentlyComplete) {
+       490 +              timeDisplay = '<span class="stage-time text-green-600">✓</span>';
+       491 +          }
+       492 +  
+       493            stageEl.innerHTML = `
+       494                ${icon}
+       495                <span class="stage-text">${stage.name}</span>
+       496 -              ${isInProgress ? `<span class="stage-time">${Math.round(progress)}%</span>` : ''}
+       496 +              ${timeDisplay}
+       497            `;
+       498    
+       499            stageContainer.appendChild(stageEl);
+
+⏺ Perfect! Now the issues with the duplicate loading circles and stuck progress indicators should be fixed. Here's what I've
+  corrected:
+
+  Fixed Issues:
+
+  1. Duplicate Loading Spinners
+
+  - Removed the DaisyUI spinner from updateStatus() function
+  - Now only using our custom status-spinner element in the progress section
+  - This eliminates the double loading circles before "Starting AI analysis..."
+
+  2. Stuck Progress Indicators
+
+  - Added a new "Review Complete" stage (99-100%)
+  - Improved the stage progression logic to properly handle completion
+  - Fixed stage indicators to show checkmarks (✓) when completed
+  - Better logic for determining active, in-progress, and completed states
+
+  3. Better Stage Management
+
+  - Adjusted stage ranges to prevent overlap:
+    - AI Processing: 45-90% (was 45-95%)
+    - Formatting Results: 90-99% (was 95-100%)
+    - Review Complete: 99-100% (new stage)
+
+  4. Completion State
+
+  - Added proper completion handling with the 'complete' stage
+  - All previous stages now show green checkmarks when the review is complete
+  - The final stage shows as active with a checkmark when at 100%
+
+  The loading feedback should now be much smoother and cleaner, with no duplicate spinners and proper progression through all
+   stages until completion.
+
+> why Review Progress
+  45%
+  0.4s stuck at 0.4s
+
+⏺ The elapsed time is stuck at 0.4s because the real-time updates are being cleared when the review completes, but the
+  display isn't being updated to show the final elapsed time. Let me fix this issue:
+
+⏺ Search(pattern: "clearInterval.*progressUpdateInterval", output_mode: "content")
+  ⎿  Found 5 lines (ctrl+o to expand)
+
+⏺ The issue is that the progressUpdateInterval is being cleared too early, before the final elapsed time update. Let me fix
+  the updateProgress function to ensure it always updates the elapsed time, and modify where we clear the interval:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                          
+       408            progressText.textContent = `${Math.round(percentage)}%`;
+       409        }
+       410    
+       411 -      // Update elapsed time
+       411 +      // Update elapsed time - always update if we have a start time
+       412        if (reviewStartTime && elapsedTimeEl) {
+       413            const elapsed = (Date.now() - reviewStartTime) / 1000;
+       414            if (elapsed < 60) {
+
+⏺ Now let me ensure the final time is displayed correctly by updating the completion logic. The issue is that we clear the
+  interval and then call updateProgress(100, ...), but by then the interval is already cleared. Let me fix this:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 3 additions and 3 removals                                                                 
+       1428        const aiElapsed = (Date.now() - aiStartTime) / 1000;
+       1429        const totalElapsed = (Date.now() - reviewStartTime) / 1000;
+       1430        
+       1431 +      updateProgress(95, 'Formatting results...', 'format', 'Processing AI response and generating output');
+       1432 +      updateStats(totalElapsed, null, modelName, 'formatting');
+       1433 +  
+       1434        clearInterval(progressUpdateInterval);
+       1435        if (ollamaProgressHandler) ollamaProgressHandler();
+       1436        if (azureProgressHandler) azureProgressHandler();
+       1437        
+       1438 -      updateProgress(95, 'Formatting results...', 'format', 'Processing AI response and generating output');
+       1439 -      updateStats(totalElapsed, null, modelName, 'formatting');
+       1440 -      
+       1438        // Display results - let the AI response speak for itself with proper Markdown
+       1439        appendOutput('\n---\n\n', 'separator');
+       1440    
+
+⏺ Now let me ensure that when we reach 100% completion, we also update the final elapsed time:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 3 additions                                                                        
+       1484                appendOutput(`• Response Estimation: Off by ${Math.abs(estimationDiff)} tokens 
+              (${estimationAccuracy}%)\n`, 'warning');
+       1485            }
+       1486            
+       1487 +          // Calculate final elapsed time and update one more time
+       1488 +          const finalElapsed = (Date.now() - reviewStartTime) / 1000;
+       1489            updateProgress(100, 'Review completed successfully!', 'complete', 'AI analysis finished');
+       1490 +          updateStats(finalElapsed, actualResponseTokens, modelName, 'complete');
+       1491            showAlert('Review completed successfully!', 'success');
+       1492        } else {
+       1493            appendOutput('❌ AI review failed to generate feedback.\n', 'error');
+
+⏺ Now let me also check and fix the resetStats function to make sure it properly resets the elapsed time when starting a new
+  review:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 17 additions and 5 removals                                               
+       633        ['time-stat', 'speed-stat', 'tokens-stat', 'model-stat', 'stage-stat'].forEach(id => {
+       634            document.getElementById(id).textContent = '--';
+       635        });
+       636 -      
+       637 -      ['request-size-stat', 'response-time-stat', 'transfer-stat', 'upload-progress', 
+       638 -       'processing-stage', 'last-update', 'tokens-per-second', 'estimated-input-tokens', 
+       636 +  
+       637 +      ['request-size-stat', 'response-time-stat', 'transfer-stat', 'upload-progress',
+       638 +       'processing-stage', 'last-update', 'tokens-per-second', 'estimated-input-tokens',
+       639         'estimated-output-tokens', 'actual-tokens'].forEach(id => {
+       640            document.getElementById(id).textContent = '--';
+       641        });
+       642 -      
+       642 +  
+       643 +      // Reset elapsed time display
+       644 +      const elapsedTimeEl = document.getElementById('elapsed-time');
+       645 +      if (elapsedTimeEl) {
+       646 +          elapsedTimeEl.textContent = '0s';
+       647 +      }
+       648 +  
+       649 +      // Clear stage indicators
+       650 +      const stageContainer = document.getElementById('stage-indicators');
+       651 +      if (stageContainer) {
+       652 +          stageContainer.innerHTML = '';
+       653 +      }
+       654 +  
+       655        // Hide preview section when resetting
+       656        document.getElementById('token-preview').classList.add('hidden');
+       657 -      
+       657 +  
+       658        hideStats();
+       659        hideDebugInfo();
+       660        debugDetailsVisible = false;
+
+> MD render dosnt look good \
+  \
+  # �🔍 AI Code Review Analysis
+  ---
+
+  ## 📊 Review Configuration
+  • Repository: JobkaBackend
+  • Path: /Volumes/[C] Windows 11 Work/Repos/Jobka/JobkaBackend
+  • Comparing: master → feature/10104_post_edit_planning
+  • AI Provider: Azure AI
+  • Deployment: gpt-4.1-mini
+  • Endpoint: https://vazy-ai-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version
+  =2025-01-01-preview
+
+  ## 🔄 Generating Code Diff...
+  • Source branch: feature/10104_post_edit_planning
+  • Target branch: master
+  • Finding differences...
+  ✅ ✅ Diff generated successfully.
+  📈 Found 416 lines of changes to analyze.
+
+  ## 🤖 AI Analysis in Progress...
+  📤 Preparing prompt for AI model (gpt-4.1-mini)...
+  📊 Prompt size: 18.8 KB
+  🧮 Estimated input tokens: 4.1K
+  🧮 Estimated response tokens: 358
+
+  ---
+
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_EDIT_PlannedActions.sql
+    line: 1-115
+    severity: medium
+    category: reliability
+    title: Missing explicit error handling for nested procedure calls
+    description: The procedure calls other procedures (e.g., IA_Post_ACTION, IA_Post_VALIDATE, SF_ServiceRequest_NEW) and 
+  checks for errors via @Error, but does not handle or log the specific error details. This may make debugging difficult and 
+  obscure the root cause of failures.
+    recommendation: Capture and log detailed error information from nested procedure calls or propagate error codes/messages 
+  explicitly. Consider using TRY...CATCH blocks for better error handling and diagnostics.
+    snippet: |
+      exec @Error=IA_Post_ACTION @ID_Login=@ID_Login, @ID=@ID, @ID_Action='IA_Post_EDIT_PlannedActions'
+      if @Error<>0
+          goto FAILED
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_EDIT_PlannedActions.sql
+    line: 1-115
+    severity: medium
+    category: correctness
+    title: Use of deprecated or non-standard syntax "is distinct from"
+    description: The code uses "is distinct from" to compare datetime values (e.g., if @DatePublish is distinct from 
+  @CurrentDatePublish). This syntax is not standard in T-SQL and may cause syntax errors or unexpected behavior depending on 
+  SQL Server version.
+    recommendation: Replace "is distinct from" with standard T-SQL comparison logic, e.g., "if (@DatePublish <> 
+  @CurrentDatePublish) OR (@DatePublish IS NULL AND @CurrentDatePublish IS NOT NULL) OR (@DatePublish IS NOT NULL AND 
+  @CurrentDatePublish IS NULL)".
+    snippet: |
+      if @DatePublish is distinct from @CurrentDatePublish
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_EDIT_PlannedActions.sql
+    line: 1-115
+    severity: medium
+    category: correctness
+    title: Potential race condition due to non-serializable transaction isolation
+    description: The procedure performs multiple updates and deletes within a transaction, including checking and deleting 
+  scheduled service requests. Without specifying transaction isolation level or locking hints, concurrent executions may cause 
+  race conditions or inconsistent state.
+    recommendation: Ensure appropriate transaction isolation level (e.g., SERIALIZABLE) or use locking hints to prevent 
+  concurrent modifications leading to inconsistent data. Alternatively, serialize access to the affected rows.
+    snippet: |
+      begin tran
+      ...
+      update IA_Post
+      ...
+      delete from SF_ServiceRequest
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_EDIT_PlannedActions.sql
+    line: 1-115
+    severity: low
+    category: maintainability
+    title: Use of goto for error handling reduces readability
+    description: The procedure uses "goto FAILED" for error handling, which can reduce readability and maintainability of the 
+  code.
+    recommendation: Consider refactoring to use TRY...CATCH blocks for error handling, which is more idiomatic in T-SQL and 
+  improves clarity.
+    snippet: |
+      if @Error<>0
+          goto FAILED
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_VALIDATE.sql
+    line: 678-784 (approximate)
+    severity: medium
+    category: correctness
+    title: Validation logic for planned actions may allow inconsistent states
+    description: The validation for 'IA_Post_EDIT_PlannedActions' checks for various conditions, but some checks rely on 
+  comparing dates with @Now (current UTC time) without considering time zone or potential clock skew. Also, the check "and 
+  @DatePublish is null and @DateExpire is not null" requires that expiration cannot be set without publication, but this may be
+   too strict depending on business rules.
+    recommendation: Review business requirements to confirm validation logic correctness. Consider adding comments clarifying 
+  assumptions about time zones and date comparisons. If time zones are relevant, adjust date comparisons accordingly.
+    snippet: |
+      select 'Property'='DateExpire', 'DisplayName'='Při zrušení publikace je nutné zrušit i expiraci', ...
+      where IA_Post.[ID_PostState] in ('draft', 'email', 'prepared')
+          and @DateExpire is not null
+          and @DatePublish is null
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_VALIDATE.sql
+    line: 678-784 (approximate)
+    severity: low
+    category: maintainability
+    title: Repeated use of isnull(@ID, '')='' for null or empty string checks
+    description: The validation uses "isnull(@ID, '')=''" to check for null or empty string. This is a common pattern but can 
+  be replaced with more explicit checks for clarity.
+    recommendation: Consider using "(@ID IS NULL OR @ID = '')" for better readability.
+    snippet: |
+      select 'Property'='ID', 'DisplayName'='Pole "ID" musí být zadáno', 'ResourceName'='Required_Post_ID', 'Args'=''
+      where isnull(@ID, '')=''
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/IA_Post_VALIDATE.sql
+    line: 678-784 (approximate)
+    severity: low
+    category: maintainability
+    title: Missing newline at end of file
+    description: The new stored procedure file ends without a newline, which may cause issues with some tools or version 
+  control systems.
+    recommendation: Add a newline at the end of the file.
+    snippet: |
+      END
+  - file: Skeleton.Jobka.Database/PostDeployment/Scripts/SF_Action_Install.sql
+    line: 12148-12168
+    severity: low
+    category: maintainability
+    title: Inconsistent use of N prefix for string literals
+    description: The insert and update statements use N'...' for Unicode string literals, which is good, but the null values 
+  are not prefixed with N (e.g., [ID_TableRelated]=null). While null does not require N prefix, ensure consistent style for 
+  readability.
+    recommendation: No functional change needed, but consider consistent formatting for readability.
+    snippet: |
+        insert SF_Action([ID], [DisplayName], [ID_Table], [ID_TableRelated], [ID_ActionType], [RequiresRecord], [IsAnonymous])
+        values (N'IA_Post_EDIT_PlannedActions',
+            N'Plánované akce u sdělení',
+            N'IA_Post',
+            null,
+            N'edit',
+            N'1',
+            N'0')
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/Jobka/IA_Post_ACTION.sql
+    line: 513-520
+    severity: low
+    category: maintainability
+    title: Added permission check for new action lacks explicit login/user context validation
+    description: The new permission check for 'IA_Post_EDIT_PlannedActions' action checks UserPermissionsItem.[IsWrite] = 1 but
+   does not explicitly verify the user context or other conditions as in the existing checks.
+    recommendation: Confirm that the existing permission checks sufficiently cover the new action or add explicit user context 
+  validation if needed.
+    snippet: |
+        or
+        -- IA_Post_EDIT_PlannedActions:  PLánované akce pro sdělení
+        (SF_Action.ID='IA_Post_EDIT_PlannedActions'
+            and UserPermissionsItem.[IsWrite] = 1
+        )
+  - file: Skeleton.Jobka.Database/dbo/Stored Procedures/Jobka/IA_PostList_VALIDATE.sql
+    line: 19-28
+    severity: low
+    category: maintainability
+    title: Parameter renaming without backward compatibility note
+    description: The parameters @NotifyEmployeeMissingApprovalDays, @NotifyEmailMissingApprovalDays, and 
+  @NotifyEmailMissingApprovalEmails were renamed to @DefaultNotifyApprovalDays, @DefaultNotifyApprovalReportDays, and 
+  @DefaultNotifyApprovalReportEmail respectively. This may break backward compatibility if callers use old parameter names.
+    recommendation: Ensure all callers are updated accordingly or provide backward compatibility aliases or documentation.
+    snippet: |
+      -@NotifyEmployeeMissingApprovalDays int = null,
+      -@NotifyEmailMissingApprovalDays int = null,
+      -@NotifyEmailMissingApprovalEmails Note = null
+      +@DefaultNotifyApprovalDays int = null,
+      +@DefaultNotifyApprovalReportDays int = null,
+      +@DefaultNotifyApprovalReportEmail Note = null
+
+  No other major issues found.
+
+  ## ⏱️ Performance Summary
+
+  - **Total Time**: 43.0s
+  - **Diff Generation**: 0.3s
+  - **AI Analysis**: 42.6s
+  - **Model**: gpt-4.1-mini
+  - **Prompt Size**: 18.8 KB
+  - **Estimated Input Tokens**: 4.1K
+  - **Estimated Response Tokens**: 358
+  - **Actual Response Tokens**: 1.1K
+  • Actual Response Tokens: 1.1K
+  ⚠️ • Response Estimation: Off by 759 tokens (-212.0%)
+
+⏺ I see the issue! The markdown rendering is showing strange characters and formatting issues. The problems are:
+
+  1. Strange emoji rendering: �🔍 instead of proper emoji
+  2. Duplicate checkmarks: ✅ ✅
+  3. Poor formatting of the AI response
+
+  Let me fix these issues:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 1 addition and 1 removal                     
+       1320        });
+       1321    
+       1322        // Header
+       1323 -      appendOutput('�🔍 AI Code Review Analysis\n', 'header');
+       1323 +      appendOutput('🔍 AI Code Review Analysis\n', 'header');
+       1324        appendOutput('━'.repeat(60) + '\n\n', 'separator');
+       1325        
+       1326        // Configuration
+
+⏺ Now let me fix the double checkmark issue:
+
+⏺ Search(pattern: "✅ ✅", output_mode: "content")
+  ⎿  Found 0 lines 
+
+⏺ Let me check where the duplicate checkmarks are coming from:
+
+⏺ Search(pattern: "✅.*✅", output_mode: "content")
+  ⎿  Found 0 lines 
+
+⏺ Search(pattern: "appendOutput.*✅", output_mode: "content")
+  ⎿  Found 2 lines (ctrl+o to expand)
+
+⏺ The issue might be in the styling conversion. Let me check the appendOutput function and how it handles the 'success'
+  style:
+
+⏺ Read(renderer.js)
+  ⎿  Read 50 lines (ctrl+o to expand)
+
+⏺ Let me see the rest of the styling conversion:
+
+⏺ Read(renderer.js)
+  ⎿  Read 30 lines (ctrl+o to expand)
+
+⏺ I found the issue! The problem is that when we call appendOutput('✅ Diff generated successfully.\n', 'success'), the
+  success style adds another ✅, so we end up with ✅ ✅ Diff generated successfully.. Let me fix this by not adding emojis
+  when they're already present:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 6 additions and 3 removals                                       
+       1595                        markdownLine = `---`;
+       1596                        break;
+       1597                    case 'success':
+       1598 -                      markdownLine = `✅ ${line}`;
+       1598 +                      // Only add emoji if the line doesn't already start with one
+       1599 +                      markdownLine = line.startsWith('✅') ? line : `✅ ${line}`;
+       1600                        break;
+       1601                    case 'warning':
+       1602 -                      markdownLine = `⚠️ ${line}`;
+       1602 +                      // Only add emoji if the line doesn't already start with one
+       1603 +                      markdownLine = line.startsWith('⚠️') ? line : `⚠️ ${line}`;
+       1604                        break;
+       1605                    case 'error':
+       1606 -                      markdownLine = `❌ ${line}`;
+       1606 +                      // Only add emoji if the line doesn't already start with one
+       1607 +                      markdownLine = line.startsWith('❌') ? line : `❌ ${line}`;
+       1608                        break;
+       1609                    case 'code':
+       1610                        markdownLine = `\`${line}\``;
+
+> AI response is without any formating
+
+⏺ I see the issue! The AI response is losing its formatting because it's being appended to the markdown without proper
+  processing. The AI response should be rendered as-is since it already contains proper markdown formatting. Let me fix this:
+
+⏺ Search(pattern: "currentOutputMarkdown.*aiFeedback", output_mode: "content")
+  ⎿  Found 1 line (ctrl+o to expand)
+
+⏺ The issue is that the AI response (which is already formatted markdown) is being added directly to currentOutputMarkdown,
+  but the accumulated markdown that comes before it (through appendOutput calls) might be interfering. Let me check how this
+  is structured:
+
+⏺ Read(renderer.js)
+  ⎿  Read 30 lines (ctrl+o to expand)
+
+⏺ I think the issue is that we're mixing two approaches: using appendOutput() which formats text and adds it to
+  currentOutputMarkdown, and then directly adding the AI response to currentOutputMarkdown. This might be causing formatting
+  conflicts. Let me look at the renderOutput() function to see how the markdown is processed:
+
+⏺ Read(renderer.js)
+  ⎿  Read 30 lines (ctrl+o to expand)
+
+⏺ The issue might be that we need to ensure the AI response section is clearly separated and properly formatted. Let me add
+  proper markdown formatting around the AI response:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 2 additions and 1 removal                                        
+       1451        appendOutput('\n---\n\n', 'separator');
+       1452    
+       1453        if (aiFeedback) {
+       1454 -          // Simply add the AI feedback as-is (it should be formatted in Markdown)
+       1454 +          // Add AI Response header and then the feedback
+       1455 +          currentOutputMarkdown += '\n## 🤖 AI Analysis Results\n\n';
+       1456            currentOutputMarkdown += aiFeedback + '\n\n';
+       1457            
+       1458            // Add performance summary in Markdown
+
+⏺ Actually, let me check what's in the AI response to understand why it's not formatting properly. The issue might be that
+  the response format has changed or isn't proper markdown. Let me look at what the actual response contains by checking the
+  test results you showed earlier.
+
+  Based on the output you shared, the AI response appears to be in a structured format with YAML-like properties (file, line,
+   severity, etc.), but it should be rendered as proper markdown. Let me ensure the markdown rendering is working correctly
+  by checking if there are any issues with the marked.js configuration:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 10 additions and 2 removals                                            
+       1634                marked.setOptions({
+       1635                    breaks: true,
+       1636                    gfm: true,
+       1637 -                  sanitize: false // We control the content, so it's safe
+       1637 +                  sanitize: false, // We control the content, so it's safe
+       1638 +                  headerIds: false,
+       1639 +                  mangle: false
+       1640                });
+       1641    
+       1642 -              outputContent.innerHTML = marked.parse(currentOutputMarkdown);
+       1642 +              try {
+       1643 +                  outputContent.innerHTML = marked.parse(currentOutputMarkdown);
+       1644 +              } catch (error) {
+       1645 +                  console.error('Markdown parsing error:', error);
+       1646 +                  // Fallback to simple renderer
+       1647 +                  outputContent.innerHTML = simpleMarkdownRender(currentOutputMarkdown);
+       1648 +              }
+       1649            } else {
+       1650                // Fallback: simple markdown-like rendering
+       1651                outputContent.innerHTML = simpleMarkdownRender(currentOutputMarkdown);
+
+⏺ Now let me also improve the simple markdown renderer to better handle the YAML-like structure and code blocks that might be
+   in the AI response:
+
+⏺ Update(renderer.js)
+  ⎿  Updated renderer.js with 11 additions and 8 removals                                  
+       1671            // Italic
+       1672            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+       1673    
+       1674 -          // Code
+       1675 -          .replace(/`(.*?)`/g, '<code>$1</code>')
+       1674 +          // Code blocks (must come before inline code)
+       1675 +          .replace(/```([^`]*?)```/gs, '<pre><code>$1</code></pre>')
+       1676    
+       1677 -          // Code blocks
+       1678 -          .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+       1677 +          // Inline code
+       1678 +          .replace(/`([^`]+)`/g, '<code>$1</code>')
+       1679    
+       1680 +          // YAML-like structure (key: value)
+       1681 +          .replace(/^(\s*)([\w\s]+):\s*(.*)$/gim, '$1<strong>$2:</strong> $3')
+       1682 +  
+       1683            // Lists
+       1684            .replace(/^\- (.*$)/gim, '<li>$1</li>')
+       1685            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+       1686    
+       1687 -          // Line breaks
+       1688 -          .replace(/\n/g, '<br>')
+       1689 -  
+       1687            // Horizontal rules
+       1688 -          .replace(/^---$/gm, '<hr>');
+       1688 +          .replace(/^---$/gm, '<hr>')
+       1689 +  
+       1690 +          // Line breaks (do this last)
+       1691 +          .replace(/\n/g, '<br>');
+       1692    }
+       1693    
+       1694    // formatAIFeedback function removed - now using direct Markdown rendering
+  ⎿  5-hour limit reached ∙ resets 6pm
+     /upgrade to increase your usage limit.
+
