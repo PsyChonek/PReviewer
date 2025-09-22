@@ -1182,11 +1182,17 @@ function exportOutput() {
 
 // Configuration Modal Functions
 function openConfigModal() {
+    console.log('openConfigModal called');
     const modal = document.getElementById('config-modal');
+    console.log('Modal element:', modal);
     if (modal) {
+        console.log('Opening modal...');
         modal.showModal();
+        console.log('Modal opened, classes:', modal.classList.toString());
         // Load current configuration
         loadConfiguration();
+    } else {
+        console.error('Modal element not found!');
     }
 }
 

@@ -56,11 +56,31 @@ document.createElement = jest.fn((tagName) => {
   return element;
 });
 
+// Add showModal and close methods to all dialog elements
+const originalGetElementById = document.getElementById;
+document.getElementById = function(id) {
+  const element = originalGetElementById.call(this, id);
+  if (element && element.tagName === 'DIALOG') {
+    if (!element.showModal) {
+      element.showModal = jest.fn();
+    }
+    if (!element.close) {
+      element.close = jest.fn();
+    }
+  }
+  return element;
+};
+
 // Mock requestAnimationFrame
 global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 0));
 
 // Mock window.DEBUG
 window.DEBUG = false;
+
+// Add TextEncoder/TextDecoder polyfills for JSDOM
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 // Helper to create mock DOM elements
 global.createMockElement = (tagName, attributes = {}) => {

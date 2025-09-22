@@ -6,6 +6,20 @@ module.exports = {
     "./*.html",
     "./*.js"
   ],
+  safelist: [
+    'modal',
+    'modal-box',
+    'modal-backdrop',
+    'modal-action',
+    'btn',
+    'btn-primary',
+    'btn-secondary',
+    'input',
+    'select',
+    'textarea',
+    'label',
+    'form-control'
+  ],
   theme: {
     extend: {},
   },
