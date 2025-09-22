@@ -118,9 +118,11 @@
                             <select id="from-branch" class="select select-bordered w-full" disabled aria-describedby="from-branch-help">
                                 <option>Select repository first...</option>
                             </select>
+                            <!-- Skeleton loader for branches -->
+                            <div id="from-branch-skeleton" class="skeleton skeleton-button w-full hidden"></div>
                             <div id="from-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Branch containing the changes to review</div>
                         </div>
-                        
+
                         <div class="form-control">
                             <label class="label" for="to-branch">
                                 <span class="label-text font-medium">To Branch (Target)</span>
@@ -128,6 +130,8 @@
                             <select id="to-branch" class="select select-bordered w-full" disabled aria-describedby="to-branch-help">
                                 <option>Select repository first...</option>
                             </select>
+                            <!-- Skeleton loader for branches -->
+                            <div id="to-branch-skeleton" class="skeleton skeleton-button w-full hidden"></div>
                             <div id="to-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Target branch to compare against (usually main/master)</div>
                         </div>
                     </div>
@@ -291,16 +295,39 @@
             </div>
         </div>
 
-        <!-- Progress Section -->
+        <!-- Enhanced Progress Section -->
         <section id="progress-section" class="card bg-base-100 shadow-lg mb-6 hidden" aria-label="Review progress" role="region">
             <div class="card-body">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium">Progress</span>
-                    <span class="text-sm" id="progress-text" aria-live="polite">0%</span>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Review Progress
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg font-bold text-blue-600" id="progress-text" aria-live="polite">0%</span>
+                        <span class="text-sm text-gray-500" id="elapsed-time">0s</span>
+                    </div>
                 </div>
-                <progress class="progress progress-primary w-full" id="progress-bar" value="0" max="100" aria-describedby="status-text"></progress>
-                <div class="text-center mt-2">
-                    <span class="text-sm" id="status-text" aria-live="polite">Ready</span>
+
+                <!-- Enhanced Progress Bar -->
+                <div class="mb-4">
+                    <progress class="progress progress-primary w-full progress-enhanced" id="progress-bar" value="0" max="100"></progress>
+                </div>
+
+                <!-- Stage Indicators -->
+                <div id="stage-indicators" class="space-y-2">
+                    <!-- Stages will be dynamically populated -->
+                </div>
+
+                <!-- Current Status -->
+                <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-2">
+                        <div id="status-spinner" class="stage-spinner hidden"></div>
+                        <span class="text-sm font-medium" id="status-text" aria-live="polite">Ready</span>
+                    </div>
+                    <div id="substatus-text" class="text-xs text-gray-600 mt-1 hidden"></div>
                 </div>
             </div>
         </section>

@@ -167,6 +167,83 @@ function formatTokenCount(tokenCount) {
     }
 }
 
+// Loading State Functions
+function showBranchLoadingState(show) {
+    const fromBranchSelect = document.getElementById('from-branch');
+    const toBranchSelect = document.getElementById('to-branch');
+    const fromSkeleton = document.getElementById('from-branch-skeleton');
+    const toSkeleton = document.getElementById('to-branch-skeleton');
+
+    if (show) {
+        // Hide selects, show skeletons
+        fromBranchSelect.classList.add('hidden');
+        toBranchSelect.classList.add('hidden');
+        fromSkeleton.classList.remove('hidden');
+        toSkeleton.classList.remove('hidden');
+    } else {
+        // Show selects, hide skeletons
+        fromBranchSelect.classList.remove('hidden');
+        toBranchSelect.classList.remove('hidden');
+        fromSkeleton.classList.add('hidden');
+        toSkeleton.classList.add('hidden');
+    }
+}
+
+function showLoadingToast(message, persistent = false) {
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+
+    const toastId = 'loading-toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'alert alert-info shadow-lg max-w-md';
+    toast.innerHTML = `
+        <div class="flex items-center gap-3">
+            <div class="stage-spinner"></div>
+            <span>${message}</span>
+        </div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    // Add entrance animation
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    requestAnimationFrame(() => {
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+
+    if (!persistent) {
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 3000);
+    }
+
+    return toastId;
+}
+
+function hideLoadingToast(toastId) {
+    const toast = document.getElementById(toastId);
+    if (toast) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+    }
+}
+
+function createToastContainer() {
+    const toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.className = 'toast toast-top toast-center z-40';
+    document.body.appendChild(toastContainer);
+    return toastContainer;
+}
+
 // Utility Functions
 function showAlert(message, type = 'info') {
     const alertClasses = {
@@ -307,38 +384,121 @@ async function fixGitOwnership(repoPath) {
 function updateStatus(message, showInProgress = false) {
     const statusEl = document.getElementById('status-text');
     if (statusEl) {
+        // Don't add spinner here since we have our own status-spinner element
         statusEl.textContent = message;
-        if (showInProgress) {
-            statusEl.innerHTML = `<span class="loading loading-spinner loading-sm"></span> ${message}`;
-        }
     }
 }
 
-function updateProgress(percentage, text = '') {
+function updateProgress(percentage, text = '', stage = null, substatus = null) {
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
     const progressSection = document.getElementById('progress-section');
-    
+    const elapsedTimeEl = document.getElementById('elapsed-time');
+    const statusSpinner = document.getElementById('status-spinner');
+    const substatusEl = document.getElementById('substatus-text');
+
     if (progressBar) {
         progressBar.value = percentage;
-        
+
         // Add smooth animation
         progressBar.style.transition = 'value 0.3s ease';
     }
-    
+
     if (progressText) {
         progressText.textContent = `${Math.round(percentage)}%`;
     }
-    
+
+    // Update elapsed time - always update if we have a start time
+    if (reviewStartTime && elapsedTimeEl) {
+        const elapsed = (Date.now() - reviewStartTime) / 1000;
+        if (elapsed < 60) {
+            elapsedTimeEl.textContent = `${elapsed.toFixed(1)}s`;
+        } else {
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            elapsedTimeEl.textContent = `${minutes}m ${seconds.toFixed(0)}s`;
+        }
+    }
+
+    // Show/hide status spinner
+    if (percentage > 0 && percentage < 100) {
+        statusSpinner.classList.remove('hidden');
+    } else {
+        statusSpinner.classList.add('hidden');
+    }
+
+    // Update substatus
+    if (substatus && substatusEl) {
+        substatusEl.textContent = substatus;
+        substatusEl.classList.remove('hidden');
+    } else if (substatusEl) {
+        substatusEl.classList.add('hidden');
+    }
+
     if (text) {
         updateStatus(text, percentage < 100);
     }
-    
+
+    // Update stage indicators
+    if (stage) {
+        updateStageIndicators(stage, percentage);
+    }
+
     if (percentage > 0) {
         progressSection.classList.remove('hidden');
     } else {
         progressSection.classList.add('hidden');
     }
+}
+
+function updateStageIndicators(currentStage, progress) {
+    const stageContainer = document.getElementById('stage-indicators');
+
+    const stages = [
+        { id: 'init', name: 'Initializing', range: [0, 15] },
+        { id: 'diff', name: 'Generating Diff', range: [15, 35] },
+        { id: 'prepare', name: 'Preparing Analysis', range: [35, 45] },
+        { id: 'ai', name: 'AI Processing', range: [45, 90] },
+        { id: 'format', name: 'Formatting Results', range: [90, 99] },
+        { id: 'complete', name: 'Review Complete', range: [99, 100] }
+    ];
+
+    // Clear existing indicators
+    stageContainer.innerHTML = '';
+
+    stages.forEach(stage => {
+        const stageEl = document.createElement('div');
+        const isActive = currentStage === stage.id;
+        const isCompleted = progress > stage.range[1] || (progress === 100 && stage.id !== 'complete');
+        const isInProgress = (progress >= stage.range[0] && progress <= stage.range[1]) || isActive;
+        const isCurrentlyComplete = progress === 100 && stage.id === 'complete';
+
+        stageEl.className = `stage-indicator ${(isActive || isInProgress || isCurrentlyComplete) ? 'active' : ''}`;
+
+        let icon = '';
+        if (isCompleted || isCurrentlyComplete) {
+            icon = '<div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg></div>';
+        } else if (isActive || isInProgress) {
+            icon = '<div class="stage-spinner"></div>';
+        } else {
+            icon = '<div class="w-4 h-4 bg-gray-300 rounded-full"></div>';
+        }
+
+        let timeDisplay = '';
+        if (isInProgress && !isCompleted && !isCurrentlyComplete) {
+            timeDisplay = `<span class="stage-time">${Math.round(progress)}%</span>`;
+        } else if (isCompleted || isCurrentlyComplete) {
+            timeDisplay = '<span class="stage-time text-green-600">✓</span>';
+        }
+
+        stageEl.innerHTML = `
+            ${icon}
+            <span class="stage-text">${stage.name}</span>
+            ${timeDisplay}
+        `;
+
+        stageContainer.appendChild(stageEl);
+    });
 }
 
 function showStats() {
@@ -473,16 +633,28 @@ function updateDebugInfo(data) {
     ['time-stat', 'speed-stat', 'tokens-stat', 'model-stat', 'stage-stat'].forEach(id => {
         document.getElementById(id).textContent = '--';
     });
-    
-    ['request-size-stat', 'response-time-stat', 'transfer-stat', 'upload-progress', 
-     'processing-stage', 'last-update', 'tokens-per-second', 'estimated-input-tokens', 
+
+    ['request-size-stat', 'response-time-stat', 'transfer-stat', 'upload-progress',
+     'processing-stage', 'last-update', 'tokens-per-second', 'estimated-input-tokens',
      'estimated-output-tokens', 'actual-tokens'].forEach(id => {
         document.getElementById(id).textContent = '--';
     });
-    
+
+    // Reset elapsed time display
+    const elapsedTimeEl = document.getElementById('elapsed-time');
+    if (elapsedTimeEl) {
+        elapsedTimeEl.textContent = '0s';
+    }
+
+    // Clear stage indicators
+    const stageContainer = document.getElementById('stage-indicators');
+    if (stageContainer) {
+        stageContainer.innerHTML = '';
+    }
+
     // Hide preview section when resetting
     document.getElementById('token-preview').classList.add('hidden');
-    
+
     hideStats();
     hideDebugInfo();
     debugDetailsVisible = false;
@@ -492,17 +664,22 @@ function updateDebugInfo(data) {
 
 // Repository Functions
 async function selectRepository() {
+    let loadingToastId = null;
     try {
         const repoPath = await window.electronAPI.selectDirectory();
         if (repoPath) {
             currentRepoPath = repoPath;
             document.getElementById('repo-path').value = repoPath;
-            
-            updateStatus('Loading repository branches...', true);
+
+            loadingToastId = showLoadingToast('Loading repository branches...', true);
+            updateStatus('Loading repository branches...');
             await loadBranches(repoPath);
+
+            if (loadingToastId) hideLoadingToast(loadingToastId);
             showAlert('Repository loaded successfully!', 'success');
         }
     } catch (error) {
+        if (loadingToastId) hideLoadingToast(loadingToastId);
         console.error('Error selecting repository:', error);
 
         let userMessage = error.message;
@@ -550,7 +727,7 @@ async function previewTokenEstimate() {
     }
     
     try {
-        updateStatus('Analyzing changes...', true);
+        updateStatus('Analyzing changes...');
         
         // Generate diff for preview
         const diff = await window.electronAPI.getGitDiff(repoPath, toBranch, fromBranch);
@@ -607,11 +784,14 @@ async function previewTokenEstimate() {
 }
 
 async function loadBranches(repoPath) {
+    // Show skeleton loading states
+    showBranchLoadingState(true);
+
     try {
         if (window.DEBUG) {
             console.log(`🔍 Loading branches for repository: ${repoPath}`);
         }
-        
+
         const branches = await window.electronAPI.getGitBranches(repoPath);
         
         if (window.DEBUG) {
@@ -666,8 +846,13 @@ async function loadBranches(repoPath) {
         setTimeout(previewTokenEstimate, 100);
         
         updateStatus('Repository loaded successfully');
-        
+
+        // Hide skeleton loading states
+        showBranchLoadingState(false);
+
     } catch (error) {
+        // Hide skeleton loading states on error too
+        showBranchLoadingState(false);
         console.error('Error loading branches:', error);
 
         let userMessage = `Error loading branches: ${error.message}`;
@@ -1135,7 +1320,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     });
 
     // Header
-    appendOutput('�🔍 AI Code Review Analysis\n', 'header');
+    appendOutput('🔍 AI Code Review Analysis\n', 'header');
     appendOutput('━'.repeat(60) + '\n\n', 'separator');
     
     // Configuration
@@ -1153,9 +1338,9 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         appendOutput(`• Endpoint: ${aiConfig.url}\n\n`, 'info');
     }
     
-    updateProgress(10, 'Initializing review process...');
+    updateProgress(10, 'Initializing review process...', 'init', 'Setting up analysis environment');
     updateStats(0, 0, modelName, 'initializing');
-    
+
     // Start real-time updates
     progressUpdateInterval = setInterval(() => {
         if (reviewInProgress) {
@@ -1163,8 +1348,8 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
             updateStats(elapsed, null, modelName, null);
         }
     }, 100); // Update every 100ms for smooth real-time feel
-    
-    updateProgress(15, 'Generating diff...');
+
+    updateProgress(15, 'Generating diff...', 'diff', 'Analyzing code changes between branches');
     
     // Generate diff
     appendOutput('🔄 Generating Code Diff...\n', 'subheader');
@@ -1196,7 +1381,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     appendOutput('✅ Diff generated successfully.\n', 'success');
     appendOutput(`📈 Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
     
-    updateProgress(35, 'Preparing AI analysis...');
+    updateProgress(35, 'Preparing AI analysis...', 'prepare', 'Estimating tokens and building prompt');
     updateStats((Date.now() - reviewStartTime) / 1000, null, modelName, 'preparing');
     
     // Calculate estimated tokens for the prompt
@@ -1226,9 +1411,11 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         stage: 'token-estimation'
     });
     
+    updateProgress(45, 'Starting AI analysis...', 'ai', 'Sending prompt to AI model');
+
     const aiStartTime = Date.now();
     let aiFeedback;
-    
+
     try {
         if (provider === 'azure') {
             aiFeedback = await window.electronAPI.callAzureAI({
@@ -1253,18 +1440,19 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const aiElapsed = (Date.now() - aiStartTime) / 1000;
     const totalElapsed = (Date.now() - reviewStartTime) / 1000;
     
+    updateProgress(95, 'Formatting results...', 'format', 'Processing AI response and generating output');
+    updateStats(totalElapsed, null, modelName, 'formatting');
+
     clearInterval(progressUpdateInterval);
     if (ollamaProgressHandler) ollamaProgressHandler();
     if (azureProgressHandler) azureProgressHandler();
-    
-    updateProgress(95, 'Formatting results...');
-    updateStats(totalElapsed, null, modelName, 'formatting');
     
     // Display results - let the AI response speak for itself with proper Markdown
     appendOutput('\n---\n\n', 'separator');
 
     if (aiFeedback) {
-        // Simply add the AI feedback as-is (it should be formatted in Markdown)
+        // Add AI Response header and then the feedback
+        currentOutputMarkdown += '\n## 🤖 AI Analysis Results\n\n';
         currentOutputMarkdown += aiFeedback + '\n\n';
         
         // Add performance summary in Markdown
@@ -1309,7 +1497,10 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
             appendOutput(`• Response Estimation: Off by ${Math.abs(estimationDiff)} tokens (${estimationAccuracy}%)\n`, 'warning');
         }
         
-        updateProgress(100, 'Review completed successfully!');
+        // Calculate final elapsed time and update one more time
+        const finalElapsed = (Date.now() - reviewStartTime) / 1000;
+        updateProgress(100, 'Review completed successfully!', 'complete', 'AI analysis finished');
+        updateStats(finalElapsed, actualResponseTokens, modelName, 'complete');
         showAlert('Review completed successfully!', 'success');
     } else {
         appendOutput('❌ AI review failed to generate feedback.\n', 'error');
@@ -1405,13 +1596,16 @@ function appendOutput(text, style = '') {
                     markdownLine = `---`;
                     break;
                 case 'success':
-                    markdownLine = `✅ ${line}`;
+                    // Only add emoji if the line doesn't already start with one
+                    markdownLine = line.startsWith('✅') ? line : `✅ ${line}`;
                     break;
                 case 'warning':
-                    markdownLine = `⚠️ ${line}`;
+                    // Only add emoji if the line doesn't already start with one
+                    markdownLine = line.startsWith('⚠️') ? line : `⚠️ ${line}`;
                     break;
                 case 'error':
-                    markdownLine = `❌ ${line}`;
+                    // Only add emoji if the line doesn't already start with one
+                    markdownLine = line.startsWith('❌') ? line : `❌ ${line}`;
                     break;
                 case 'code':
                     markdownLine = `\`${line}\``;
@@ -1440,10 +1634,18 @@ function renderOutput() {
             marked.setOptions({
                 breaks: true,
                 gfm: true,
-                sanitize: false // We control the content, so it's safe
+                sanitize: false, // We control the content, so it's safe
+                headerIds: false,
+                mangle: false
             });
 
-            outputContent.innerHTML = marked.parse(currentOutputMarkdown);
+            try {
+                outputContent.innerHTML = marked.parse(currentOutputMarkdown);
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to simple renderer
+                outputContent.innerHTML = simpleMarkdownRender(currentOutputMarkdown);
+            }
         } else {
             // Fallback: simple markdown-like rendering
             outputContent.innerHTML = simpleMarkdownRender(currentOutputMarkdown);
@@ -1469,21 +1671,24 @@ function simpleMarkdownRender(text) {
         // Italic
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
 
-        // Code
-        .replace(/`(.*?)`/g, '<code>$1</code>')
+        // Code blocks (must come before inline code)
+        .replace(/```([^`]*?)```/gs, '<pre><code>$1</code></pre>')
 
-        // Code blocks
-        .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+        // Inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+
+        // YAML-like structure (key: value)
+        .replace(/^(\s*)([\w\s]+):\s*(.*)$/gim, '$1<strong>$2:</strong> $3')
 
         // Lists
         .replace(/^\- (.*$)/gim, '<li>$1</li>')
         .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
 
-        // Line breaks
-        .replace(/\n/g, '<br>')
-
         // Horizontal rules
-        .replace(/^---$/gm, '<hr>');
+        .replace(/^---$/gm, '<hr>')
+
+        // Line breaks (do this last)
+        .replace(/\n/g, '<br>');
 }
 
 // formatAIFeedback function removed - now using direct Markdown rendering
