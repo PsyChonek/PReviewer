@@ -7,7 +7,13 @@
     "build-css-prod": "tailwindcss -i ./style.css -o ./dist/style.css --minify",
     "start": "npm run build-css-prod && electron .",
     "dev": "concurrently \"npm run build-css\" \"cross-env NODE_ENV=development nodemon --exec electron . --ext js,html,css --ignore node_modules/ --ignore dist/\"",
-    "build": "npm run build-css-prod && electron-builder"
+    "build": "npm run build-css-prod && electron-builder",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration"
   },
   "author": "Daniel Vazač",
   "license": "MIT",
@@ -20,7 +26,17 @@
     "daisyui": "^5.0.50",
     "electron": "^37.3.1",
     "electron-builder": "^24.13.3",
-    "tailwindcss": "^4.1.12"
+    "tailwindcss": "^4.1.12",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "spectron": "^19.0.0",
+    "electron-mock-ipc": "^0.3.12",
+    "nock": "^13.4.0",
+    "tmp": "^0.2.1",
+    "fs-extra": "^11.2.0"
   },
   "dependencies": {
     "axios": "^1.11.0",

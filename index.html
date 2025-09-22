@@ -66,15 +66,15 @@
 </head>
 <body class="bg-base-100">
     <!-- Navigation -->
-    <div class="navbar bg-primary text-primary-content shadow-lg">
+    <nav class="navbar bg-primary text-primary-content shadow-lg" role="banner" aria-label="Main navigation">
         <div class="flex-1">
-            <a class="btn btn-ghost text-xl">🔍 AI PR Reviewer</a>
+            <h1 class="btn btn-ghost text-xl" tabindex="0">🔍 AI PR Reviewer</h1>
         </div>
         <div class="flex-none">
         </div>
-    </div>
+    </nav>
 
-    <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <main class="container mx-auto px-4 py-6 max-w-7xl" role="main">
         <!-- Repository & Branches Section -->
         <div class="card bg-base-200 shadow-xl mb-6">
             <div class="card-body">
@@ -86,8 +86,8 @@
                         </svg>
                         Repository & Branches
                     </h2>
-                    <button class="btn btn-ghost btn-sm" onclick="openConfigModal()" title="Open Configuration">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button class="btn btn-ghost btn-sm" onclick="openConfigModal()" title="Open Configuration" aria-label="Open configuration settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -97,45 +97,48 @@
                 
                 <div class="grid grid-cols-1 gap-4">
                     <div class="form-control">
-                        <label class="label">
+                        <label class="label" for="repo-path">
                             <span class="label-text font-medium">Repository Path</span>
                         </label>
                         <div class="flex gap-2">
-                            <input type="text" id="repo-path" placeholder="Select a Git repository..." 
-                                   class="input input-bordered flex-1" readonly />
-                            <button class="btn btn-outline btn-primary" onclick="selectRepository()">
+                            <input type="text" id="repo-path" placeholder="Select a Git repository..."
+                                   class="input input-bordered flex-1" readonly aria-describedby="repo-path-help" />
+                            <button class="btn btn-outline btn-primary" onclick="selectRepository()" aria-label="Browse for repository folder">
                                 📁 Browse
                             </button>
                         </div>
+                        <div id="repo-path-help" class="label-text-alt text-sm text-gray-500 mt-1" aria-live="polite">Choose a folder containing a Git repository</div>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-control">
-                            <label class="label">
+                            <label class="label" for="from-branch">
                                 <span class="label-text font-medium">From Branch (Source)</span>
                             </label>
-                            <select id="from-branch" class="select select-bordered w-full" disabled>
+                            <select id="from-branch" class="select select-bordered w-full" disabled aria-describedby="from-branch-help">
                                 <option>Select repository first...</option>
                             </select>
+                            <div id="from-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Branch containing the changes to review</div>
                         </div>
                         
                         <div class="form-control">
-                            <label class="label">
+                            <label class="label" for="to-branch">
                                 <span class="label-text font-medium">To Branch (Target)</span>
                             </label>
-                            <select id="to-branch" class="select select-bordered w-full" disabled>
+                            <select id="to-branch" class="select select-bordered w-full" disabled aria-describedby="to-branch-help">
                                 <option>Select repository first...</option>
                             </select>
+                            <div id="to-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Target branch to compare against (usually main/master)</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
                 <div class="card-actions justify-center mt-6">
-                    <button class="btn btn-success btn-lg" id="start-review-btn" onclick="startReview()" disabled>
+                    <button class="btn btn-success btn-lg" id="start-review-btn" onclick="startReview()" disabled aria-describedby="review-status">
                         🚀 Start AI Review
                     </button>
-                    <button class="btn btn-warning btn-lg hidden" id="stop-review-btn" onclick="stopReview()">
+                    <button class="btn btn-warning btn-lg hidden" id="stop-review-btn" onclick="stopReview()" aria-label="Stop the current review process">
                         ⏹️ Stop Review
                     </button>
                 </div>
@@ -187,7 +190,7 @@
         </div>
 
         <!-- Statistics Section -->
-        <div id="stats-section" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 hidden">
+        <section id="stats-section" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 hidden" aria-label="Review statistics" role="region">
             <div class="stats-card card bg-base-100 shadow">
                 <div class="card-body text-center p-4">
                     <div class="stat-title">Time</div>
@@ -289,40 +292,40 @@
         </div>
 
         <!-- Progress Section -->
-        <div id="progress-section" class="card bg-base-100 shadow-lg mb-6 hidden">
+        <section id="progress-section" class="card bg-base-100 shadow-lg mb-6 hidden" aria-label="Review progress" role="region">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-sm font-medium">Progress</span>
-                    <span class="text-sm" id="progress-text">0%</span>
+                    <span class="text-sm" id="progress-text" aria-live="polite">0%</span>
                 </div>
-                <progress class="progress progress-primary w-full" id="progress-bar" value="0" max="100"></progress>
+                <progress class="progress progress-primary w-full" id="progress-bar" value="0" max="100" aria-describedby="status-text"></progress>
                 <div class="text-center mt-2">
-                    <span class="text-sm" id="status-text">Ready</span>
+                    <span class="text-sm" id="status-text" aria-live="polite">Ready</span>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Output Section -->
-        <div class="card bg-base-100 shadow-xl">
+        <section class="card bg-base-100 shadow-xl" aria-label="AI review output" role="region">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="card-title text-2xl">
                         🎯 AI Review Output
                     </h2>
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-outline" onclick="clearOutput()">
+                    <div class="btn-group" role="group" aria-label="Output actions">
+                        <button class="btn btn-sm btn-outline" onclick="clearOutput()" aria-label="Clear output text">
                             🗑️ Clear
                         </button>
-                        <button class="btn btn-sm btn-outline" onclick="copyOutput()">
+                        <button class="btn btn-sm btn-outline" onclick="copyOutput()" aria-label="Copy output to clipboard">
                             📋 Copy
                         </button>
-                        <button class="btn btn-sm btn-outline" onclick="exportOutput()">
+                        <button class="btn btn-sm btn-outline" onclick="exportOutput()" aria-label="Export output to file">
                             💾 Export
                         </button>
                     </div>
                 </div>
-                
-                <div class="mockup-code bg-base-200 output-text" id="output-container">
+
+                <div class="mockup-code bg-base-200 output-text" id="output-container" role="log" aria-live="polite" aria-label="Review output display">
                     <div id="output-content" class="px-4 py-2">
                         <div class="text-center text-base-content/60 py-8">
                             <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! 🚀</h3>

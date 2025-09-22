@@ -33,41 +33,102 @@ function buildPrompt(diff, basePrompt = null, userPrompt = null) {
 
 // Token Estimation Functions
 function estimateTokens(text) {
-    // Much more conservative token estimation based on real-world observations
-    // Modern tokenizers for code average around 6-8 characters per token
-    
+    // Improved token estimation based on content analysis and tokenizer behavior
+
     const characterCount = text.length;
+    const lines = text.split('\n');
     const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
-    
-    // Very conservative approach: use 8-10 chars per token for large code diffs
-    const charBasedEstimate = Math.ceil(characterCount / 9);
-    
-    // For word-based: code/technical content is typically 0.6-0.8 tokens per word
-    const wordBasedEstimate = Math.ceil(wordCount * 0.7);
-    
-    // Take the smaller of the two estimates to be more conservative
-    const baseEstimate = Math.min(charBasedEstimate, wordBasedEstimate);
-    
-    // For very large diffs, apply additional scaling down
-    let finalEstimate = baseEstimate;
+
+    // Analyze content type to adjust estimation
+    let codeRatio = 0;
+    let diffRatio = 0;
+    let naturalTextRatio = 0;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('+') || trimmed.startsWith('-') || trimmed.startsWith('@@')) {
+            diffRatio += line.length;
+        } else if (/^[a-zA-Z\s.,!?'"]+$/.test(trimmed)) {
+            naturalTextRatio += line.length;
+        } else {
+            codeRatio += line.length;
+        }
+    });
+
+    const totalLength = characterCount || 1;
+    codeRatio = codeRatio / totalLength;
+    diffRatio = diffRatio / totalLength;
+    naturalTextRatio = naturalTextRatio / totalLength;
+
+    // Different estimation approaches based on content type
+    let charsPerToken;
+
+    if (diffRatio > 0.3) {
+        // Diff-heavy content: more symbols and structure
+        charsPerToken = 3.8;
+    } else if (codeRatio > 0.5) {
+        // Code-heavy content: operators, brackets, keywords
+        charsPerToken = 4.2;
+    } else if (naturalTextRatio > 0.6) {
+        // Natural language: longer words, more efficient compression
+        charsPerToken = 4.8;
+    } else {
+        // Mixed content
+        charsPerToken = 4.3;
+    }
+
+    // Character-based estimate with content-aware adjustment
+    const charBasedEstimate = Math.ceil(characterCount / charsPerToken);
+
+    // Word-based estimate with different rates for different content
+    let tokensPerWord;
+    if (diffRatio > 0.3) {
+        tokensPerWord = 0.85; // Diff symbols increase token density
+    } else if (codeRatio > 0.5) {
+        tokensPerWord = 0.75; // Code has more symbols per word
+    } else {
+        tokensPerWord = 0.65; // Natural text is more efficient
+    }
+
+    const wordBasedEstimate = Math.ceil(wordCount * tokensPerWord);
+
+    // Use weighted average instead of minimum for better accuracy
+    const charWeight = 0.7;
+    const wordWeight = 0.3;
+    let baseEstimate = Math.ceil(charBasedEstimate * charWeight + wordBasedEstimate * wordWeight);
+
+    // Size-based adjustments for very large inputs
+    if (characterCount > 100000) { // 100KB+
+        // Large inputs tend to have more repetitive patterns
+        baseEstimate = Math.ceil(baseEstimate * 0.92);
+    }
     if (characterCount > 500000) { // 500KB+
-        finalEstimate = Math.ceil(baseEstimate * 0.85); // Scale down by 15%
+        baseEstimate = Math.ceil(baseEstimate * 0.88);
     }
     if (characterCount > 1000000) { // 1MB+
-        finalEstimate = Math.ceil(baseEstimate * 0.75); // Scale down by 25%
+        baseEstimate = Math.ceil(baseEstimate * 0.85);
     }
-    
+
+    // Apply minimum floor to avoid zero estimates
+    const finalEstimate = Math.max(1, baseEstimate);
+
     // Debug logging (only if DEBUG is true)
     if (window.DEBUG) {
-        console.log(`Token Estimation Debug:
+        console.log(`Enhanced Token Estimation Debug:
     - Characters: ${characterCount}
-    - Words: ${wordCount}  
-    - Char-based estimate (÷9): ${charBasedEstimate}
-    - Word-based estimate (×0.7): ${wordBasedEstimate}
-    - Base estimate (min): ${baseEstimate}
-    - Final estimate (with scaling): ${finalEstimate}`);
+    - Words: ${wordCount}
+    - Content Analysis:
+      * Code ratio: ${(codeRatio * 100).toFixed(1)}%
+      * Diff ratio: ${(diffRatio * 100).toFixed(1)}%
+      * Natural text ratio: ${(naturalTextRatio * 100).toFixed(1)}%
+    - Chars per token: ${charsPerToken}
+    - Tokens per word: ${tokensPerWord}
+    - Char-based estimate: ${charBasedEstimate}
+    - Word-based estimate: ${wordBasedEstimate}
+    - Weighted estimate: ${baseEstimate}
+    - Final estimate: ${finalEstimate}`);
     }
-    
+
     return finalEstimate;
 }
 
@@ -332,7 +393,31 @@ async function selectRepository() {
         }
     } catch (error) {
         console.error('Error selecting repository:', error);
-        showAlert(`Error selecting repository: ${error.message}`, 'error');
+
+        let userMessage = error.message;
+
+        // Provide user-friendly interpretations of common errors
+        if (error.message.includes('not a git repository')) {
+            userMessage = 'Selected folder is not a Git repository.\n\n' +
+                'Please select a folder that:\n' +
+                '• Contains a .git directory\n' +
+                '• Was initialized with "git init"\n' +
+                '• Is the root of a Git project';
+        } else if (error.message.includes('permission') || error.message.includes('access')) {
+            userMessage = 'Permission denied accessing the selected folder.\n\n' +
+                'Please check that:\n' +
+                '• You have read access to the folder\n' +
+                '• The folder is not locked by another application\n' +
+                '• You have necessary file system permissions';
+        } else if (error.message.includes('Failed to get branches')) {
+            userMessage = 'Unable to load Git branches from this repository.\n\n' +
+                'This could be because:\n' +
+                '• Git is not installed or not in PATH\n' +
+                '• The repository is corrupted\n' +
+                '• No branches exist in the repository';
+        }
+
+        showAlert(userMessage, 'error');
     } finally {
         updateStatus('Ready');
     }
@@ -473,7 +558,31 @@ async function loadBranches(repoPath) {
         
     } catch (error) {
         console.error('Error loading branches:', error);
-        showAlert(`Error loading branches: ${error.message}`, 'error');
+
+        let userMessage = `Error loading branches: ${error.message}`;
+
+        // Parse and provide specific guidance based on error type
+        if (error.message.includes('Git is installed')) {
+            userMessage = 'Git is not installed or not accessible.\n\n' +
+                'To fix this:\n' +
+                '1. Install Git from https://git-scm.com/\n' +
+                '2. Restart this application\n' +
+                '3. Verify installation by running "git --version" in terminal';
+        } else if (error.message.includes('not a git repository')) {
+            userMessage = 'The selected folder is not a Git repository.\n\n' +
+                'Solutions:\n' +
+                '1. Navigate to a folder with a .git directory\n' +
+                '2. Initialize Git in this folder: "git init"\n' +
+                '3. Clone a repository: "git clone <url>"';
+        } else if (error.message.includes('no branches') || error.message.includes('no refs found')) {
+            userMessage = 'No branches found in this repository.\n\n' +
+                'This repository might be:\n' +
+                '1. Newly initialized - make your first commit\n' +
+                '2. Empty - add files and commit them\n' +
+                '3. Corrupted - try cloning fresh from remote';
+        }
+
+        showAlert(userMessage, 'error');
         
         // Reset branch selects
         const fromBranchSelect = document.getElementById('from-branch');
@@ -657,8 +766,36 @@ async function startReview() {
         await runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel);
     } catch (error) {
         console.error('Review error:', error);
-        appendOutput(`\n💥 Review failed: ${error.message}\n`, 'error');
-        showAlert(`Review failed: ${error.message}`, 'error');
+
+        let userMessage = `Review failed: ${error.message}`;
+
+        // Provide specific guidance based on error patterns
+        if (error.message.includes('Failed to generate diff')) {
+            userMessage = 'Unable to generate code differences.\n\n' +
+                'Possible causes:\n' +
+                '• Selected branches do not exist or are identical\n' +
+                '• Git repository is corrupted\n' +
+                '• Insufficient permissions to read repository\n' +
+                '• Network issues if branches are remote';
+        } else if (error.message.includes('AI analysis failed')) {
+            userMessage = 'AI model failed to analyze the code.\n\n' +
+                'Solutions to try:\n' +
+                '• Check if Ollama is running: "ollama serve"\n' +
+                '• Verify the model is installed: "ollama list"\n' +
+                '• Try a different model in settings\n' +
+                '• Reduce the code diff size\n' +
+                '• Check system resources (CPU, memory)';
+        } else if (error.message.includes('Network Error') || error.message.includes('Could not connect')) {
+            userMessage = 'Cannot connect to the AI model.\n\n' +
+                'Check these settings:\n' +
+                '• Ollama server is running: "ollama serve"\n' +
+                '• API URL is correct (usually http://localhost:11434/api/generate)\n' +
+                '• Firewall allows connections to port 11434\n' +
+                '• No other processes are blocking the port';
+        }
+
+        appendOutput(`\n💥 ${userMessage}\n`, 'error');
+        showAlert(userMessage, 'error');
     } finally {
         // Clean up intervals and listeners
         if (progressUpdateInterval) {

@@ -55,7 +55,26 @@ ipcMain.handle('get-git-branches', async (event, repoPath) => {
     const branches = await git.branchLocal();
     return branches.all;
   } catch (error) {
-    throw new Error(`Failed to get branches: ${error.message}`);
+    let errorMessage = `Failed to get branches: ${error.message}`;
+
+    if (error.code === 'ENOENT') {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Ensure Git is installed and accessible in PATH\n' +
+        '2. Try running "git --version" in terminal\n' +
+        '3. Restart the application after installing Git';
+    } else if (error.message.includes('not a git repository')) {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Select a folder that contains a .git directory\n' +
+        '2. Initialize a Git repository with "git init" if needed\n' +
+        '3. Ensure the selected path is the repository root';
+    } else if (error.message.includes('permission') || error.message.includes('access')) {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Check folder permissions and user access rights\n' +
+        '2. Try running the application as administrator\n' +
+        '3. Ensure the repository is not locked by another process';
+    }
+
+    throw new Error(errorMessage);
   }
 });
 
@@ -71,7 +90,27 @@ ipcMain.handle('get-git-diff', async (event, repoPath, baseBranch, targetBranch)
     const diff = await git.raw(['diff', '--no-prefix', '-U3', mergeBaseCommit, targetBranch]);
     return diff;
   } catch (error) {
-    throw new Error(`Failed to get diff: ${error.message}`);
+    let errorMessage = `Failed to get diff: ${error.message}`;
+
+    if (error.message.includes('unknown revision') || error.message.includes('bad revision')) {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Verify both branches exist locally\n' +
+        '2. Run "git branch -a" to see all available branches\n' +
+        '3. Pull latest changes with "git fetch" if branches are remote\n' +
+        '4. Check branch names for typos or special characters';
+    } else if (error.message.includes('merge-base') || error.message.includes('no common commits')) {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Check if branches share common history\n' +
+        '2. Try comparing with a different base branch\n' +
+        '3. Ensure branches are not from completely separate repositories';
+    } else if (error.code === 'ENOENT') {
+      errorMessage += '\n\nTroubleshooting steps:\n' +
+        '1. Ensure Git is installed and accessible in PATH\n' +
+        '2. Verify the repository path is correct\n' +
+        '3. Check if the .git directory exists';
+    }
+
+    throw new Error(errorMessage);
   }
 });
 
@@ -219,13 +258,47 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
       error: error.message
     });
     
+    let errorMessage = '';
     if (error.response) {
-      throw new Error(`API Error: ${error.response.status} - ${error.response.statusText}`);
+      errorMessage = `API Error: ${error.response.status} - ${error.response.statusText}`;
+
+      if (error.response.status === 404) {
+        errorMessage += '\n\nTroubleshooting steps:\n' +
+          `1. Install the model: ollama pull ${model}\n` +
+          '2. Check available models: ollama list\n' +
+          '3. Verify the model name is spelled correctly\n' +
+          '4. Ensure Ollama server is running: ollama serve';
+      } else if (error.response.status === 500) {
+        errorMessage += '\n\nTroubleshooting steps:\n' +
+          '1. Check Ollama server logs for detailed error\n' +
+          '2. Restart Ollama service\n' +
+          '3. Try a different model if this one is corrupted\n' +
+          '4. Check available system memory and disk space';
+      } else if (error.response.status === 503) {
+        errorMessage += '\n\nTroubleshooting steps:\n' +
+          '1. Ollama server may be overloaded, wait and retry\n' +
+          '2. Check system resources (CPU, memory)\n' +
+          '3. Restart Ollama service\n' +
+          '4. Try with a smaller prompt or different model';
+      }
     } else if (error.request) {
-      throw new Error('Network Error: Could not connect to Ollama API');
+      errorMessage = 'Network Error: Could not connect to Ollama API\n\n' +
+        'Troubleshooting steps:\n' +
+        '1. Ensure Ollama is running: ollama serve\n' +
+        '2. Check the API URL (default: http://localhost:11434/api/generate)\n' +
+        '3. Verify firewall settings allow connections to port 11434\n' +
+        '4. Try accessing the API directly: curl http://localhost:11434/api/version\n' +
+        '5. Check if another process is using port 11434';
     } else {
-      throw new Error(`Request Error: ${error.message}`);
+      errorMessage = `Request Error: ${error.message}\n\n` +
+        'Troubleshooting steps:\n' +
+        '1. Check network connectivity\n' +
+        '2. Verify Ollama server is accessible\n' +
+        '3. Review configuration settings\n' +
+        '4. Restart the application';
     }
+
+    throw new Error(errorMessage);
   }
 });
 
