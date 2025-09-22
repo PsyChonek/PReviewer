@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const simpleGit = require('simple-git');
 const axios = require('axios');
+const OpenAI = require('openai');
 
 let mainWindow;
 
@@ -302,19 +303,192 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
   }
 });
 
+// IPC handlers for Azure AI API
+ipcMain.handle('call-azure-ai-api', async (event, { endpoint, apiKey, deploymentName, prompt }) => {
+  try {
+    // Send initial progress
+    event.sender.send('azure-ai-progress', {
+      stage: 'connecting',
+      progress: 45,
+      message: 'Connecting to Azure AI service...',
+      timestamp: Date.now()
+    });
+
+    const startTime = Date.now();
+    let totalTokens = 0;
+
+    // Send request started progress
+    event.sender.send('azure-ai-progress', {
+      stage: 'sending',
+      progress: 50,
+      message: 'Sending request to Azure AI model...',
+      timestamp: Date.now(),
+      modelSize: prompt.length
+    });
+
+    // Create Azure OpenAI client using the stable OpenAI SDK
+    // Extract base URL from the full endpoint if it contains the full path
+    let baseURL = endpoint;
+    if (endpoint.includes('/openai/deployments/')) {
+      // Extract just the base URL (e.g., https://resource.cognitiveservices.azure.com)
+      baseURL = endpoint.split('/openai/deployments/')[0];
+    }
+
+    const client = new OpenAI({
+      apiKey: apiKey,
+      baseURL: `${baseURL}/openai/deployments/${deploymentName}`,
+      defaultQuery: { 'api-version': '2025-01-01-preview' },
+      defaultHeaders: {
+        'api-key': apiKey,
+      },
+    });
+
+    event.sender.send('azure-ai-progress', {
+      stage: 'processing',
+      progress: 60,
+      message: 'Azure AI model is processing...',
+      timestamp: Date.now()
+    });
+
+    // Make the request to Azure OpenAI
+    const response = await client.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert code reviewer."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000
+    });
+
+    const responseTime = Date.now() - startTime;
+    const responseText = response.choices[0]?.message?.content || '';
+    totalTokens = response.usage?.total_tokens || 0;
+
+    event.sender.send('azure-ai-progress', {
+      stage: 'complete',
+      progress: 90,
+      message: 'Processing Azure AI response...',
+      timestamp: Date.now(),
+      responseTime,
+      tokens: totalTokens
+    });
+
+    return responseText;
+
+  } catch (error) {
+    event.sender.send('azure-ai-progress', {
+      stage: 'error',
+      progress: 0,
+      message: `Error: ${error.message}`,
+      timestamp: Date.now(),
+      error: error.message
+    });
+
+    let errorMessage = '';
+    if (error.code === 'ENOTFOUND') {
+      errorMessage = 'Network Error: Could not connect to Azure AI service\n\n' +
+        'Troubleshooting steps:\n' +
+        '1. Check your internet connection\n' +
+        '2. Verify the Azure AI endpoint URL is correct\n' +
+        '3. Ensure firewall allows connections to Azure\n' +
+        '4. Check if Azure AI service is operational';
+    } else if (error.status === 401) {
+      errorMessage = 'Authentication Error: Invalid API key\n\n' +
+        'Troubleshooting steps:\n' +
+        '1. Verify your Azure AI API key is correct\n' +
+        '2. Check if the API key has expired\n' +
+        '3. Ensure the key has proper permissions\n' +
+        '4. Regenerate the API key if necessary';
+    } else if (error.status === 404) {
+      errorMessage = 'Model Error: Deployment not found\n\n' +
+        'Troubleshooting steps:\n' +
+        '1. Verify the deployment name is correct\n' +
+        '2. Check if the model deployment exists in Azure\n' +
+        '3. Ensure the deployment is active and running\n' +
+        '4. Check the endpoint URL matches your resource';
+    } else if (error.status === 429) {
+      errorMessage = 'Rate Limit Error: Too many requests\n\n' +
+        'Troubleshooting steps:\n' +
+        '1. Wait a moment and try again\n' +
+        '2. Check your Azure AI quota limits\n' +
+        '3. Consider upgrading your Azure AI tier\n' +
+        '4. Implement request throttling';
+    } else {
+      errorMessage = `Azure AI Error: ${error.message}\n\n` +
+        'Troubleshooting steps:\n' +
+        '1. Check network connectivity to Azure\n' +
+        '2. Verify all configuration settings\n' +
+        '3. Review Azure AI service status\n' +
+        '4. Contact Azure support if issue persists';
+    }
+
+    throw new Error(errorMessage);
+  }
+});
+
+ipcMain.handle('test-azure-ai-connection', async (event, { endpoint, apiKey, deploymentName }) => {
+  try {
+    // Create Azure OpenAI client using the stable OpenAI SDK
+    // Extract base URL from the full endpoint if it contains the full path
+    let baseURL = endpoint;
+    if (endpoint.includes('/openai/deployments/')) {
+      // Extract just the base URL (e.g., https://resource.cognitiveservices.azure.com)
+      baseURL = endpoint.split('/openai/deployments/')[0];
+    }
+
+    const client = new OpenAI({
+      apiKey: apiKey,
+      baseURL: `${baseURL}/openai/deployments/${deploymentName}`,
+      defaultQuery: { 'api-version': '2025-01-01-preview' },
+      defaultHeaders: {
+        'api-key': apiKey,
+      },
+    });
+
+    // Test with a simple request
+    const testResponse = await client.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: "What is a function in programming? Please respond with one sentence."
+        }
+      ],
+      max_tokens: 100,
+      temperature: 0.1
+    });
+
+    return {
+      success: true,
+      deploymentName: deploymentName,
+      modelResponse: testResponse.choices[0]?.message?.content || 'OK'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 ipcMain.handle('test-ollama-connection', async (event, { url, model }) => {
   try {
     // Test server connection
     const versionUrl = url.replace('/api/generate', '/api/version');
     const versionResponse = await axios.get(versionUrl, { timeout: 5000 });
-    
+
     // Test model availability with a simple coding question
     const testResponse = await axios.post(url, {
       model: model,
       prompt: 'What is a function in programming? Please respond with one sentence.',
       stream: false
     }, { timeout: 15000 });
-    
+
     return {
       success: true,
       version: versionResponse.data.version || 'Unknown',

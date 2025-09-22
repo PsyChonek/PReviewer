@@ -331,14 +331,14 @@
                             <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! 🚀</h3>
                             <div class="text-left max-w-2xl mx-auto space-y-2">
                                 <p><strong>Getting Started:</strong></p>
-                                <p>1. Configure Ollama URL and Model above</p>
+                                <p>1. Configure your AI provider (Ollama or Azure AI) in Settings</p>
                                 <p>2. Browse and select your Git repository</p>
                                 <p>3. Choose From and To branches for comparison</p>
                                 <p>4. Click 'Start AI Review' to analyze differences</p>
                                 <br>
                                 <p><strong>Requirements:</strong></p>
-                                <p>• Ollama must be running locally</p>
-                                <p>• The specified model must be downloaded</p>
+                                <p>• For Ollama: Local Ollama server must be running</p>
+                                <p>• For Azure AI: Valid endpoint, API key, and deployment</p>
                                 <p>• Repository must be a valid Git repository</p>
                             </div>
                         </div>
@@ -374,37 +374,106 @@
             </h3>
             
             <div class="space-y-6">
-                <!-- Ollama Configuration -->
+                <!-- AI Provider Selection -->
                 <div>
                     <h4 class="text-md font-semibold mb-3 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
+                        AI Provider Selection
+                    </h4>
+
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-medium">AI Provider</span>
+                            <span class="label-text-alt text-info cursor-help" title="Choose between Ollama (local) or Azure AI (cloud)">ℹ️</span>
+                        </label>
+                        <select id="ai-provider" class="select select-bordered w-full" onchange="toggleProviderSettings()">
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="azure">Azure AI (Cloud)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Ollama Configuration -->
+                <div id="ollama-settings">
+                    <h4 class="text-md font-semibold mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
                         Ollama Settings
                     </h4>
-                    
+
                     <div class="grid grid-cols-1 gap-4">
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Ollama URL</span>
                                 <span class="label-text-alt text-info cursor-help" title="The URL endpoint for your Ollama server">ℹ️</span>
                             </label>
-                            <input type="text" id="ollama-url" placeholder="http://localhost:11434/api/generate" 
+                            <input type="text" id="ollama-url" placeholder="http://localhost:11434/api/generate"
                                    class="input input-bordered w-full" value="http://localhost:11434/api/generate" />
                             <div class="label">
                                 <span class="label-text-alt text-gray-500">Default: http://localhost:11434/api/generate</span>
                             </div>
                         </div>
-                        
+
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Ollama Model</span>
                                 <span class="label-text-alt text-info cursor-help" title="The Ollama model to use for code review">ℹ️</span>
                             </label>
-                            <input type="text" id="ollama-model" placeholder="codellama" 
+                            <input type="text" id="ollama-model" placeholder="codellama"
                                    class="input input-bordered w-full" value="codellama" />
                             <div class="label">
                                 <span class="label-text-alt text-gray-500">Recommended: codellama, deepseek-coder, or codegemma</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azure AI Configuration -->
+                <div id="azure-ai-settings" class="hidden">
+                    <h4 class="text-md font-semibold mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                        Azure AI Settings
+                    </h4>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Azure AI Endpoint</span>
+                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI service endpoint URL">ℹ️</span>
+                            </label>
+                            <input type="text" id="azure-endpoint" placeholder="https://your-resource.cognitiveservices.azure.com"
+                                   class="input input-bordered w-full" />
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Find this in your Azure AI resource overview (can include full path)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">API Key</span>
+                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI API key">ℹ️</span>
+                            </label>
+                            <input type="password" id="azure-api-key" placeholder="Enter your Azure AI API key"
+                                   class="input input-bordered w-full" />
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Found in Azure AI resource keys section</span>
+                            </div>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Deployment Name</span>
+                                <span class="label-text-alt text-info cursor-help" title="The name of your model deployment">ℹ️</span>
+                            </label>
+                            <input type="text" id="azure-deployment" placeholder="gpt-4"
+                                   class="input input-bordered w-full" />
+                            <div class="label">
+                                <span class="label-text-alt text-gray-500">Recommended: gpt-4, gpt-35-turbo, or your custom deployment</span>
                             </div>
                         </div>
                     </div>

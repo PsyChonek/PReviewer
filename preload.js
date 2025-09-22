@@ -4,19 +4,29 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
-  
+
   getGitBranches: (repoPath) => ipcRenderer.invoke('get-git-branches', repoPath),
-  
-  getGitDiff: (repoPath, baseBranch, targetBranch) => 
+
+  getGitDiff: (repoPath, baseBranch, targetBranch) =>
     ipcRenderer.invoke('get-git-diff', repoPath, baseBranch, targetBranch),
-    
+
   callOllamaAPI: (config) => ipcRenderer.invoke('call-ollama-api', config),
-  
+
   testOllamaConnection: (config) => ipcRenderer.invoke('test-ollama-connection', config),
-  
+
+  // Azure AI APIs
+  callAzureAI: (config) => ipcRenderer.invoke('call-azure-ai-api', config),
+
+  testAzureAIConnection: (config) => ipcRenderer.invoke('test-azure-ai-connection', config),
+
   // Progress listeners
   onOllamaProgress: (callback) => {
     ipcRenderer.on('ollama-progress', callback);
     return () => ipcRenderer.removeListener('ollama-progress', callback);
+  },
+
+  onAzureAIProgress: (callback) => {
+    ipcRenderer.on('azure-ai-progress', callback);
+    return () => ipcRenderer.removeListener('azure-ai-progress', callback);
   }
 });

@@ -7,6 +7,7 @@ let reviewInProgress = false;
 let reviewStartTime = null;
 let progressUpdateInterval = null;
 let ollamaProgressHandler = null;
+let azureProgressHandler = null;
 let debugDetailsVisible = false;
 
 // AI Prompt Template - Default base prompt
@@ -595,31 +596,56 @@ async function loadBranches(repoPath) {
     }
 }
 
-// Ollama API Functions
+// Provider toggle functions
+function toggleProviderSettings() {
+    const provider = document.getElementById('ai-provider').value;
+    const ollamaSettings = document.getElementById('ollama-settings');
+    const azureSettings = document.getElementById('azure-ai-settings');
+
+    if (provider === 'azure') {
+        ollamaSettings.classList.add('hidden');
+        azureSettings.classList.remove('hidden');
+    } else {
+        ollamaSettings.classList.remove('hidden');
+        azureSettings.classList.add('hidden');
+    }
+}
+
+// AI API Functions
 async function testConnection() {
+    const provider = document.getElementById('ai-provider').value;
+
+    if (provider === 'azure') {
+        await testAzureConnection();
+    } else {
+        await testOllamaConnection();
+    }
+}
+
+async function testOllamaConnection() {
     const url = document.getElementById('ollama-url').value.trim();
     const model = document.getElementById('ollama-model').value.trim();
-    
+
     if (!url || !model) {
         showConnectionTestResult('Please provide both Ollama URL and Model name.', 'error');
         return;
     }
-    
+
     // Update button state
     const testBtn = document.getElementById('test-connection-btn');
     const testBtnText = document.getElementById('test-btn-text');
     const originalText = testBtnText.textContent;
-    
+
     testBtn.disabled = true;
     testBtn.classList.add('loading');
     testBtnText.textContent = 'Testing...';
-    
+
     // Hide previous results
     hideConnectionTestResult();
-    
+
     try {
         const result = await window.electronAPI.testOllamaConnection({ url, model });
-        
+
         if (result.success) {
             const successMessage = `
                 <div>
@@ -627,14 +653,14 @@ async function testConnection() {
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
-                        <span class="font-semibold">Connection Successful!</span>
+                        <span class="font-semibold">Ollama Connection Successful!</span>
                     </div>
                     <div class="text-sm space-y-1">
                         <div><strong>URL:</strong> ${url}</div>
                         <div><strong>Model:</strong> ${model}</div>
                         <div><strong>Version:</strong> ${result.version}</div>
-                        <div><strong>Test Response:</strong> ${result.modelResponse.length > 150 ? 
-                            result.modelResponse.substring(0, 150) + '...' : 
+                        <div><strong>Test Response:</strong> ${result.modelResponse.length > 150 ?
+                            result.modelResponse.substring(0, 150) + '...' :
                             result.modelResponse}</div>
                     </div>
                 </div>
@@ -647,7 +673,7 @@ async function testConnection() {
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span class="font-semibold">Connection Failed</span>
+                        <span class="font-semibold">Ollama Connection Failed</span>
                     </div>
                     <div class="text-sm">
                         <div><strong>URL:</strong> ${url}</div>
@@ -658,16 +684,103 @@ async function testConnection() {
             `;
             showConnectionTestResult(errorMessage, 'error');
         }
-        
+
     } catch (error) {
-        console.error('Connection test error:', error);
+        console.error('Ollama connection test error:', error);
         const errorMessage = `
             <div>
                 <div class="flex items-center mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    <span class="font-semibold">Test Failed</span>
+                    <span class="font-semibold">Ollama Test Failed</span>
+                </div>
+                <div class="text-sm">
+                    <div><strong>Error:</strong> ${error.message}</div>
+                </div>
+            </div>
+        `;
+        showConnectionTestResult(errorMessage, 'error');
+    } finally {
+        // Restore button state
+        testBtn.disabled = false;
+        testBtn.classList.remove('loading');
+        testBtnText.textContent = originalText;
+    }
+}
+
+async function testAzureConnection() {
+    const endpoint = document.getElementById('azure-endpoint').value.trim();
+    const apiKey = document.getElementById('azure-api-key').value.trim();
+    const deploymentName = document.getElementById('azure-deployment').value.trim();
+
+    if (!endpoint || !apiKey || !deploymentName) {
+        showConnectionTestResult('Please provide Azure AI Endpoint, API Key, and Deployment Name.', 'error');
+        return;
+    }
+
+    // Update button state
+    const testBtn = document.getElementById('test-connection-btn');
+    const testBtnText = document.getElementById('test-btn-text');
+    const originalText = testBtnText.textContent;
+
+    testBtn.disabled = true;
+    testBtn.classList.add('loading');
+    testBtnText.textContent = 'Testing...';
+
+    // Hide previous results
+    hideConnectionTestResult();
+
+    try {
+        const result = await window.electronAPI.testAzureAIConnection({ endpoint, apiKey, deploymentName });
+
+        if (result.success) {
+            const successMessage = `
+                <div>
+                    <div class="flex items-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="font-semibold">Azure AI Connection Successful!</span>
+                    </div>
+                    <div class="text-sm space-y-1">
+                        <div><strong>Endpoint:</strong> ${endpoint}</div>
+                        <div><strong>Deployment:</strong> ${deploymentName}</div>
+                        <div><strong>Test Response:</strong> ${result.modelResponse.length > 150 ?
+                            result.modelResponse.substring(0, 150) + '...' :
+                            result.modelResponse}</div>
+                    </div>
+                </div>
+            `;
+            showConnectionTestResult(successMessage, 'success');
+        } else {
+            const errorMessage = `
+                <div>
+                    <div class="flex items-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span class="font-semibold">Azure AI Connection Failed</span>
+                    </div>
+                    <div class="text-sm">
+                        <div><strong>Endpoint:</strong> ${endpoint}</div>
+                        <div><strong>Deployment:</strong> ${deploymentName}</div>
+                        <div><strong>Error:</strong> ${result.error}</div>
+                    </div>
+                </div>
+            `;
+            showConnectionTestResult(errorMessage, 'error');
+        }
+
+    } catch (error) {
+        console.error('Azure AI connection test error:', error);
+        const errorMessage = `
+            <div>
+                <div class="flex items-center mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span class="font-semibold">Azure AI Test Failed</span>
                 </div>
                 <div class="text-sm">
                     <div><strong>Error:</strong> ${error.message}</div>
@@ -715,55 +828,75 @@ async function startReview() {
         showAlert('Review already in progress!', 'warning');
         return;
     }
-    
+
+    const provider = document.getElementById('ai-provider').value;
     const repoPath = document.getElementById('repo-path').value.trim();
     const fromBranch = document.getElementById('from-branch').value;
     const toBranch = document.getElementById('to-branch').value;
-    const ollamaUrl = document.getElementById('ollama-url').value.trim();
-    const ollamaModel = document.getElementById('ollama-model').value.trim();
-    
+
+    // Get provider-specific configuration
+    let aiConfig;
+    if (provider === 'azure') {
+        const endpoint = document.getElementById('azure-endpoint').value.trim();
+        const apiKey = document.getElementById('azure-api-key').value.trim();
+        const deploymentName = document.getElementById('azure-deployment').value.trim();
+
+        if (!endpoint || !apiKey || !deploymentName) {
+            showAlert('Please provide Azure AI Endpoint, API Key, and Deployment Name.', 'error');
+            return;
+        }
+
+        aiConfig = { provider: 'azure', endpoint, apiKey, deploymentName };
+    } else {
+        const ollamaUrl = document.getElementById('ollama-url').value.trim();
+        const ollamaModel = document.getElementById('ollama-model').value.trim();
+
+        if (!ollamaUrl || !ollamaModel) {
+            showAlert('Please provide both Ollama URL and Model name.', 'error');
+            return;
+        }
+
+        aiConfig = { provider: 'ollama', url: ollamaUrl, model: ollamaModel };
+    }
+
     if (window.DEBUG) {
         console.log('🚀 Starting review with configuration:', {
             repoPath,
             fromBranch,
             toBranch,
-            ollamaUrl,
-            ollamaModel,
+            aiConfig,
             debugMode: window.DEBUG
         });
     }
-    
+
     // Validation
     if (!repoPath) {
         showAlert('Please select a repository path.', 'error');
         return;
     }
-    
-    if (!ollamaUrl || !ollamaModel) {
-        showAlert('Please provide both Ollama URL and Model name.', 'error');
-        return;
-    }
-    
+
     if (!fromBranch || !toBranch || fromBranch === 'Select repository first...' || toBranch === 'Select repository first...') {
         showAlert('Please select valid branches for comparison.', 'error');
         return;
     }
-    
+
     // Start review process
     reviewInProgress = true;
     reviewStartTime = Date.now();
-    
+
     // Update UI
     document.getElementById('start-review-btn').classList.add('hidden');
     document.getElementById('stop-review-btn').classList.remove('hidden');
-    
+
     clearOutput();
     resetStats();
     updateProgress(0);
-    updateStats(0, 0, ollamaModel, 'initializing');
-    
+
+    const modelName = provider === 'azure' ? aiConfig.deploymentName : aiConfig.model;
+    updateStats(0, 0, modelName, 'initializing');
+
     try {
-        await runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel);
+        await runReview(repoPath, fromBranch, toBranch, aiConfig);
     } catch (error) {
         console.error('Review error:', error);
 
@@ -778,20 +911,39 @@ async function startReview() {
                 '• Insufficient permissions to read repository\n' +
                 '• Network issues if branches are remote';
         } else if (error.message.includes('AI analysis failed')) {
-            userMessage = 'AI model failed to analyze the code.\n\n' +
-                'Solutions to try:\n' +
-                '• Check if Ollama is running: "ollama serve"\n' +
-                '• Verify the model is installed: "ollama list"\n' +
-                '• Try a different model in settings\n' +
-                '• Reduce the code diff size\n' +
-                '• Check system resources (CPU, memory)';
+            const providerName = provider === 'azure' ? 'Azure AI' : 'Ollama';
+            userMessage = `${providerName} model failed to analyze the code.\n\n` +
+                'Solutions to try:\n';
+
+            if (provider === 'azure') {
+                userMessage += '• Check your Azure AI service status\n' +
+                    '• Verify API key and endpoint are correct\n' +
+                    '• Ensure deployment is active and running\n' +
+                    '• Check your Azure AI quota limits\n' +
+                    '• Verify internet connectivity to Azure';
+            } else {
+                userMessage += '• Check if Ollama is running: "ollama serve"\n' +
+                    '• Verify the model is installed: "ollama list"\n' +
+                    '• Try a different model in settings\n' +
+                    '• Reduce the code diff size\n' +
+                    '• Check system resources (CPU, memory)';
+            }
         } else if (error.message.includes('Network Error') || error.message.includes('Could not connect')) {
-            userMessage = 'Cannot connect to the AI model.\n\n' +
-                'Check these settings:\n' +
-                '• Ollama server is running: "ollama serve"\n' +
-                '• API URL is correct (usually http://localhost:11434/api/generate)\n' +
-                '• Firewall allows connections to port 11434\n' +
-                '• No other processes are blocking the port';
+            const providerName = provider === 'azure' ? 'Azure AI service' : 'Ollama';
+            userMessage = `Cannot connect to the ${providerName}.\n\n` +
+                'Check these settings:\n';
+
+            if (provider === 'azure') {
+                userMessage += '• Internet connection is working\n' +
+                    '• Azure AI endpoint URL is correct\n' +
+                    '• Firewall allows connections to Azure\n' +
+                    '• Azure AI service is operational';
+            } else {
+                userMessage += '• Ollama server is running: "ollama serve"\n' +
+                    '• API URL is correct (usually http://localhost:11434/api/generate)\n' +
+                    '• Firewall allows connections to port 11434\n' +
+                    '• No other processes are blocking the port';
+            }
         }
 
         appendOutput(`\n💥 ${userMessage}\n`, 'error');
@@ -802,12 +954,17 @@ async function startReview() {
             clearInterval(progressUpdateInterval);
             progressUpdateInterval = null;
         }
-        
+
         if (ollamaProgressHandler) {
             ollamaProgressHandler();
             ollamaProgressHandler = null;
         }
-        
+
+        if (azureProgressHandler) {
+            azureProgressHandler();
+            azureProgressHandler = null;
+        }
+
         // Reset UI
         reviewInProgress = false;
         document.getElementById('start-review-btn').classList.remove('hidden');
@@ -816,10 +973,18 @@ async function startReview() {
     }
 }
 
-async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel) {
-    // Setup progress listener
-    if (ollamaProgressHandler) {
-        ollamaProgressHandler(); // Remove previous listener
+async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
+    const { provider } = aiConfig;
+    const modelName = provider === 'azure' ? aiConfig.deploymentName : aiConfig.model;
+    // Setup progress listener based on provider
+    if (provider === 'azure') {
+        if (azureProgressHandler) {
+            azureProgressHandler(); // Remove previous listener
+        }
+    } else {
+        if (ollamaProgressHandler) {
+            ollamaProgressHandler(); // Remove previous listener
+        }
     }
     
     ollamaProgressHandler = window.electronAPI.onOllamaProgress((event, data) => {
@@ -863,17 +1028,24 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
     appendOutput(`• Repository: ${repoPath.split(/[\/\\]/).pop()}\n`, 'info');
     appendOutput(`• Path: ${repoPath}\n`, 'info');
     appendOutput(`• Comparing: ${toBranch} → ${fromBranch}\n`, 'info');
-    appendOutput(`• AI Model: ${ollamaModel}\n`, 'info');
-    appendOutput(`• Endpoint: ${ollamaUrl}\n\n`, 'info');
+    if (provider === 'azure') {
+        appendOutput(`• AI Provider: Azure AI\n`, 'info');
+        appendOutput(`• Deployment: ${aiConfig.deploymentName}\n`, 'info');
+        appendOutput(`• Endpoint: ${aiConfig.endpoint}\n\n`, 'info');
+    } else {
+        appendOutput(`• AI Provider: Ollama\n`, 'info');
+        appendOutput(`• AI Model: ${aiConfig.model}\n`, 'info');
+        appendOutput(`• Endpoint: ${aiConfig.url}\n\n`, 'info');
+    }
     
     updateProgress(10, 'Initializing review process...');
-    updateStats(0, 0, ollamaModel, 'initializing');
+    updateStats(0, 0, modelName, 'initializing');
     
     // Start real-time updates
     progressUpdateInterval = setInterval(() => {
         if (reviewInProgress) {
             const elapsed = (Date.now() - reviewStartTime) / 1000;
-            updateStats(elapsed, null, ollamaModel, null);
+            updateStats(elapsed, null, modelName, null);
         }
     }, 100); // Update every 100ms for smooth real-time feel
     
@@ -902,6 +1074,7 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
         updateProgress(100, 'No changes found');
         clearInterval(progressUpdateInterval);
         if (ollamaProgressHandler) ollamaProgressHandler();
+        if (azureProgressHandler) azureProgressHandler();
         return;
     }
     
@@ -909,7 +1082,7 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
     appendOutput(`📈 Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
     
     updateProgress(35, 'Preparing AI analysis...');
-    updateStats((Date.now() - reviewStartTime) / 1000, null, ollamaModel, 'preparing');
+    updateStats((Date.now() - reviewStartTime) / 1000, null, modelName, 'preparing');
     
     // Calculate estimated tokens for the prompt
     const basePrompt = localStorage.getItem('base-prompt') || DEFAULT_BASE_PROMPT;
@@ -926,7 +1099,7 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
     
     // AI Analysis
     appendOutput('🤖 AI Analysis in Progress...\n', 'subheader');
-    appendOutput(`📤 Preparing prompt for AI model (${ollamaModel})...\n`, 'info');
+    appendOutput(`📤 Preparing prompt for AI model (${modelName})...\n`, 'info');
     appendOutput(`📊 Prompt size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
     appendOutput(`🧮 Estimated input tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
     appendOutput(`🧮 Estimated response tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
@@ -942,11 +1115,20 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
     let aiFeedback;
     
     try {
-        aiFeedback = await window.electronAPI.callOllamaAPI({
-            url: ollamaUrl,
-            model: ollamaModel,
-            prompt: prompt
-        });
+        if (provider === 'azure') {
+            aiFeedback = await window.electronAPI.callAzureAI({
+                endpoint: aiConfig.endpoint,
+                apiKey: aiConfig.apiKey,
+                deploymentName: aiConfig.deploymentName,
+                prompt: prompt
+            });
+        } else {
+            aiFeedback = await window.electronAPI.callOllamaAPI({
+                url: aiConfig.url,
+                model: aiConfig.model,
+                prompt: prompt
+            });
+        }
     } catch (error) {
         clearInterval(progressUpdateInterval);
         if (ollamaProgressHandler) ollamaProgressHandler();
@@ -958,9 +1140,10 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
     
     clearInterval(progressUpdateInterval);
     if (ollamaProgressHandler) ollamaProgressHandler();
+    if (azureProgressHandler) azureProgressHandler();
     
     updateProgress(95, 'Formatting results...');
-    updateStats(totalElapsed, null, ollamaModel, 'formatting');
+    updateStats(totalElapsed, null, modelName, 'formatting');
     
     // Display results
     appendOutput('\n' + '═'.repeat(60) + '\n', 'separator');
@@ -975,14 +1158,14 @@ async function runReview(repoPath, fromBranch, toBranch, ollamaUrl, ollamaModel)
         appendOutput(`• Total Time: ${totalElapsed.toFixed(1)}s\n`, 'info');
         appendOutput(`• Diff Generation: ${diffElapsed.toFixed(1)}s\n`, 'info');
         appendOutput(`• AI Analysis: ${aiElapsed.toFixed(1)}s\n`, 'info');
-        appendOutput(`• Model: ${ollamaModel}\n`, 'info');
+        appendOutput(`• Model: ${modelName}\n`, 'info');
         appendOutput(`• Prompt Size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
         appendOutput(`• Estimated Input Tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
         appendOutput(`• Estimated Response Tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
         
         // Update final stats with actual response tokens
         const actualResponseTokens = aiFeedback.split(' ').length;
-        updateStats(totalElapsed, actualResponseTokens, ollamaModel, 'complete');
+        updateStats(totalElapsed, actualResponseTokens, modelName, 'complete');
         
         // Update debug info with final token comparison
         updateDebugInfo({
@@ -1197,20 +1380,42 @@ function openConfigModal() {
 }
 
 function saveConfiguration() {
-    const ollamaUrl = document.getElementById('ollama-url').value.trim();
-    const ollamaModel = document.getElementById('ollama-model').value.trim();
+    const provider = document.getElementById('ai-provider').value;
     const basePrompt = document.getElementById('base-prompt').value.trim();
     const userPrompt = document.getElementById('user-prompt').value.trim();
     const debugEnabled = document.getElementById('debug-enabled').checked;
-    
-    if (!ollamaUrl || !ollamaModel) {
-        showAlert('Please fill in all required configuration fields', 'error');
-        return;
+
+    // Provider-specific validation and saving
+    if (provider === 'azure') {
+        const azureEndpoint = document.getElementById('azure-endpoint').value.trim();
+        const azureApiKey = document.getElementById('azure-api-key').value.trim();
+        const azureDeployment = document.getElementById('azure-deployment').value.trim();
+
+        if (!azureEndpoint || !azureApiKey || !azureDeployment) {
+            showAlert('Please fill in all required Azure AI configuration fields', 'error');
+            return;
+        }
+
+        // Save Azure AI configuration to localStorage
+        localStorage.setItem('azure-endpoint', azureEndpoint);
+        localStorage.setItem('azure-api-key', azureApiKey);
+        localStorage.setItem('azure-deployment', azureDeployment);
+    } else {
+        const ollamaUrl = document.getElementById('ollama-url').value.trim();
+        const ollamaModel = document.getElementById('ollama-model').value.trim();
+
+        if (!ollamaUrl || !ollamaModel) {
+            showAlert('Please fill in all required Ollama configuration fields', 'error');
+            return;
+        }
+
+        // Save Ollama configuration to localStorage
+        localStorage.setItem('ollama-url', ollamaUrl);
+        localStorage.setItem('ollama-model', ollamaModel);
     }
-    
-    // Save configuration to localStorage
-    localStorage.setItem('ollama-url', ollamaUrl);
-    localStorage.setItem('ollama-model', ollamaModel);
+
+    // Save common configuration to localStorage
+    localStorage.setItem('ai-provider', provider);
     localStorage.setItem('base-prompt', basePrompt);
     localStorage.setItem('user-prompt', userPrompt);
     localStorage.setItem('debug-enabled', debugEnabled.toString());
@@ -1236,37 +1441,56 @@ function saveConfiguration() {
 
 function loadConfiguration() {
     // Load saved configuration from localStorage
+    const savedProvider = localStorage.getItem('ai-provider') || 'ollama';
     const savedUrl = localStorage.getItem('ollama-url');
     const savedModel = localStorage.getItem('ollama-model');
+    const savedAzureEndpoint = localStorage.getItem('azure-endpoint');
+    const savedAzureApiKey = localStorage.getItem('azure-api-key');
+    const savedAzureDeployment = localStorage.getItem('azure-deployment');
     const savedBasePrompt = localStorage.getItem('base-prompt');
     const savedUserPrompt = localStorage.getItem('user-prompt');
     const savedDebugEnabled = localStorage.getItem('debug-enabled');
-    
+
+    // Set provider
+    document.getElementById('ai-provider').value = savedProvider;
+    toggleProviderSettings(); // Show/hide appropriate settings
+
+    // Load Ollama settings
     if (savedUrl) {
         document.getElementById('ollama-url').value = savedUrl;
     }
-    
     if (savedModel) {
         document.getElementById('ollama-model').value = savedModel;
     }
-    
+
+    // Load Azure AI settings
+    if (savedAzureEndpoint) {
+        document.getElementById('azure-endpoint').value = savedAzureEndpoint;
+    }
+    if (savedAzureApiKey) {
+        document.getElementById('azure-api-key').value = savedAzureApiKey;
+    }
+    if (savedAzureDeployment) {
+        document.getElementById('azure-deployment').value = savedAzureDeployment;
+    }
+
+    // Load prompt settings
     if (savedBasePrompt) {
         document.getElementById('base-prompt').value = savedBasePrompt;
     } else {
         // Set default base prompt if none saved
         document.getElementById('base-prompt').value = DEFAULT_BASE_PROMPT;
     }
-    
     if (savedUserPrompt) {
         document.getElementById('user-prompt').value = savedUserPrompt;
     }
-    
+
     // Load debug setting
     const debugEnabled = savedDebugEnabled === 'true';
     document.getElementById('debug-enabled').checked = debugEnabled;
     // Update the global DEBUG constant
     window.DEBUG = debugEnabled;
-    
+
     // Log debug status
     if (window.DEBUG) {
         console.log('🐛 Debug mode enabled - detailed logging active');
