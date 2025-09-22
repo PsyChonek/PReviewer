@@ -9,6 +9,7 @@ let progressUpdateInterval = null;
 let ollamaProgressHandler = null;
 let azureProgressHandler = null;
 let debugDetailsVisible = false;
+let currentOutputMarkdown = '';
 
 // AI Prompt Template - Default base prompt
 const DEFAULT_BASE_PROMPT = `You are an expert code reviewer. Analyze the following code changes (diff format).
@@ -17,7 +18,30 @@ based on best practices. Focus on the *newly added or modified lines*.
 Provide concise, actionable feedback. If no issues, state 'No major issues found.'.
 
 Consider the context of a C# and SQL development environment.
-The feedback should be formatted clearly, focusing on specific lines if possible.`;
+
+**IMPORTANT: Format your response using Markdown with the following structure:**
+- Use ## for main sections (e.g., ## Summary, ## Issues Found, ## Recommendations)
+- Use ### for subsections
+- Use **bold** for important points
+- Use \`code\` for inline code references
+- Use \`\`\`language blocks for code examples
+- Use bullet points (-) for lists
+- Use > for important warnings or notes
+- Include line numbers when referencing specific changes
+
+Example format:
+## Summary
+Brief overview of the changes reviewed.
+
+## Issues Found
+### 🚨 Critical Issues
+- **Security vulnerability on line 42**: Description
+### ⚠️ Potential Issues
+- **Performance concern on line 18**: Description
+
+## Recommendations
+- Suggestion 1
+- Suggestion 2`;
 
 // Function to build the complete prompt
 function buildPrompt(diff, basePrompt = null, userPrompt = null) {
@@ -1236,33 +1260,39 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     updateProgress(95, 'Formatting results...');
     updateStats(totalElapsed, null, modelName, 'formatting');
     
-    // Display results
-    appendOutput('\n' + '═'.repeat(60) + '\n', 'separator');
-    appendOutput('🎯 AI REVIEW RESULTS\n', 'ai-title');
-    appendOutput('═'.repeat(60) + '\n\n', 'separator');
-    
+    // Display results - let the AI response speak for itself with proper Markdown
+    appendOutput('\n---\n\n', 'separator');
+
     if (aiFeedback) {
-        formatAIFeedback(aiFeedback);
+        // Simply add the AI feedback as-is (it should be formatted in Markdown)
+        currentOutputMarkdown += aiFeedback + '\n\n';
         
-        // Performance summary
-        appendOutput('\n⏱️ Performance Summary:\n', 'subheader');
-        appendOutput(`• Total Time: ${totalElapsed.toFixed(1)}s\n`, 'info');
-        appendOutput(`• Diff Generation: ${diffElapsed.toFixed(1)}s\n`, 'info');
-        appendOutput(`• AI Analysis: ${aiElapsed.toFixed(1)}s\n`, 'info');
-        appendOutput(`• Model: ${modelName}\n`, 'info');
-        appendOutput(`• Prompt Size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
-        appendOutput(`• Estimated Input Tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
-        appendOutput(`• Estimated Response Tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
+        // Add performance summary in Markdown
+        currentOutputMarkdown += `## ⏱️ Performance Summary
+
+- **Total Time**: ${totalElapsed.toFixed(1)}s
+- **Diff Generation**: ${diffElapsed.toFixed(1)}s
+- **AI Analysis**: ${aiElapsed.toFixed(1)}s
+- **Model**: ${modelName}
+- **Prompt Size**: ${(prompt.length / 1024).toFixed(1)} KB
+- **Estimated Input Tokens**: ${formatTokenCount(estimatedInputTokens)}
+- **Estimated Response Tokens**: ${formatTokenCount(estimatedOutputTokens)}
+`;
         
         // Update final stats with actual response tokens
         const actualResponseTokens = aiFeedback.split(' ').length;
+        currentOutputMarkdown += `- **Actual Response Tokens**: ${formatTokenCount(actualResponseTokens)}\n`;
+
         updateStats(totalElapsed, actualResponseTokens, modelName, 'complete');
-        
+
         // Update debug info with final token comparison
         updateDebugInfo({
             actualTokens: actualResponseTokens,
             stage: 'complete'
         });
+
+        // Render the final output
+        renderOutput();
         
         appendOutput(`• Actual Response Tokens: ${formatTokenCount(actualResponseTokens)}\n`, 'info');
         
@@ -1319,113 +1349,151 @@ function stopReview() {
 // Output Functions
 function clearOutput() {
     const outputContent = document.getElementById('output-content');
-    outputContent.innerHTML = `
-        <div class="text-center text-base-content/60 py-8">
-            <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! 🚀</h3>
-            <div class="text-left max-w-2xl mx-auto space-y-2">
-                <p><strong>Getting Started:</strong></p>
-                <p>1. Configure Ollama URL and Model above</p>
-                <p>2. Browse and select your Git repository</p>
-                <p>3. Choose From and To branches for comparison</p>
-                <p>4. Click 'Start AI Review' to analyze differences</p>
-                <br>
-                <p><strong>Requirements:</strong></p>
-                <p>• Ollama must be running locally</p>
-                <p>• The specified model must be downloaded</p>
-                <p>• Repository must be a valid Git repository</p>
-            </div>
-        </div>
-    `;
+    const welcomeMarkdown = `# Welcome to Local AI PR Reviewer! 🚀
+
+## Getting Started:
+1. Configure your AI provider (Ollama or Azure AI) in Settings
+2. Browse and select your Git repository
+3. Choose From and To branches for comparison
+4. Click 'Start AI Review' to analyze differences
+
+## Requirements:
+- **For Ollama**: Local Ollama server must be running
+- **For Azure AI**: Valid endpoint, API key, and deployment
+- **Repository**: Must be a valid Git repository`;
+
+    // Reset the markdown accumulator
+    currentOutputMarkdown = '';
+
+    if (typeof marked !== 'undefined') {
+        outputContent.innerHTML = `<div class="text-center py-8">${marked.parse(welcomeMarkdown)}</div>`;
+    } else {
+        outputContent.innerHTML = `<div class="text-center py-8">${simpleMarkdownRender(welcomeMarkdown)}</div>`;
+    }
     resetStats();
     updateProgress(0);
 }
 
 function appendOutput(text, style = '') {
-    const outputContent = document.getElementById('output-content');
-    
-    // Clear welcome message if it exists
-    const welcomeMsg = outputContent.querySelector('.text-center');
-    if (welcomeMsg) {
-        outputContent.innerHTML = '';
+    // Clear welcome message if this is the first output
+    if (currentOutputMarkdown === '') {
+        const outputContent = document.getElementById('output-content');
+        const welcomeMsg = outputContent.querySelector('.text-center');
+        if (welcomeMsg) {
+            outputContent.innerHTML = '';
+            currentOutputMarkdown = '';
+        }
     }
-    
-    const styleClasses = {
-        'header': 'text-2xl font-bold text-primary mb-2',
-        'subheader': 'text-lg font-bold text-secondary mb-1',
-        'ai-title': 'text-xl font-bold text-accent mb-2',
-        'separator': 'text-base-content/30',
-        'info': 'text-info',
-        'success': 'text-success font-medium',
-        'warning': 'text-warning font-medium',
-        'error': 'text-error font-medium',
-        'code': 'font-mono bg-base-300 px-1 rounded'
-    };
-    
-    // Handle line breaks properly - split by actual newlines, not escaped ones
+
+    // Convert styled text to appropriate Markdown formatting
     const lines = text.split('\n');
     lines.forEach((line, index) => {
-        if (index > 0) {
-            outputContent.appendChild(document.createElement('br'));
-        }
         if (line.trim()) {
-            const lineSpan = document.createElement('span');
-            lineSpan.className = styleClasses[style] || 'text-base-content';
-            lineSpan.textContent = line;
-            outputContent.appendChild(lineSpan);
+            let markdownLine = line;
+
+            switch (style) {
+                case 'header':
+                    markdownLine = `# ${line}`;
+                    break;
+                case 'subheader':
+                    markdownLine = `## ${line}`;
+                    break;
+                case 'ai-title':
+                    markdownLine = `# ${line}`;
+                    break;
+                case 'separator':
+                    markdownLine = `---`;
+                    break;
+                case 'success':
+                    markdownLine = `✅ ${line}`;
+                    break;
+                case 'warning':
+                    markdownLine = `⚠️ ${line}`;
+                    break;
+                case 'error':
+                    markdownLine = `❌ ${line}`;
+                    break;
+                case 'code':
+                    markdownLine = `\`${line}\``;
+                    break;
+                case 'info':
+                default:
+                    // Keep as-is, already has emojis from the original code
+                    break;
+            }
+
+            currentOutputMarkdown += markdownLine + '\n';
+        } else if (index < lines.length - 1) {
+            currentOutputMarkdown += '\n';
         }
     });
-    
+
+    // Render the accumulated Markdown content
+    renderOutput();
+}
+
+function renderOutput() {
+    const outputContent = document.getElementById('output-content');
+    if (currentOutputMarkdown.trim()) {
+        if (typeof marked !== 'undefined') {
+            // Configure marked options for better security and formatting
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                sanitize: false // We control the content, so it's safe
+            });
+
+            outputContent.innerHTML = marked.parse(currentOutputMarkdown);
+        } else {
+            // Fallback: simple markdown-like rendering
+            outputContent.innerHTML = simpleMarkdownRender(currentOutputMarkdown);
+        }
+    }
+
     // Auto-scroll to bottom
     const outputContainer = document.getElementById('output-container');
     outputContainer.scrollTop = outputContainer.scrollHeight;
 }
 
-function formatAIFeedback(feedback) {
-    const lines = feedback.split('\n');
-    
-    lines.forEach(line => {
-        line = line.trim();
-        if (!line) {
-            appendOutput('\n');
-            return;
-        }
-        
-        // Detect different types of content
-        if (line.startsWith('##') || line.startsWith('**') || (line.isupper && line.length > 10)) {
-            // Section headers
-            const cleanLine = line.replace(/#/g, '').replace(/\*/g, '').trim();
-            appendOutput(`📋 ${cleanLine}\n`, 'subheader');
-        } else if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('• ')) {
-            // List items
-            appendOutput(`${line}\n`, 'info');
-        } else if (line.toLowerCase().includes('bug') || line.toLowerCase().includes('error') || line.toLowerCase().includes('issue')) {
-            // Potential issues
-            appendOutput(`🐛 ${line}\n`, 'error');
-        } else if (line.toLowerCase().includes('recommend') || line.toLowerCase().includes('suggest') || line.toLowerCase().includes('improve')) {
-            // Recommendations
-            appendOutput(`💡 ${line}\n`, 'warning');
-        } else if (line.toLowerCase().includes('good') || line.toLowerCase().includes('well') || line.toLowerCase().includes('no issues')) {
-            // Positive feedback
-            appendOutput(`✅ ${line}\n`, 'success');
-        } else if (line.startsWith('```') || line.startsWith('    ')) {
-            // Code blocks
-            appendOutput(`${line}\n`, 'code');
-        } else {
-            // Regular text
-            appendOutput(`${line}\n`, 'info');
-        }
-    });
-    
-    appendOutput('\n' + '━'.repeat(60) + '\n', 'separator');
-    appendOutput('✨ Review completed successfully!\n', 'success');
+// Simple fallback markdown renderer
+function simpleMarkdownRender(text) {
+    return text
+        // Headers
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+
+        // Code
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+
+        // Code blocks
+        .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+
+        // Lists
+        .replace(/^\- (.*$)/gim, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+
+        // Line breaks
+        .replace(/\n/g, '<br>')
+
+        // Horizontal rules
+        .replace(/^---$/gm, '<hr>');
 }
 
+// formatAIFeedback function removed - now using direct Markdown rendering
+
 function copyOutput() {
-    const outputContent = document.getElementById('output-content');
-    const text = outputContent.textContent || outputContent.innerText;
-    
-    navigator.clipboard.writeText(text).then(() => {
-        showAlert('Output copied to clipboard!', 'success');
+    // Copy the raw Markdown content instead of rendered HTML
+    const textToCopy = currentOutputMarkdown || 'No content to copy';
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showAlert('Markdown content copied to clipboard!', 'success');
     }).catch(err => {
         console.error('Copy failed:', err);
         showAlert('Failed to copy output', 'error');
@@ -1433,25 +1501,25 @@ function copyOutput() {
 }
 
 function exportOutput() {
-    const outputContent = document.getElementById('output-content');
-    const text = outputContent.textContent || outputContent.innerText;
-    
-    if (!text.trim()) {
+    // Export the raw Markdown content
+    const textToExport = currentOutputMarkdown || '';
+
+    if (!textToExport.trim()) {
         showAlert('No content to export.', 'warning');
         return;
     }
-    
-    const blob = new Blob([text], { type: 'text/plain' });
+
+    const blob = new Blob([textToExport], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pr-review-${Date.now()}.txt`;
+    a.download = `ai-review-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    showAlert('Output exported successfully!', 'success');
+
+    showAlert('Review exported as Markdown!', 'success');
 }
 
 // Configuration Modal Functions

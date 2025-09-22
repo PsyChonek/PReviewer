@@ -39,7 +39,9 @@
     "tmp": "^0.2.1"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.18",
     "axios": "^1.11.0",
+    "marked": "^16.3.0",
     "openai": "^4.104.0",
     "simple-git": "^3.28.0"
   },

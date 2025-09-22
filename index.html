@@ -325,8 +325,8 @@
                     </div>
                 </div>
 
-                <div class="mockup-code bg-base-200 output-text" id="output-container" role="log" aria-live="polite" aria-label="Review output display">
-                    <div id="output-content" class="px-4 py-2">
+                <div class="bg-base-200 border border-base-300 rounded-lg output-text overflow-auto" id="output-container" role="log" aria-live="polite" aria-label="Review output display">
+                    <div id="output-content" class="px-6 py-4 prose prose-sm max-w-none dark:prose-invert">
                         <div class="text-center text-base-content/60 py-8">
                             <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! 🚀</h3>
                             <div class="text-left max-w-2xl mx-auto space-y-2">
@@ -581,6 +581,8 @@
         </div>
     </dialog>
 
+    <!-- Include Marked.js for Markdown rendering -->
+    <script src="marked.min.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html>

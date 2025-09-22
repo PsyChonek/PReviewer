@@ -18,12 +18,17 @@ module.exports = {
     'select',
     'textarea',
     'label',
-    'form-control'
+    'form-control',
+    'prose',
+    'prose-sm',
+    'max-w-none',
+    'dark:prose-invert'
   ],
   theme: {
     extend: {},
   },
   plugins: [
+    require('@tailwindcss/typography'),
     require('daisyui'),
   ],
   daisyui: {
