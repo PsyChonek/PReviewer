@@ -8,7 +8,6 @@ let reviewStartTime = null;
 let progressUpdateInterval = null;
 let ollamaProgressHandler = null;
 let azureProgressHandler = null;
-let debugDetailsVisible = false;
 let currentOutputMarkdown = '';
 
 // AI Prompt Template - Default base prompt
@@ -454,20 +453,19 @@ function hideDebugInfo() {
     document.getElementById('debug-section').classList.add('hidden');
 }
 
-function toggleDebugDetails() {
-    const details = document.getElementById('debug-details');
-    const toggleText = document.getElementById('debug-toggle-text');
-    
-    if (debugDetailsVisible) {
-        details.classList.add('hidden');
-        toggleText.textContent = 'Show Details';
-        debugDetailsVisible = false;
+function toggleDebugPanel() {
+    const debugSection = document.getElementById('debug-section');
+    const toggleText = document.getElementById('debug-panel-toggle-text');
+
+    if (debugSection.classList.contains('hidden')) {
+        debugSection.classList.remove('hidden');
+        toggleText.textContent = 'Hide';
     } else {
-        details.classList.remove('hidden');
-        toggleText.textContent = 'Hide Details';
-        debugDetailsVisible = true;
+        debugSection.classList.add('hidden');
+        toggleText.textContent = 'Debug';
     }
 }
+
 
 function updateStats(elapsed = null, tokens = null, model = null, stage = null, tokensPerSecond = null) {
     if (elapsed !== null) {
@@ -583,7 +581,7 @@ function updateDebugInfo(data) {
     // Update last update time
     document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
 
-    showDebugInfo();
+    // Debug panel is now manually toggled, don't auto-show
 }function resetStats() {
     ['time-stat', 'speed-stat', 'tokens-stat', 'model-stat', 'stage-stat'].forEach(id => {
         document.getElementById(id).textContent = '--';
@@ -606,9 +604,6 @@ function updateDebugInfo(data) {
 
     hideStats();
     hideDebugInfo();
-    debugDetailsVisible = false;
-    document.getElementById('debug-details').classList.add('hidden');
-    document.getElementById('debug-toggle-text').textContent = 'Show Details';
 }
 
 // Repository Functions

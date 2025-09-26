@@ -237,11 +237,8 @@
         <!-- Debug Info Section -->
         <div id="debug-section" class="card bg-base-200 shadow-lg mb-6 hidden">
             <div class="card-body">
-                <div class="flex justify-between items-center mb-4">
+                <div class="mb-4">
                     <h3 class="text-lg font-bold"><i class="fas fa-tools"></i> Debug Information</h3>
-                    <button class="btn btn-sm btn-ghost" onclick="toggleDebugDetails()">
-                        <span id="debug-toggle-text">Show Details</span>
-                    </button>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -261,7 +258,7 @@
                     </div>
                 </div>
                 
-                <div id="debug-details" class="mt-4 hidden">
+                <div id="debug-details" class="mt-4">
                     <div class="divider">Detailed Metrics</div>
                     <div class="text-sm space-y-2">
                         <div class="flex justify-between">
@@ -309,6 +306,10 @@
                         Review Progress
                     </h3>
                     <div class="flex items-center gap-2">
+                        <button class="btn btn-xs btn-ghost" onclick="toggleDebugPanel()" title="Show/Hide Debug Information">
+                            <i class="fas fa-bug"></i>
+                            <span id="debug-panel-toggle-text">Debug</span>
+                        </button>
                         <span class="text-lg font-bold text-blue-600" id="progress-text" aria-live="polite">0%</span>
                         <span class="text-sm text-gray-500" id="elapsed-time">0s</span>
                     </div>
