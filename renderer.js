@@ -168,23 +168,23 @@ function formatTokenCount(tokenCount) {
 
 // Loading State Functions
 function showBranchLoadingState(show) {
-    const fromBranchSelect = document.getElementById('from-branch');
-    const toBranchSelect = document.getElementById('to-branch');
+    const fromBranchDropdown = document.getElementById('from-branch-button')?.closest('.dropdown');
+    const toBranchDropdown = document.getElementById('to-branch-button')?.closest('.dropdown');
     const fromSkeleton = document.getElementById('from-branch-skeleton');
     const toSkeleton = document.getElementById('to-branch-skeleton');
 
     if (show) {
-        // Hide selects, show skeletons
-        fromBranchSelect.classList.add('hidden');
-        toBranchSelect.classList.add('hidden');
-        fromSkeleton.classList.remove('hidden');
-        toSkeleton.classList.remove('hidden');
+        // Hide dropdowns, show skeletons
+        if (fromBranchDropdown) fromBranchDropdown.classList.add('hidden');
+        if (toBranchDropdown) toBranchDropdown.classList.add('hidden');
+        if (fromSkeleton) fromSkeleton.classList.remove('hidden');
+        if (toSkeleton) toSkeleton.classList.remove('hidden');
     } else {
-        // Show selects, hide skeletons
-        fromBranchSelect.classList.remove('hidden');
-        toBranchSelect.classList.remove('hidden');
-        fromSkeleton.classList.add('hidden');
-        toSkeleton.classList.add('hidden');
+        // Show dropdowns, hide skeletons
+        if (fromBranchDropdown) fromBranchDropdown.classList.remove('hidden');
+        if (toBranchDropdown) toBranchDropdown.classList.remove('hidden');
+        if (fromSkeleton) fromSkeleton.classList.add('hidden');
+        if (toSkeleton) toSkeleton.classList.add('hidden');
     }
 }
 
@@ -606,6 +606,74 @@ function updateDebugInfo(data) {
     hideDebugInfo();
 }
 
+// Branch dropdown functionality
+let fromBranchList = [];
+let toBranchList = [];
+
+
+function filterFromBranches(filterText) {
+    const list = document.getElementById('from-branch-list');
+    const filteredBranches = fromBranchList.filter(branch =>
+        branch.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    list.innerHTML = '';
+    filteredBranches.forEach(branch => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a onclick="selectFromBranch('${branch}')">${branch}</a>`;
+        list.appendChild(li);
+    });
+}
+
+function filterToBranches(filterText) {
+    const list = document.getElementById('to-branch-list');
+    const filteredBranches = toBranchList.filter(branch =>
+        branch.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    list.innerHTML = '';
+    filteredBranches.forEach(branch => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a onclick="selectToBranch('${branch}')">${branch}</a>`;
+        list.appendChild(li);
+    });
+}
+
+function selectFromBranch(branch) {
+    document.getElementById('from-branch-display').textContent = branch;
+    // Close DaisyUI dropdown by removing focus
+    const button = document.getElementById('from-branch-button');
+    button.blur();
+    document.activeElement?.blur();
+
+    // Additional method: remove tabindex temporarily to force close
+    setTimeout(() => {
+        button.setAttribute('tabindex', '-1');
+        setTimeout(() => button.setAttribute('tabindex', '0'), 100);
+    }, 10);
+
+    // Trigger preview update
+    previewTokenEstimate();
+}
+
+function selectToBranch(branch) {
+    document.getElementById('to-branch-display').textContent = branch;
+    // Close DaisyUI dropdown by removing focus
+    const button = document.getElementById('to-branch-button');
+    button.blur();
+    document.activeElement?.blur();
+
+    // Additional method: remove tabindex temporarily to force close
+    setTimeout(() => {
+        button.setAttribute('tabindex', '-1');
+        setTimeout(() => button.setAttribute('tabindex', '0'), 100);
+    }, 10);
+
+    // Trigger preview update
+    previewTokenEstimate();
+}
+
+
 // Repository Functions
 async function selectRepository() {
     let loadingToastId = null;
@@ -657,8 +725,8 @@ async function selectRepository() {
 
 async function previewTokenEstimate() {
     const repoPath = document.getElementById('repo-path').value.trim();
-    const fromBranch = document.getElementById('from-branch').value;
-    const toBranch = document.getElementById('to-branch').value;
+    const fromBranch = document.getElementById('from-branch-display').textContent;
+    const toBranch = document.getElementById('to-branch-display').textContent;
     
     // Clear previous preview
     const previewEl = document.getElementById('token-preview');
@@ -712,7 +780,7 @@ async function previewTokenEstimate() {
         // Show cost estimation if tokens are high
         const costWarningEl = document.getElementById('preview-cost-warning');
         if (estimatedInputTokens > 50000) {
-            costWarningEl.textContent = '<i class="fas fa-exclamation-triangle"></i> Large prompt - may take longer and use more resources';
+            costWarningEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Large prompt - may take longer and use more resources';
             costWarningEl.classList.remove('hidden');
         } else {
             costWarningEl.classList.add('hidden');
@@ -751,49 +819,37 @@ async function loadBranches(repoPath) {
             console.log(`📋 Found ${branches.length} branches:`, branches);
         }
         
-        const fromBranchSelect = document.getElementById('from-branch');
-        const toBranchSelect = document.getElementById('to-branch');
-        
-        // Clear existing options
-        fromBranchSelect.innerHTML = '';
-        toBranchSelect.innerHTML = '';
-        
-        // Add branch options
-        branches.forEach(branch => {
-            const fromOption = new Option(branch, branch);
-            const toOption = new Option(branch, branch);
-            fromBranchSelect.add(fromOption);
-            toBranchSelect.add(toOption);
-        });
-        
-        // Add HEAD option to target branch
-        toBranchSelect.add(new Option('HEAD', 'HEAD'));
-        
+        // Store branches for filtering
+        fromBranchList = [...branches];
+        toBranchList = [...branches, 'HEAD']; // Add HEAD option to target branch
+
+        // Populate dropdown lists
+        filterFromBranches(''); // Show all branches initially
+        filterToBranches(''); // Show all branches initially
+
         // Set default values
         if (branches.length > 0) {
-            fromBranchSelect.value = branches[0];
-            
+            // Set first branch as default from branch
+            selectFromBranch(branches[0]);
+
             // Try to set main/master as default target
             const mainBranches = ['main', 'master', 'develop'];
+            let defaultToBranch = 'HEAD';
             for (const mainBranch of mainBranches) {
                 if (branches.includes(mainBranch)) {
-                    toBranchSelect.value = mainBranch;
+                    defaultToBranch = mainBranch;
                     break;
                 }
             }
-            if (!toBranchSelect.value) {
-                toBranchSelect.value = 'HEAD';
-            }
+            selectToBranch(defaultToBranch);
         }
         
         // Enable controls
-        fromBranchSelect.disabled = false;
-        toBranchSelect.disabled = false;
+        const fromBranchButton = document.getElementById('from-branch-button');
+        const toBranchButton = document.getElementById('to-branch-button');
+        if (fromBranchButton) fromBranchButton.removeAttribute('disabled');
+        if (toBranchButton) toBranchButton.removeAttribute('disabled');
         // Don't enable start button here - let previewTokenEstimate handle it
-        
-        // Add event listeners for automatic preview
-        fromBranchSelect.addEventListener('change', previewTokenEstimate);
-        toBranchSelect.addEventListener('change', previewTokenEstimate);
         
         // Trigger initial preview
         setTimeout(previewTokenEstimate, 100);
@@ -838,13 +894,16 @@ async function loadBranches(repoPath) {
 
         showAlert(userMessage, 'error');
         
-        // Reset branch selects
-        const fromBranchSelect = document.getElementById('from-branch');
-        const toBranchSelect = document.getElementById('to-branch');
-        fromBranchSelect.innerHTML = '<option>Error loading branches</option>';
-        toBranchSelect.innerHTML = '<option>Error loading branches</option>';
-        fromBranchSelect.disabled = true;
-        toBranchSelect.disabled = true;
+        // Reset branch dropdowns
+        const fromBranchButton = document.getElementById('from-branch-button');
+        const toBranchButton = document.getElementById('to-branch-button');
+        const fromBranchDisplay = document.getElementById('from-branch-display');
+        const toBranchDisplay = document.getElementById('to-branch-display');
+
+        if (fromBranchDisplay) fromBranchDisplay.textContent = 'Error loading branches';
+        if (toBranchDisplay) toBranchDisplay.textContent = 'Error loading branches';
+        if (fromBranchButton) fromBranchButton.setAttribute('disabled', '');
+        if (toBranchButton) toBranchButton.setAttribute('disabled', '');
         document.getElementById('start-review-btn').disabled = true;
     }
 }
@@ -1084,8 +1143,8 @@ async function startReview() {
 
     const provider = document.getElementById('ai-provider').value;
     const repoPath = document.getElementById('repo-path').value.trim();
-    const fromBranch = document.getElementById('from-branch').value;
-    const toBranch = document.getElementById('to-branch').value;
+    const fromBranch = document.getElementById('from-branch-display').textContent;
+    const toBranch = document.getElementById('to-branch-display').textContent;
 
     // Get provider-specific configuration
     let aiConfig;

@@ -176,3 +176,23 @@ dialog.modal .modal-box {
     position: relative !important;
     z-index: 1000 !important;
 }
+
+/* Enhanced dropdown menu styling - preserve DaisyUI functionality */
+.dropdown-content {
+    width: 100% !important;
+    min-width: 100% !important;
+}
+
+.dropdown-content .menu {
+    width: 100% !important;
+}
+
+.dropdown-content .menu li > a {
+    font-size: 0.95rem;
+    min-height: 2.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}

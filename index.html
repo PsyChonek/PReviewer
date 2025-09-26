@@ -115,24 +115,48 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-control">
-                            <label class="label" for="from-branch">
+                            <label class="label" for="from-branch-input">
                                 <span class="label-text font-medium">From Branch (Source)</span>
                             </label>
-                            <select id="from-branch" class="select select-bordered w-full" disabled aria-describedby="from-branch-help">
-                                <option>Select repository first...</option>
-                            </select>
+                            <div class="dropdown dropdown-bottom w-full">
+                                <div id="from-branch-button" tabindex="0" role="button" class="btn btn-outline w-full justify-start" disabled>
+                                    <span id="from-branch-display">Select repository first...</span>
+                                    <i class="fas fa-chevron-down ml-auto"></i>
+                                </div>
+                                <div tabindex="0" class="dropdown-content z-[1] menu p-0 shadow bg-base-100 rounded-box w-full">
+                                    <div class="p-2">
+                                        <input id="from-branch-filter" type="text" placeholder="Search branches..."
+                                               class="input input-bordered input-sm w-full" onkeyup="filterFromBranches(this.value)">
+                                    </div>
+                                    <ul id="from-branch-list" class="menu menu-lg max-h-60 overflow-y-auto">
+                                        <li><a onclick="selectFromBranch('Select repository first...')">Select repository first...</a></li>
+                                    </ul>
+                                </div>
+                            </div>
                             <!-- Skeleton loader for branches -->
                             <div id="from-branch-skeleton" class="skeleton skeleton-button w-full hidden"></div>
                             <div id="from-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Branch containing the changes to review</div>
                         </div>
 
                         <div class="form-control">
-                            <label class="label" for="to-branch">
+                            <label class="label" for="to-branch-input">
                                 <span class="label-text font-medium">To Branch (Target)</span>
                             </label>
-                            <select id="to-branch" class="select select-bordered w-full" disabled aria-describedby="to-branch-help">
-                                <option>Select repository first...</option>
-                            </select>
+                            <div class="dropdown dropdown-bottom w-full">
+                                <div id="to-branch-button" tabindex="0" role="button" class="btn btn-outline w-full justify-start" disabled>
+                                    <span id="to-branch-display">Select repository first...</span>
+                                    <i class="fas fa-chevron-down ml-auto"></i>
+                                </div>
+                                <div tabindex="0" class="dropdown-content z-[1] menu p-0 shadow bg-base-100 rounded-box w-full">
+                                    <div class="p-2">
+                                        <input id="to-branch-filter" type="text" placeholder="Search branches..."
+                                               class="input input-bordered input-sm w-full" onkeyup="filterToBranches(this.value)">
+                                    </div>
+                                    <ul id="to-branch-list" class="menu menu-lg max-h-60 overflow-y-auto">
+                                        <li><a onclick="selectToBranch('Select repository first...')">Select repository first...</a></li>
+                                    </ul>
+                                </div>
+                            </div>
                             <!-- Skeleton loader for branches -->
                             <div id="to-branch-skeleton" class="skeleton skeleton-button w-full hidden"></div>
                             <div id="to-branch-help" class="label-text-alt text-sm text-gray-500 mt-1">Target branch to compare against (usually main/master)</div>
