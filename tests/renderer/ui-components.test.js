@@ -134,11 +134,11 @@ describe('UI Components', () => {
 
   describe('Branch Selection', () => {
     test('should initially disable branch selectors', () => {
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
+      const fromBranchButton = document.getElementById('from-branch-button');
+      const toBranchButton = document.getElementById('to-branch-button');
 
-      expect(fromBranch.disabled).toBeTruthy();
-      expect(toBranch.disabled).toBeTruthy();
+      expect(fromBranchButton.hasAttribute('disabled')).toBeTruthy();
+      expect(toBranchButton.hasAttribute('disabled')).toBeTruthy();
     });
 
     test('should populate branches after repository load', async () => {
@@ -149,15 +149,18 @@ describe('UI Components', () => {
 
       await loadBranches('/test/repo');
 
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
+      const fromBranchButton = document.getElementById('from-branch-button');
+      const toBranchButton = document.getElementById('to-branch-button');
 
-      expect(fromBranch.disabled).toBeFalsy();
-      expect(toBranch.disabled).toBeFalsy();
+      expect(fromBranchButton.hasAttribute('disabled')).toBeFalsy();
+      expect(toBranchButton.hasAttribute('disabled')).toBeFalsy();
 
-      // Check if branches were added to options
-      const fromOptions = Array.from(fromBranch.options).map(opt => opt.value);
-      const toOptions = Array.from(toBranch.options).map(opt => opt.value);
+      // Check if branches were added to dropdown lists
+      const fromBranchList = document.getElementById('from-branch-list');
+      const toBranchList = document.getElementById('to-branch-list');
+
+      const fromOptions = Array.from(fromBranchList.querySelectorAll('a')).map(a => a.textContent);
+      const toOptions = Array.from(toBranchList.querySelectorAll('a')).map(a => a.textContent);
 
       expect(fromOptions).toEqual(expect.arrayContaining(branches));
       expect(toOptions).toEqual(expect.arrayContaining([...branches, 'HEAD']));
@@ -171,11 +174,11 @@ describe('UI Components', () => {
 
       await loadBranches('/test/repo');
 
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
+      const fromBranchDisplay = document.getElementById('from-branch-display');
+      const toBranchDisplay = document.getElementById('to-branch-display');
 
-      expect(fromBranch.value).toBe('main'); // First branch (branches[0])
-      expect(toBranch.value).toBe('main'); // Preferred main branch
+      expect(fromBranchDisplay.textContent).toBe('main'); // First branch (branches[0])
+      expect(toBranchDisplay.textContent).toBe('main'); // Preferred main branch
     });
 
     test('should handle repository with only master branch', async () => {
@@ -186,8 +189,8 @@ describe('UI Components', () => {
 
       await loadBranches('/test/repo');
 
-      const toBranch = document.getElementById('to-branch');
-      expect(toBranch.value).toBe('master');
+      const toBranchDisplay = document.getElementById('to-branch-display');
+      expect(toBranchDisplay.textContent).toBe('master');
     });
 
     test('should fall back to HEAD when no main branches exist', async () => {
@@ -198,16 +201,15 @@ describe('UI Components', () => {
 
       await loadBranches('/test/repo');
 
-      const toBranch = document.getElementById('to-branch');
+      const toBranchList = document.getElementById('to-branch-list');
+      const toBranchDisplay = document.getElementById('to-branch-display');
 
-      // Check if HEAD option exists
-      const options = Array.from(toBranch.options).map(opt => opt.value);
+      // Check if HEAD option exists in dropdown list
+      const options = Array.from(toBranchList.querySelectorAll('a')).map(a => a.textContent);
       expect(options).toContain('HEAD');
 
-      // Note: Due to select element behavior, the first option gets selected by default
-      // The current implementation has a logic bug where it doesn't properly set to HEAD
-      // when no main branches exist, so it stays with the first option
-      expect(toBranch.value).toBe('feature-1'); // Current behavior - select keeps first option
+      // When no main branches exist, it should fall back to HEAD
+      expect(toBranchDisplay.textContent).toBe('HEAD');
     });
   });
 
@@ -218,10 +220,17 @@ describe('UI Components', () => {
     });
 
     test('should enable start review button after branches are loaded', async () => {
-      // Mock the electronAPI call
+      // Setup repo path for previewTokenEstimate to work
+      document.getElementById('repo-path').value = '/test/repo';
+
+      // Mock the electronAPI calls
       window.electronAPI.getGitBranches.mockResolvedValueOnce(['main', 'feature']);
+      window.electronAPI.getGitDiff.mockResolvedValueOnce('mock diff content');
 
       await loadBranches('/test/repo');
+
+      // Wait for the setTimeout call to previewTokenEstimate
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       const startBtn = document.getElementById('start-review-btn');
       expect(startBtn.disabled).toBeFalsy();
@@ -232,15 +241,16 @@ describe('UI Components', () => {
       window.currentRepoPath = '/test/repo';
       document.getElementById('repo-path').value = '/test/repo';
 
-      // Setup branch selects with options
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
-      fromBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      toBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      fromBranch.disabled = false;
-      toBranch.disabled = false;
-      fromBranch.value = 'feature';
-      toBranch.value = 'main';
+      // Setup branch dropdowns with selections
+      const fromBranchButton = document.getElementById('from-branch-button');
+      const toBranchButton = document.getElementById('to-branch-button');
+      const fromBranchDisplay = document.getElementById('from-branch-display');
+      const toBranchDisplay = document.getElementById('to-branch-display');
+
+      fromBranchButton.removeAttribute('disabled');
+      toBranchButton.removeAttribute('disabled');
+      fromBranchDisplay.textContent = 'feature';
+      toBranchDisplay.textContent = 'main';
 
       // Setup required Ollama configuration
       document.getElementById('ollama-url').value = 'http://localhost:11434';
@@ -259,8 +269,8 @@ describe('UI Components', () => {
       // TODO: Fix this test - startReview function has validation issues in test environment
       // For now, verify the setup is correct but don't check the button state changes
       expect(window.currentRepoPath).toBe('/test/repo');
-      expect(document.getElementById('from-branch').value).toBe('feature');
-      expect(document.getElementById('to-branch').value).toBe('main');
+      expect(document.getElementById('from-branch-display').textContent).toBe('feature');
+      expect(document.getElementById('to-branch-display').textContent).toBe('main');
     });
 
     test('should validate configuration before starting review', async () => {
@@ -464,13 +474,11 @@ describe('UI Components', () => {
       // Setup repository state
       document.getElementById('repo-path').value = '/test/repo';
 
-      // Setup branch selects with options
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
-      fromBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      toBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      fromBranch.value = 'feature';
-      toBranch.value = 'main';
+      // Setup branch dropdowns with selections
+      const fromBranchDisplay = document.getElementById('from-branch-display');
+      const toBranchDisplay = document.getElementById('to-branch-display');
+      fromBranchDisplay.textContent = 'feature';
+      toBranchDisplay.textContent = 'main';
 
       // Mock diff generation
       window.electronAPI.getGitDiff.mockResolvedValueOnce(createMockDiff('code'));
@@ -492,13 +500,11 @@ describe('UI Components', () => {
     test('should hide preview for invalid branch selection', async () => {
       document.getElementById('repo-path').value = '/test/repo';
 
-      // Setup branch selects with options
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
-      fromBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      toBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      fromBranch.value = 'feature';
-      toBranch.value = 'feature'; // Same branch
+      // Setup branch dropdowns with same selection (invalid)
+      const fromBranchDisplay = document.getElementById('from-branch-display');
+      const toBranchDisplay = document.getElementById('to-branch-display');
+      fromBranchDisplay.textContent = 'feature';
+      toBranchDisplay.textContent = 'feature'; // Same branch
 
       await previewTokenEstimate();
 
@@ -509,13 +515,11 @@ describe('UI Components', () => {
     test('should show warning for large token estimates', async () => {
       document.getElementById('repo-path').value = '/test/repo';
 
-      // Setup branch selects with options
-      const fromBranch = document.getElementById('from-branch');
-      const toBranch = document.getElementById('to-branch');
-      fromBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      toBranch.innerHTML = '<option value="feature">feature</option><option value="main">main</option>';
-      fromBranch.value = 'feature';
-      toBranch.value = 'main';
+      // Setup branch dropdowns with selections
+      const fromBranchDisplay = document.getElementById('from-branch-display');
+      const toBranchDisplay = document.getElementById('to-branch-display');
+      fromBranchDisplay.textContent = 'feature';
+      toBranchDisplay.textContent = 'main';
 
       // Mock large diff
       window.electronAPI.getGitDiff.mockResolvedValueOnce(createMockDiff('large'));
@@ -541,8 +545,8 @@ describe('UI Components', () => {
 
     test('should have proper form labels', () => {
       const repoPathLabel = document.querySelector('label[for="repo-path"]');
-      const fromBranchLabel = document.querySelector('label[for="from-branch"]');
-      const toBranchLabel = document.querySelector('label[for="to-branch"]');
+      const fromBranchLabel = document.querySelector('label[for="from-branch-button"]');
+      const toBranchLabel = document.querySelector('label[for="to-branch-button"]');
 
       expect(repoPathLabel).toBeTruthy();
       expect(fromBranchLabel).toBeTruthy();
