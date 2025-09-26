@@ -31,11 +31,42 @@ const rendererContent = fs.readFileSync(rendererPath, 'utf8');
 const modifiedRendererContent = rendererContent
   .replace('let currentRepoPath = null;', 'window.currentRepoPath = null;')
   .replace('let reviewInProgress = false;', 'window.reviewInProgress = false;')
+  .replace('let currentOutputMarkdown = \'\';', 'window.currentOutputMarkdown = \'\';')
   .replace(/currentRepoPath/g, 'window.currentRepoPath')
-  .replace(/reviewInProgress/g, 'window.reviewInProgress');
+  .replace(/reviewInProgress/g, 'window.reviewInProgress')
+  .replace(/currentOutputMarkdown/g, 'window.currentOutputMarkdown');
 
 // Extract key functions for testing
 eval(modifiedRendererContent);
+
+// Helper function to create mock diff data
+function createMockDiff(type) {
+  switch (type) {
+    case 'large':
+      // Create a very large diff that would exceed 50k tokens
+      // Each line is roughly 4-6 tokens, so we need ~10k+ lines
+      return 'diff --git a/large-file.js b/large-file.js\n' +
+             '--- a/large-file.js\n' +
+             '+++ b/large-file.js\n' +
+             '@@ -1,15000 +1,15000 @@\n' +
+             '-function oldCode() { return "this is old code with lots of content"; }\n'.repeat(7500) +
+             '+function newCode() { return "this is new code with lots of content"; }\n'.repeat(7500);
+    case 'code':
+      return 'diff --git a/test.js b/test.js\n' +
+             '--- a/test.js\n' +
+             '+++ b/test.js\n' +
+             '@@ -1,3 +1,3 @@\n' +
+             '-console.log("old");\n' +
+             '+console.log("new");';
+    default:
+      return 'diff --git a/file.txt b/file.txt\n' +
+             '--- a/file.txt\n' +
+             '+++ b/file.txt\n' +
+             '@@ -1 +1 @@\n' +
+             '-old\n' +
+             '+new';
+  }
+}
 
 describe('UI Components', () => {
   beforeEach(() => {
@@ -88,12 +119,16 @@ describe('UI Components', () => {
 
     test('should show error when repository selection fails', async () => {
       const errorMessage = 'Permission denied';
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       window.electronAPI.selectDirectory.mockRejectedValueOnce(new Error(errorMessage));
 
       await selectRepository();
 
       // Verify error was shown (would check for error alert in real implementation)
       expect(window.electronAPI.selectDirectory).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith('Error selecting repository:', expect.any(Error));
+
+      consoleSpy.mockRestore();
     });
   });
 
@@ -544,13 +579,24 @@ describe('UI Components', () => {
     });
 
     test('should handle clipboard operations gracefully', async () => {
-      // Mock clipboard failure
+      // Set markdown content directly for copying
+      window.currentOutputMarkdown = 'Test content for clipboard';
+
+      // Mock clipboard failure and console.error
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       navigator.clipboard.writeText.mockRejectedValueOnce(new Error('Clipboard error'));
 
-      await copyOutput();
+      // Call copyOutput and wait for the promise to complete
+      copyOutput();
+
+      // Wait for the promise rejection to be handled
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Should handle error gracefully without crashing
       expect(navigator.clipboard.writeText).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith('Copy failed:', expect.any(Error));
+
+      consoleSpy.mockRestore();
     });
 
     test('should handle export operations', () => {

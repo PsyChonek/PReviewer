@@ -8,7 +8,10 @@
     
     <!-- Tailwind CSS + DaisyUI (built locally) -->
     <link href="./dist/style.css" rel="stylesheet" type="text/css" />
-    
+
+    <!-- FontAwesome -->
+    <link href="./node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css" />
+
     <!-- Custom styles -->
     <style>
         .code-diff {
@@ -68,7 +71,7 @@
     <!-- Navigation -->
     <nav class="navbar bg-primary text-primary-content shadow-lg" role="banner" aria-label="Main navigation">
         <div class="flex-1">
-            <h1 class="btn btn-ghost text-xl" tabindex="0">🔍 AI PR Reviewer</h1>
+            <h1 class="btn btn-ghost text-xl" tabindex="0"><i class="fas fa-search"></i> AI PR Reviewer</h1>
         </div>
         <div class="flex-none">
         </div>
@@ -104,7 +107,7 @@
                             <input type="text" id="repo-path" placeholder="Select a Git repository..."
                                    class="input input-bordered flex-1" readonly aria-describedby="repo-path-help" />
                             <button class="btn btn-outline btn-primary" onclick="selectRepository()" aria-label="Browse for repository folder">
-                                📁 Browse
+                                <i class="fas fa-folder-open"></i> Browse
                             </button>
                         </div>
                         <div id="repo-path-help" class="label-text-alt text-sm text-gray-500 mt-1" aria-live="polite">Choose a folder containing a Git repository</div>
@@ -140,10 +143,10 @@
                 <!-- Action Buttons -->
                 <div class="card-actions justify-center mt-6">
                     <button class="btn btn-success btn-lg" id="start-review-btn" onclick="startReview()" disabled aria-describedby="review-status">
-                        🚀 Start AI Review
+                        <i class="fas fa-rocket"></i> Start AI Review
                     </button>
                     <button class="btn btn-warning btn-lg hidden" id="stop-review-btn" onclick="stopReview()" aria-label="Stop the current review process">
-                        ⏹️ Stop Review
+                        <i class="fas fa-stop"></i> Stop Review
                     </button>
                 </div>
             </div>
@@ -153,9 +156,9 @@
         <div id="token-preview" class="card bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg mb-6 hidden">
             <div class="card-body">
                 <div class="flex items-center gap-2 mb-3">
-                    <h3 class="text-lg font-bold">📊 Review Preview</h3>
+                    <h3 class="text-lg font-bold"><i class="fas fa-chart-bar"></i> Review Preview</h3>
                     <button class="btn btn-xs btn-ghost" onclick="previewTokenEstimate()" title="Refresh Preview">
-                        🔄
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
                 
@@ -235,7 +238,7 @@
         <div id="debug-section" class="card bg-base-200 shadow-lg mb-6 hidden">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold">🔧 Debug Information</h3>
+                    <h3 class="text-lg font-bold"><i class="fas fa-tools"></i> Debug Information</h3>
                     <button class="btn btn-sm btn-ghost" onclick="toggleDebugDetails()">
                         <span id="debug-toggle-text">Show Details</span>
                     </button>
@@ -316,18 +319,12 @@
                     <progress class="progress progress-primary w-full progress-enhanced" id="progress-bar" value="0" max="100"></progress>
                 </div>
 
-                <!-- Stage Indicators -->
-                <div id="stage-indicators" class="space-y-2">
-                    <!-- Stages will be dynamically populated -->
-                </div>
-
                 <!-- Current Status -->
-                <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-2">
+                <div class="mt-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
                         <div id="status-spinner" class="stage-spinner hidden"></div>
                         <span class="text-sm font-medium" id="status-text" aria-live="polite">Ready</span>
                     </div>
-                    <div id="substatus-text" class="text-xs text-gray-600 mt-1 hidden"></div>
                 </div>
             </div>
         </section>
@@ -337,17 +334,17 @@
             <div class="card-body">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="card-title text-2xl">
-                        🎯 AI Review Output
+                        <i class="fas fa-bullseye"></i> AI Review Output
                     </h2>
                     <div class="btn-group" role="group" aria-label="Output actions">
                         <button class="btn btn-sm btn-outline" onclick="clearOutput()" aria-label="Clear output text">
-                            🗑️ Clear
+                            <i class="fas fa-trash"></i> Clear
                         </button>
                         <button class="btn btn-sm btn-outline" onclick="copyOutput()" aria-label="Copy output to clipboard">
-                            📋 Copy
+                            <i class="fas fa-copy"></i> Copy
                         </button>
                         <button class="btn btn-sm btn-outline" onclick="exportOutput()" aria-label="Export output to file">
-                            💾 Export
+                            <i class="fas fa-download"></i> Export
                         </button>
                     </div>
                 </div>
@@ -355,7 +352,7 @@
                 <div class="bg-base-200 border border-base-300 rounded-lg output-text overflow-auto" id="output-container" role="log" aria-live="polite" aria-label="Review output display">
                     <div id="output-content" class="px-6 py-4 prose prose-sm max-w-none dark:prose-invert">
                         <div class="text-center text-base-content/60 py-8">
-                            <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! 🚀</h3>
+                            <h3 class="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! <i class="fas fa-rocket"></i></h3>
                             <div class="text-left max-w-2xl mx-auto space-y-2">
                                 <p><strong>Getting Started:</strong></p>
                                 <p>1. Configure your AI provider (Ollama or Azure AI) in Settings</p>
@@ -390,7 +387,7 @@
     <dialog id="config-modal" class="modal">
         <div class="modal-box max-w-2xl">
             <form method="dialog">
-                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"><i class="fas fa-times"></i></button>
             </form>
             <h3 class="font-bold text-lg mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -413,7 +410,7 @@
                     <div class="form-control mb-4">
                         <label class="label">
                             <span class="label-text font-medium">AI Provider</span>
-                            <span class="label-text-alt text-info cursor-help" title="Choose between Ollama (local) or Azure AI (cloud)">ℹ️</span>
+                            <span class="label-text-alt text-info cursor-help" title="Choose between Ollama (local) or Azure AI (cloud)"><i class="fas fa-info-circle"></i></span>
                         </label>
                         <select id="ai-provider" class="select select-bordered w-full" onchange="toggleProviderSettings()">
                             <option value="ollama">Ollama (Local)</option>
@@ -435,7 +432,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Ollama URL</span>
-                                <span class="label-text-alt text-info cursor-help" title="The URL endpoint for your Ollama server">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="The URL endpoint for your Ollama server"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <input type="text" id="ollama-url" placeholder="http://localhost:11434/api/generate"
                                    class="input input-bordered w-full" value="http://localhost:11434/api/generate" />
@@ -447,7 +444,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Ollama Model</span>
-                                <span class="label-text-alt text-info cursor-help" title="The Ollama model to use for code review">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="The Ollama model to use for code review"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <input type="text" id="ollama-model" placeholder="codellama"
                                    class="input input-bordered w-full" value="codellama" />
@@ -471,7 +468,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Azure AI Endpoint</span>
-                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI service endpoint URL">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI service endpoint URL"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <input type="text" id="azure-endpoint" placeholder="https://your-resource.cognitiveservices.azure.com"
                                    class="input input-bordered w-full" />
@@ -483,7 +480,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">API Key</span>
-                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI API key">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="Your Azure OpenAI API key"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <input type="password" id="azure-api-key" placeholder="Enter your Azure AI API key"
                                    class="input input-bordered w-full" />
@@ -495,7 +492,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Deployment Name</span>
-                                <span class="label-text-alt text-info cursor-help" title="The name of your model deployment">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="The name of your model deployment"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <input type="text" id="azure-deployment" placeholder="gpt-4"
                                    class="input input-bordered w-full" />
@@ -525,7 +522,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span class="label-text font-medium">Enable Debug Logging</span>
-                                    <span class="label-text-alt text-info cursor-help ml-2" title="Enables detailed console logging for troubleshooting">ℹ️</span>
+                                    <span class="label-text-alt text-info cursor-help ml-2" title="Enables detailed console logging for troubleshooting"><i class="fas fa-info-circle"></i></span>
                                 </div>
                                 <input type="checkbox" id="debug-enabled" class="toggle toggle-primary" />
                             </label>
@@ -551,7 +548,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Base System Prompt</span>
-                                <span class="label-text-alt text-info cursor-help" title="The main instructions for the AI reviewer">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="The main instructions for the AI reviewer"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <textarea id="base-prompt" placeholder="Enter the base system prompt for the AI..." 
                                       class="textarea textarea-bordered h-32 w-full font-mono text-sm"></textarea>
@@ -566,7 +563,7 @@
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Additional User Instructions</span>
-                                <span class="label-text-alt text-info cursor-help" title="Custom instructions to append to the base prompt">ℹ️</span>
+                                <span class="label-text-alt text-info cursor-help" title="Custom instructions to append to the base prompt"><i class="fas fa-info-circle"></i></span>
                             </label>
                             <textarea id="user-prompt" placeholder="Enter any additional instructions..." 
                                       class="textarea textarea-bordered h-24 w-full font-mono text-sm"></textarea>

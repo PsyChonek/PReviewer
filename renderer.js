@@ -395,7 +395,6 @@ function updateProgress(percentage, text = '', stage = null, substatus = null) {
     const progressSection = document.getElementById('progress-section');
     const elapsedTimeEl = document.getElementById('elapsed-time');
     const statusSpinner = document.getElementById('status-spinner');
-    const substatusEl = document.getElementById('substatus-text');
 
     if (progressBar) {
         progressBar.value = percentage;
@@ -427,21 +426,8 @@ function updateProgress(percentage, text = '', stage = null, substatus = null) {
         statusSpinner.classList.add('hidden');
     }
 
-    // Update substatus
-    if (substatus && substatusEl) {
-        substatusEl.textContent = substatus;
-        substatusEl.classList.remove('hidden');
-    } else if (substatusEl) {
-        substatusEl.classList.add('hidden');
-    }
-
     if (text) {
         updateStatus(text, percentage < 100);
-    }
-
-    // Update stage indicators
-    if (stage) {
-        updateStageIndicators(stage, percentage);
     }
 
     if (percentage > 0) {
@@ -451,55 +437,6 @@ function updateProgress(percentage, text = '', stage = null, substatus = null) {
     }
 }
 
-function updateStageIndicators(currentStage, progress) {
-    const stageContainer = document.getElementById('stage-indicators');
-
-    const stages = [
-        { id: 'init', name: 'Initializing', range: [0, 15] },
-        { id: 'diff', name: 'Generating Diff', range: [15, 35] },
-        { id: 'prepare', name: 'Preparing Analysis', range: [35, 45] },
-        { id: 'ai', name: 'AI Processing', range: [45, 90] },
-        { id: 'format', name: 'Formatting Results', range: [90, 99] },
-        { id: 'complete', name: 'Review Complete', range: [99, 100] }
-    ];
-
-    // Clear existing indicators
-    stageContainer.innerHTML = '';
-
-    stages.forEach(stage => {
-        const stageEl = document.createElement('div');
-        const isActive = currentStage === stage.id;
-        const isCompleted = progress > stage.range[1] || (progress === 100 && stage.id !== 'complete');
-        const isInProgress = (progress >= stage.range[0] && progress <= stage.range[1]) || isActive;
-        const isCurrentlyComplete = progress === 100 && stage.id === 'complete';
-
-        stageEl.className = `stage-indicator ${(isActive || isInProgress || isCurrentlyComplete) ? 'active' : ''}`;
-
-        let icon = '';
-        if (isCompleted || isCurrentlyComplete) {
-            icon = '<div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg></div>';
-        } else if (isActive || isInProgress) {
-            icon = '<div class="stage-spinner"></div>';
-        } else {
-            icon = '<div class="w-4 h-4 bg-gray-300 rounded-full"></div>';
-        }
-
-        let timeDisplay = '';
-        if (isInProgress && !isCompleted && !isCurrentlyComplete) {
-            timeDisplay = `<span class="stage-time">${Math.round(progress)}%</span>`;
-        } else if (isCompleted || isCurrentlyComplete) {
-            timeDisplay = '<span class="stage-time text-green-600">✓</span>';
-        }
-
-        stageEl.innerHTML = `
-            ${icon}
-            <span class="stage-text">${stage.name}</span>
-            ${timeDisplay}
-        `;
-
-        stageContainer.appendChild(stageEl);
-    });
-}
 
 function showStats() {
     document.getElementById('stats-section').classList.remove('hidden');
@@ -646,12 +583,6 @@ function updateDebugInfo(data) {
         elapsedTimeEl.textContent = '0s';
     }
 
-    // Clear stage indicators
-    const stageContainer = document.getElementById('stage-indicators');
-    if (stageContainer) {
-        stageContainer.innerHTML = '';
-    }
-
     // Hide preview section when resetting
     document.getElementById('token-preview').classList.add('hidden');
 
@@ -720,9 +651,11 @@ async function previewTokenEstimate() {
     const previewEl = document.getElementById('token-preview');
     previewEl.classList.add('hidden');
     
-    if (!repoPath || !fromBranch || !toBranch || 
+    if (!repoPath || !fromBranch || !toBranch ||
         fromBranch === 'Select repository first...' || toBranch === 'Select repository first...' ||
         fromBranch === toBranch) {
+        // Disable start button when invalid selection
+        document.getElementById('start-review-btn').disabled = true;
         return;
     }
     
@@ -737,6 +670,8 @@ async function previewTokenEstimate() {
             document.getElementById('preview-details').classList.add('hidden');
             previewEl.classList.remove('hidden');
             updateStatus('Ready');
+            // Disable start button when no changes detected
+            document.getElementById('start-review-btn').disabled = true;
             return;
         }
         
@@ -764,7 +699,7 @@ async function previewTokenEstimate() {
         // Show cost estimation if tokens are high
         const costWarningEl = document.getElementById('preview-cost-warning');
         if (estimatedInputTokens > 50000) {
-            costWarningEl.textContent = '⚠️ Large prompt - may take longer and use more resources';
+            costWarningEl.textContent = '<i class="fas fa-exclamation-triangle"></i> Large prompt - may take longer and use more resources';
             costWarningEl.classList.remove('hidden');
         } else {
             costWarningEl.classList.add('hidden');
@@ -772,12 +707,17 @@ async function previewTokenEstimate() {
         
         document.getElementById('preview-details').classList.remove('hidden');
         previewEl.classList.remove('hidden');
+
+        // Enable start button when changes are detected
+        document.getElementById('start-review-btn').disabled = false;
         
     } catch (error) {
         console.error('Error generating preview:', error);
         document.getElementById('preview-status').textContent = `Error analyzing changes: ${error.message}`;
         document.getElementById('preview-details').classList.add('hidden');
         previewEl.classList.remove('hidden');
+        // Disable start button on error
+        document.getElementById('start-review-btn').disabled = true;
     } finally {
         updateStatus('Ready');
     }
@@ -789,7 +729,7 @@ async function loadBranches(repoPath) {
 
     try {
         if (window.DEBUG) {
-            console.log(`🔍 Loading branches for repository: ${repoPath}`);
+            console.log(`Loading branches for repository: ${repoPath}`);
         }
 
         const branches = await window.electronAPI.getGitBranches(repoPath);
@@ -836,7 +776,7 @@ async function loadBranches(repoPath) {
         // Enable controls
         fromBranchSelect.disabled = false;
         toBranchSelect.disabled = false;
-        document.getElementById('start-review-btn').disabled = false;
+        // Don't enable start button here - let previewTokenEstimate handle it
         
         // Add event listeners for automatic preview
         fromBranchSelect.addEventListener('change', previewTokenEstimate);
@@ -1160,7 +1100,7 @@ async function startReview() {
     }
 
     if (window.DEBUG) {
-        console.log('🚀 Starting review with configuration:', {
+        console.log('Starting review with configuration:', {
             repoPath,
             fromBranch,
             toBranch,
@@ -1246,7 +1186,7 @@ async function startReview() {
             }
         }
 
-        appendOutput(`\n💥 ${userMessage}\n`, 'error');
+        appendOutput(`\n<i class="fas fa-bomb"></i> ${userMessage}\n`, 'error');
         showAlert(userMessage, 'error');
     } finally {
         // Clean up intervals and listeners
@@ -1320,11 +1260,11 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     });
 
     // Header
-    appendOutput('🔍 AI Code Review Analysis\n', 'header');
+    appendOutput('<i class="fas fa-search"></i> AI Code Review Analysis\n', 'header');
     appendOutput('━'.repeat(60) + '\n\n', 'separator');
     
     // Configuration
-    appendOutput('📊 Review Configuration\n', 'subheader');
+    appendOutput('<i class="fas fa-chart-bar"></i> Review Configuration\n', 'subheader');
     appendOutput(`• Repository: ${repoPath.split(/[\/\\]/).pop()}\n`, 'info');
     appendOutput(`• Path: ${repoPath}\n`, 'info');
     appendOutput(`• Comparing: ${toBranch} → ${fromBranch}\n`, 'info');
@@ -1338,7 +1278,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         appendOutput(`• Endpoint: ${aiConfig.url}\n\n`, 'info');
     }
     
-    updateProgress(10, 'Initializing review process...', 'init', 'Setting up analysis environment');
+    updateProgress(10, 'Initializing review process...');
     updateStats(0, 0, modelName, 'initializing');
 
     // Start real-time updates
@@ -1349,10 +1289,10 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         }
     }, 100); // Update every 100ms for smooth real-time feel
 
-    updateProgress(15, 'Generating diff...', 'diff', 'Analyzing code changes between branches');
+    updateProgress(15, 'Generating diff...');
     
     // Generate diff
-    appendOutput('🔄 Generating Code Diff...\n', 'subheader');
+    appendOutput('<i class="fas fa-sync-alt"></i> Generating Code Diff...\n', 'subheader');
     appendOutput(`• Source branch: ${fromBranch}\n`, 'info');
     appendOutput(`• Target branch: ${toBranch}\n`, 'info');
     appendOutput('• Finding differences...\n', 'info');
@@ -1369,7 +1309,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const diffElapsed = (Date.now() - diffStartTime) / 1000;
     
     if (!diff || diff.trim() === '') {
-        appendOutput('❌ No diff generated or found.\n', 'warning');
+        appendOutput('<i class="fas fa-times"></i> No diff generated or found.\n', 'warning');
         appendOutput('The branches may be identical or have no common history.\n', 'info');
         updateProgress(100, 'No changes found');
         clearInterval(progressUpdateInterval);
@@ -1378,10 +1318,10 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         return;
     }
     
-    appendOutput('✅ Diff generated successfully.\n', 'success');
-    appendOutput(`📈 Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
+    appendOutput('<i class="fas fa-check"></i> Diff generated successfully.\n', 'success');
+    appendOutput(`<i class="fas fa-chart-line"></i> Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
     
-    updateProgress(35, 'Preparing AI analysis...', 'prepare', 'Estimating tokens and building prompt');
+    updateProgress(35, 'Preparing AI analysis...');
     updateStats((Date.now() - reviewStartTime) / 1000, null, modelName, 'preparing');
     
     // Calculate estimated tokens for the prompt
@@ -1398,11 +1338,11 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const estimatedOutputTokens = Math.ceil(baseResponseTokens + (diffComplexity * 50)); // +50 per complexity level
     
     // AI Analysis
-    appendOutput('🤖 AI Analysis in Progress...\n', 'subheader');
-    appendOutput(`📤 Preparing prompt for AI model (${modelName})...\n`, 'info');
-    appendOutput(`📊 Prompt size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
-    appendOutput(`🧮 Estimated input tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
-    appendOutput(`🧮 Estimated response tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
+    appendOutput('<i class="fas fa-robot"></i> AI Analysis in Progress...\n', 'subheader');
+    appendOutput(`<i class="fas fa-upload"></i> Preparing prompt for AI model (${modelName})...\n`, 'info');
+    appendOutput(`<i class="fas fa-chart-bar"></i> Prompt size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
+    appendOutput(`<i class="fas fa-calculator"></i> Estimated input tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
+    appendOutput(`<i class="fas fa-calculator"></i> Estimated response tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
     
     // Update debug info with token estimation
     updateDebugInfo({
@@ -1411,7 +1351,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         stage: 'token-estimation'
     });
     
-    updateProgress(45, 'Starting AI analysis...', 'ai', 'Sending prompt to AI model');
+    updateProgress(45, 'Starting AI analysis...');
 
     const aiStartTime = Date.now();
     let aiFeedback;
@@ -1440,7 +1380,7 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const aiElapsed = (Date.now() - aiStartTime) / 1000;
     const totalElapsed = (Date.now() - reviewStartTime) / 1000;
     
-    updateProgress(95, 'Formatting results...', 'format', 'Processing AI response and generating output');
+    updateProgress(95, 'Formatting results...');
     updateStats(totalElapsed, null, modelName, 'formatting');
 
     clearInterval(progressUpdateInterval);
@@ -1452,11 +1392,11 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
 
     if (aiFeedback) {
         // Add AI Response header and then the feedback
-        currentOutputMarkdown += '\n## 🤖 AI Analysis Results\n\n';
+        currentOutputMarkdown += '\n## <i class="fas fa-robot"></i> AI Analysis Results\n\n';
         currentOutputMarkdown += aiFeedback + '\n\n';
         
         // Add performance summary in Markdown
-        currentOutputMarkdown += `## ⏱️ Performance Summary
+        currentOutputMarkdown += `## <i class="fas fa-stopwatch"></i> Performance Summary
 
 - **Total Time**: ${totalElapsed.toFixed(1)}s
 - **Diff Generation**: ${diffElapsed.toFixed(1)}s
@@ -1499,11 +1439,11 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         
         // Calculate final elapsed time and update one more time
         const finalElapsed = (Date.now() - reviewStartTime) / 1000;
-        updateProgress(100, 'Review completed successfully!', 'complete', 'AI analysis finished');
+        updateProgress(100, 'Review completed successfully!');
         updateStats(finalElapsed, actualResponseTokens, modelName, 'complete');
         showAlert('Review completed successfully!', 'success');
     } else {
-        appendOutput('❌ AI review failed to generate feedback.\n', 'error');
+        appendOutput('<i class="fas fa-times"></i> AI review failed to generate feedback.\n', 'error');
         updateProgress(0, 'Review failed');
         throw new Error('AI failed to generate feedback');
     }
@@ -1540,7 +1480,7 @@ function stopReview() {
 // Output Functions
 function clearOutput() {
     const outputContent = document.getElementById('output-content');
-    const welcomeMarkdown = `# Welcome to Local AI PR Reviewer! 🚀
+    const welcomeMarkdown = `# Welcome to Local AI PR Reviewer! <i class="fas fa-rocket"></i>
 
 ## Getting Started:
 1. Configure your AI provider (Ollama or Azure AI) in Settings

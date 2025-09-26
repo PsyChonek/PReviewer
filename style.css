@@ -73,25 +73,7 @@
     50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.8), 0 0 25px rgba(59, 130, 246, 0.4); }
 }
 
-/* Stage indicator styles */
-.stage-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-    border-radius: 0.75rem;
-    border-left: 4px solid #3b82f6;
-    animation: slideInRight 0.3s ease-out;
-    transition: all 0.3s ease;
-}
-
-.stage-indicator.active {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-    border-left-color: #2563eb;
-    animation: progressGlow 2s ease-in-out infinite;
-}
-
+/* Stage spinner for status indicator */
 .stage-spinner {
     width: 16px;
     height: 16px;
@@ -99,18 +81,6 @@
     border-top: 2px solid #3b82f6;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-}
-
-.stage-text {
-    font-weight: 500;
-    color: #374151;
-    flex-grow: 1;
-}
-
-.stage-time {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: 400;
 }
 
 /* Skeleton loading styles */

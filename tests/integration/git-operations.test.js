@@ -103,6 +103,18 @@ describe('Git Operations Integration', () => {
     await git.init();
     await git.addConfig('user.email', 'test@example.com');
     await git.addConfig('user.name', 'Test User');
+
+    // Create initial commit to establish main branch
+    await fs.writeFile(path.join(tempDir.name, 'README.md'), '# Test Repository');
+    await git.add('README.md');
+    await git.commit('Initial commit');
+
+    // Rename master to main (git init creates master by default)
+    try {
+      await git.branch(['--move', 'master', 'main']);
+    } catch (error) {
+      // Already on main or main already exists, ignore
+    }
   });
 
   afterEach(() => {
@@ -113,11 +125,6 @@ describe('Git Operations Integration', () => {
 
   describe('getGitBranches', () => {
     test('should return branches from a valid repository', async () => {
-      // Create initial commit
-      await fs.writeFile(path.join(tempDir.name, 'README.md'), '# Test Repository');
-      await git.add('README.md');
-      await git.commit('Initial commit');
-
       // Create additional branches
       await git.checkoutLocalBranch('feature-branch');
       await git.checkout('main');
@@ -132,11 +139,6 @@ describe('Git Operations Integration', () => {
     });
 
     test('should handle repository with only main branch', async () => {
-      // Create initial commit
-      await fs.writeFile(path.join(tempDir.name, 'README.md'), '# Test Repository');
-      await git.add('README.md');
-      await git.commit('Initial commit');
-
       const branches = await gitHandlers.getGitBranches(tempDir.name);
 
       expect(branches).toContain('main');
@@ -211,10 +213,10 @@ describe('Git Operations Integration', () => {
 
   describe('getGitDiff', () => {
     test('should generate diff between branches', async () => {
-      // Create initial commit on main
+      // Create file on main
       await fs.writeFile(path.join(tempDir.name, 'test.js'), 'console.log("hello");');
       await git.add('test.js');
-      await git.commit('Initial commit');
+      await git.commit('Add test file');
 
       // Create feature branch and make changes
       await git.checkoutLocalBranch('feature');
@@ -230,11 +232,6 @@ describe('Git Operations Integration', () => {
     });
 
     test('should handle empty diff when branches are identical', async () => {
-      // Create initial commit
-      await fs.writeFile(path.join(tempDir.name, 'test.js'), 'console.log("hello");');
-      await git.add('test.js');
-      await git.commit('Initial commit');
-
       // Create branch but don't make changes
       await git.checkoutLocalBranch('feature');
 
@@ -289,10 +286,10 @@ describe('Git Operations Integration', () => {
     });
 
     test('should handle merge conflicts in history', async () => {
-      // Create initial commit
+      // Create file on main
       await fs.writeFile(path.join(tempDir.name, 'test.js'), 'const original = true;');
       await git.add('test.js');
-      await git.commit('Initial commit');
+      await git.commit('Add test file');
 
       // Create two divergent branches
       await git.checkoutLocalBranch('branch1');
@@ -326,10 +323,18 @@ describe('Git Operations Integration', () => {
     });
 
     test('should handle repository with no commits', async () => {
-      // Repository exists but has no commits
-      const result = await gitHandlers.getGitBranches(tempDir.name);
+      // Create fresh repo with no commits
+      const emptyTempDir = tmp.dirSync({ unsafeCleanup: true });
+      const emptyGit = simpleGit(emptyTempDir.name);
+      await emptyGit.init();
+      await emptyGit.addConfig('user.email', 'test@example.com');
+      await emptyGit.addConfig('user.name', 'Test User');
+
+      const result = await gitHandlers.getGitBranches(emptyTempDir.name);
       // Repository with no commits returns empty array
       expect(result).toEqual([]);
+
+      emptyTempDir.removeCallback();
     });
 
     test('should handle very large repository operations', async () => {
