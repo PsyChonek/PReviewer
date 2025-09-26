@@ -469,7 +469,7 @@ function toggleDebugDetails() {
     }
 }
 
-function updateStats(elapsed = null, tokens = null, model = null, stage = null) {
+function updateStats(elapsed = null, tokens = null, model = null, stage = null, tokensPerSecond = null) {
     if (elapsed !== null) {
         const timeEl = document.getElementById('time-stat');
         if (elapsed < 60) {
@@ -481,24 +481,31 @@ function updateStats(elapsed = null, tokens = null, model = null, stage = null) 
         }
     }
     
-    if (tokens !== null && elapsed !== null && elapsed > 0) {
-        const speedEl = document.getElementById('speed-stat');
-        const tokensPerSec = tokens / elapsed;
-        if (tokensPerSec >= 1) {
-            speedEl.textContent = `${tokensPerSec.toFixed(1)} t/s`;
-        } else {
-            speedEl.textContent = `${tokensPerSec.toFixed(2)} t/s`;
-        }
-        
+    if (tokens !== null) {
         const tokensEl = document.getElementById('tokens-stat');
         if (tokens >= 1000) {
             tokensEl.textContent = `${(tokens / 1000).toFixed(1)}k`;
         } else {
             tokensEl.textContent = tokens.toString();
         }
-        
+    }
+
+    // Update speed - prefer pre-calculated speed from backend, otherwise calculate
+    let speedToUse = tokensPerSecond;
+    if (speedToUse === null && tokens !== null && elapsed !== null && elapsed > 0) {
+        speedToUse = tokens / elapsed;
+    }
+
+    if (speedToUse !== null) {
+        const speedEl = document.getElementById('speed-stat');
+        if (speedToUse >= 1) {
+            speedEl.textContent = `${speedToUse.toFixed(1)} t/s`;
+        } else {
+            speedEl.textContent = `${speedToUse.toFixed(2)} t/s`;
+        }
+
         // Update debug info
-        document.getElementById('tokens-per-second').textContent = `${tokensPerSec.toFixed(2)} t/s`;
+        document.getElementById('tokens-per-second').textContent = `${speedToUse.toFixed(2)} t/s`;
     }
     
     if (model !== null) {
@@ -526,7 +533,14 @@ function updateDebugInfo(data) {
     // Update response time
     if (data.responseTime) {
         const responseEl = document.getElementById('response-time-stat');
-        responseEl.textContent = `${data.responseTime}ms`;
+        const responseTimeSeconds = data.responseTime / 1000;
+        if (responseTimeSeconds < 60) {
+            responseEl.textContent = `${responseTimeSeconds.toFixed(1)}s`;
+        } else {
+            const minutes = Math.floor(responseTimeSeconds / 60);
+            const seconds = responseTimeSeconds % 60;
+            responseEl.textContent = `${minutes}m ${seconds.toFixed(1)}s`;
+        }
     }
     
     // Update transfer stats
@@ -549,12 +563,16 @@ function updateDebugInfo(data) {
         document.getElementById('processing-stage').textContent = data.stage;
     }
 
-    // Update token estimation info
-    if (data.estimatedInputTokens) {
+    // Update token estimation info - prefer actual tokens over estimates
+    if (data.actualInputTokens) {
+        document.getElementById('estimated-input-tokens').textContent = formatTokenCount(data.actualInputTokens);
+    } else if (data.estimatedInputTokens) {
         document.getElementById('estimated-input-tokens').textContent = formatTokenCount(data.estimatedInputTokens);
     }
-    
-    if (data.estimatedOutputTokens) {
+
+    if (data.actualOutputTokens) {
+        document.getElementById('estimated-output-tokens').textContent = formatTokenCount(data.actualOutputTokens);
+    } else if (data.estimatedOutputTokens) {
         document.getElementById('estimated-output-tokens').textContent = formatTokenCount(data.estimatedOutputTokens);
     }
     
@@ -1233,7 +1251,8 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
             data.processingTime || (Date.now() - reviewStartTime) / 1000,
             data.tokens,
             ollamaModel,
-            data.stage
+            data.stage,
+            data.tokensPerSecond
         );
         
         // Update debug info with actual token information when available
@@ -1243,39 +1262,64 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
         }
         updateDebugInfo(debugData);
         
-        // Add real-time progress messages to output
-        if (data.stage === 'connecting') {
-            appendOutput(`🔗 ${data.message}\n`, 'info');
-        } else if (data.stage === 'sending') {
-            appendOutput(`� ${data.message}\n`, 'info');
-        } else if (data.stage === 'uploading') {
-            appendOutput(`⬆️ ${data.message}\n`, 'info');
-        } else if (data.stage === 'processing') {
-            appendOutput(`🔄 ${data.message}\n`, 'info');
-        } else if (data.stage === 'complete') {
-            appendOutput(`✅ Response received! (${data.tokens} tokens)\n`, 'success');
-        } else if (data.stage === 'error') {
-            appendOutput(`❌ ${data.message}\n`, 'error');
+        // Handle streaming content display
+        if (data.streamingContent && data.isStreaming) {
+            // Update the output with streaming content in real-time
+            currentOutputMarkdown = data.streamingContent + '\n\n';
+            renderOutput();
+        }
+
+        // Show real-time progress messages only in debug mode
+        if (window.DEBUG) {
+            if (data.stage === 'complete') {
+                appendOutput(`Response received (${data.tokens} tokens)\n`, 'success');
+            } else if (data.stage === 'error') {
+                appendOutput(`Error: ${data.message}\n`, 'error');
+            }
         }
     });
 
-    // Header
-    appendOutput('<i class="fas fa-search"></i> AI Code Review Analysis\n', 'header');
-    appendOutput('━'.repeat(60) + '\n\n', 'separator');
-    
-    // Configuration
-    appendOutput('<i class="fas fa-chart-bar"></i> Review Configuration\n', 'subheader');
-    appendOutput(`• Repository: ${repoPath.split(/[\/\\]/).pop()}\n`, 'info');
-    appendOutput(`• Path: ${repoPath}\n`, 'info');
-    appendOutput(`• Comparing: ${toBranch} → ${fromBranch}\n`, 'info');
+    // Azure progress handler
     if (provider === 'azure') {
-        appendOutput(`• AI Provider: Azure AI\n`, 'info');
-        appendOutput(`• Deployment: ${aiConfig.deploymentName}\n`, 'info');
-        appendOutput(`• Endpoint: ${aiConfig.endpoint}\n\n`, 'info');
-    } else {
-        appendOutput(`• AI Provider: Ollama\n`, 'info');
-        appendOutput(`• AI Model: ${aiConfig.model}\n`, 'info');
-        appendOutput(`• Endpoint: ${aiConfig.url}\n\n`, 'info');
+        azureProgressHandler = window.electronAPI.onAzureAIProgress((event, data) => {
+            updateProgress(data.progress, data.message);
+            updateStats(
+                data.processingTime || (Date.now() - reviewStartTime) / 1000,
+                data.tokens,
+                modelName,
+                data.stage,
+                data.tokensPerSecond
+            );
+
+            // Update debug info with actual token information when available
+            const debugData = { ...data };
+            if (data.tokens) {
+                debugData.actualTokens = data.tokens;
+            }
+            updateDebugInfo(debugData);
+
+            // Handle streaming content display
+            if (data.streamingContent && data.isStreaming) {
+                // Update the output with streaming content in real-time
+                currentOutputMarkdown = data.streamingContent + '\n\n';
+                renderOutput();
+            }
+
+            // Show real-time progress messages only in debug mode
+            if (window.DEBUG) {
+                if (data.stage === 'complete') {
+                    appendOutput(`Response received (${data.tokens} tokens)\n`, 'success');
+                } else if (data.stage === 'error') {
+                    appendOutput(`Error: ${data.message}\n`, 'error');
+                }
+            }
+        });
+    }
+
+    // Only show basic info if debug mode is enabled
+    if (window.DEBUG) {
+        appendOutput(`Analyzing changes: ${toBranch} → ${fromBranch}\n`, 'info');
+        appendOutput(`Using ${provider === 'azure' ? 'Azure AI' : 'Ollama'}: ${modelName}\n\n`, 'info');
     }
     
     updateProgress(10, 'Initializing review process...');
@@ -1291,12 +1335,6 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
 
     updateProgress(15, 'Generating diff...');
     
-    // Generate diff
-    appendOutput('<i class="fas fa-sync-alt"></i> Generating Code Diff...\n', 'subheader');
-    appendOutput(`• Source branch: ${fromBranch}\n`, 'info');
-    appendOutput(`• Target branch: ${toBranch}\n`, 'info');
-    appendOutput('• Finding differences...\n', 'info');
-    
     const diffStartTime = Date.now();
     let diff;
     
@@ -1309,17 +1347,19 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const diffElapsed = (Date.now() - diffStartTime) / 1000;
     
     if (!diff || diff.trim() === '') {
-        appendOutput('<i class="fas fa-times"></i> No diff generated or found.\n', 'warning');
-        appendOutput('The branches may be identical or have no common history.\n', 'info');
+        if (window.DEBUG) {
+            appendOutput('No changes detected between branches.\n', 'warning');
+        }
         updateProgress(100, 'No changes found');
         clearInterval(progressUpdateInterval);
         if (ollamaProgressHandler) ollamaProgressHandler();
         if (azureProgressHandler) azureProgressHandler();
         return;
     }
-    
-    appendOutput('<i class="fas fa-check"></i> Diff generated successfully.\n', 'success');
-    appendOutput(`<i class="fas fa-chart-line"></i> Found ${diff.split('\n').length} lines of changes to analyze.\n\n`, 'info');
+
+    if (window.DEBUG) {
+        appendOutput(`Found ${diff.split('\n').length} lines of changes to analyze.\n`, 'info');
+    }
     
     updateProgress(35, 'Preparing AI analysis...');
     updateStats((Date.now() - reviewStartTime) / 1000, null, modelName, 'preparing');
@@ -1337,17 +1377,16 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     const baseResponseTokens = 150; // Typical review is ~150 tokens
     const estimatedOutputTokens = Math.ceil(baseResponseTokens + (diffComplexity * 50)); // +50 per complexity level
     
-    // AI Analysis
-    appendOutput('<i class="fas fa-robot"></i> AI Analysis in Progress...\n', 'subheader');
-    appendOutput(`<i class="fas fa-upload"></i> Preparing prompt for AI model (${modelName})...\n`, 'info');
-    appendOutput(`<i class="fas fa-chart-bar"></i> Prompt size: ${(prompt.length / 1024).toFixed(1)} KB\n`, 'info');
-    appendOutput(`<i class="fas fa-calculator"></i> Estimated input tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
-    appendOutput(`<i class="fas fa-calculator"></i> Estimated response tokens: ${formatTokenCount(estimatedOutputTokens)}\n`, 'info');
+    // AI Analysis (only show details in debug mode)
+    if (window.DEBUG) {
+        appendOutput(`Prompt size: ${(prompt.length / 1024).toFixed(1)} KB, Estimated tokens: ${formatTokenCount(estimatedInputTokens)}\n`, 'info');
+    }
     
-    // Update debug info with token estimation
+    // Update debug info with token estimation and request size
     updateDebugInfo({
         estimatedInputTokens: estimatedInputTokens,
         estimatedOutputTokens: estimatedOutputTokens,
+        modelSize: prompt.length,
         stage: 'token-estimation'
     });
     
@@ -1388,53 +1427,35 @@ async function runReview(repoPath, fromBranch, toBranch, aiConfig) {
     if (azureProgressHandler) azureProgressHandler();
     
     // Display results - let the AI response speak for itself with proper Markdown
-    appendOutput('\n---\n\n', 'separator');
 
     if (aiFeedback) {
-        // Add AI Response header and then the feedback
-        currentOutputMarkdown += '\n## <i class="fas fa-robot"></i> AI Analysis Results\n\n';
-        currentOutputMarkdown += aiFeedback + '\n\n';
-        
-        // Add performance summary in Markdown
-        currentOutputMarkdown += `## <i class="fas fa-stopwatch"></i> Performance Summary
+        // Only set the content if streaming hasn't already populated it
+        if (!currentOutputMarkdown || currentOutputMarkdown.trim() === '') {
+            currentOutputMarkdown = aiFeedback + '\n\n';
+        } else {
+            // Ensure the content is complete (streaming might have partial content)
+            currentOutputMarkdown = aiFeedback + '\n\n';
+        }
 
-- **Total Time**: ${totalElapsed.toFixed(1)}s
-- **Diff Generation**: ${diffElapsed.toFixed(1)}s
-- **AI Analysis**: ${aiElapsed.toFixed(1)}s
-- **Model**: ${modelName}
-- **Prompt Size**: ${(prompt.length / 1024).toFixed(1)} KB
-- **Estimated Input Tokens**: ${formatTokenCount(estimatedInputTokens)}
-- **Estimated Response Tokens**: ${formatTokenCount(estimatedOutputTokens)}
-`;
-        
         // Update final stats with actual response tokens
         const actualResponseTokens = aiFeedback.split(' ').length;
-        currentOutputMarkdown += `- **Actual Response Tokens**: ${formatTokenCount(actualResponseTokens)}\n`;
 
         updateStats(totalElapsed, actualResponseTokens, modelName, 'complete');
 
-        // Update debug info with final token comparison
+        // Update debug info with final token comparison and response metrics
         updateDebugInfo({
             actualTokens: actualResponseTokens,
+            responseTime: Math.round(aiElapsed * 1000),
+            bytesReceived: aiFeedback.length,
             stage: 'complete'
         });
 
         // Render the final output
         renderOutput();
-        
-        appendOutput(`• Actual Response Tokens: ${formatTokenCount(actualResponseTokens)}\n`, 'info');
-        
-        // Calculate accuracy of estimation
-        const estimationDiff = estimatedOutputTokens - actualResponseTokens;
-        const estimationAccuracy = estimatedOutputTokens > 0 ? 
-            (estimationDiff / estimatedOutputTokens * 100).toFixed(1) : 0;
-        
-        if (Math.abs(estimationDiff) <= 50) {
-            appendOutput(`• Response Estimation: Very close (±${Math.abs(estimationDiff)} tokens)\n`, 'success');
-        } else if (Math.abs(estimationDiff) <= 150) {
-            appendOutput(`• Response Estimation: Good (${estimationDiff > 0 ? '+' : ''}${estimationDiff} tokens, ${estimationAccuracy}%)\n`, 'info');
-        } else {
-            appendOutput(`• Response Estimation: Off by ${Math.abs(estimationDiff)} tokens (${estimationAccuracy}%)\n`, 'warning');
+
+        // Only show detailed performance info in debug mode
+        if (window.DEBUG) {
+            appendOutput(`\nCompleted in ${totalElapsed.toFixed(1)}s using ${modelName}\n`, 'info');
         }
         
         // Calculate final elapsed time and update one more time

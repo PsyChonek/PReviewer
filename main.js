@@ -216,15 +216,16 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
                   const tokenProgress = Math.min(25, (totalTokens / estimatedTotalTokens) * 25);
                   const progress = Math.min(95, 60 + tokenProgress);
                   
-                  event.sender.send('ollama-progress', { 
-                    stage: 'streaming', 
+                  event.sender.send('ollama-progress', {
+                    stage: 'streaming',
                     progress: progress,
                     message: `Receiving AI response... (${totalTokens} tokens, ${tokensPerSecond.toFixed(1)} t/s)`,
                     timestamp: now,
                     tokens: totalTokens,
                     tokensPerSecond: tokensPerSecond,
                     processingTime: elapsed,
-                    responsePreview: responseText.substring(0, 50) + '...',
+                    streamingContent: responseText,
+                    isStreaming: true,
                     bytesReceived: bytesReceived
                   });
                   
@@ -234,18 +235,27 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
               
               if (data.done) {
                 const responseTime = Date.now() - startTime;
-                
-                event.sender.send('ollama-progress', { 
-                  stage: 'complete', 
-                  progress: 90, 
-                  message: 'Processing AI response...',
+
+                // Ollama provides actual token counts in the final response
+                const actualInputTokens = data.prompt_eval_count;
+                const actualOutputTokens = data.eval_count;
+
+                event.sender.send('ollama-progress', {
+                  stage: 'complete',
+                  progress: 100,
+                  message: 'AI response complete',
                   timestamp: Date.now(),
                   responseTime,
-                  tokens: totalTokens,
-                  tokensPerSecond: totalTokens / (responseTime / 1000),
-                  bytesReceived: bytesReceived
+                  tokens: actualOutputTokens || totalTokens,
+                  tokensPerSecond: (actualOutputTokens || totalTokens) / (responseTime / 1000),
+                  bytesReceived: bytesReceived,
+                  streamingContent: responseText,
+                  isStreaming: false,
+                  actualInputTokens: actualInputTokens,
+                  actualOutputTokens: actualOutputTokens,
+                  totalActualTokens: (actualInputTokens || 0) + (actualOutputTokens || 0)
                 });
-                
+
                 resolve(responseText);
               }
             } catch (parseError) {
@@ -373,8 +383,8 @@ ipcMain.handle('call-azure-ai-api', async (event, { endpoint, apiKey, deployment
       timestamp: Date.now()
     });
 
-    // Make the request to Azure OpenAI
-    const response = await client.chat.completions.create({
+    // Make the streaming request to Azure OpenAI
+    const stream = await client.chat.completions.create({
       messages: [
         {
           role: "system",
@@ -386,20 +396,63 @@ ipcMain.handle('call-azure-ai-api', async (event, { endpoint, apiKey, deployment
         }
       ],
       temperature: 0.1,
-      max_tokens: 2000
+      max_tokens: 2000,
+      stream: true
     });
 
+    let responseText = '';
+    let chunkCount = 0;
+    let usage = null;
+
+    // Process the stream
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || '';
+      if (delta) {
+        responseText += delta;
+        chunkCount++;
+
+        // Send streaming progress every few chunks
+        if (chunkCount % 3 === 0) {
+          const currentTime = Date.now();
+          const elapsed = (currentTime - startTime) / 1000;
+          const estimatedTokens = responseText.split(' ').length;
+          const tokensPerSecond = elapsed > 0 ? estimatedTokens / elapsed : 0;
+
+          event.sender.send('azure-ai-progress', {
+            stage: 'streaming',
+            progress: Math.min(60 + (responseText.length / 50), 90),
+            message: `Receiving AI response... (${estimatedTokens} tokens, ${tokensPerSecond.toFixed(1)} t/s)`,
+            timestamp: currentTime,
+            streamingContent: responseText,
+            isStreaming: true,
+            tokens: estimatedTokens,
+            tokensPerSecond: tokensPerSecond,
+            processingTime: elapsed
+          });
+        }
+      }
+
+      // Capture usage information when available
+      if (chunk.usage) {
+        usage = chunk.usage;
+      }
+    }
+
     const responseTime = Date.now() - startTime;
-    const responseText = response.choices[0]?.message?.content || '';
-    totalTokens = response.usage?.total_tokens || 0;
+    totalTokens = usage?.completion_tokens || responseText.split(' ').length;
 
     event.sender.send('azure-ai-progress', {
       stage: 'complete',
-      progress: 90,
-      message: 'Processing Azure AI response...',
+      progress: 100,
+      message: 'AI response complete',
       timestamp: Date.now(),
       responseTime,
-      tokens: totalTokens
+      tokens: totalTokens,
+      actualInputTokens: usage?.prompt_tokens,
+      actualOutputTokens: usage?.completion_tokens,
+      totalActualTokens: usage?.total_tokens,
+      streamingContent: responseText,
+      isStreaming: false
     });
 
     return responseText;

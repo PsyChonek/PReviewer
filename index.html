@@ -71,7 +71,7 @@
     <!-- Navigation -->
     <nav class="navbar bg-primary text-primary-content shadow-lg" role="banner" aria-label="Main navigation">
         <div class="flex-1">
-            <h1 class="btn btn-ghost text-xl" tabindex="0"><i class="fas fa-search"></i> AI PR Reviewer</h1>
+            <h1 class="text-xl font-bold"><i class="fas fa-search"></i> AI PR Reviewer</h1>
         </div>
         <div class="flex-none">
         </div>
@@ -282,15 +282,15 @@
                         </div>
                         <div class="divider">Token Analysis</div>
                         <div class="flex justify-between">
-                            <span>Estimated Input Tokens:</span>
+                            <span>Input Tokens:</span>
                             <span id="estimated-input-tokens">--</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Estimated Output Tokens:</span>
+                            <span>Output Tokens:</span>
                             <span id="estimated-output-tokens">--</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Actual Response Tokens:</span>
+                            <span>Response Tokens:</span>
                             <span id="actual-tokens">--</span>
                         </div>
                     </div>
@@ -385,7 +385,7 @@
 
     <!-- Configuration Modal -->
     <dialog id="config-modal" class="modal">
-        <div class="modal-box max-w-2xl">
+        <div class="modal-box w-4/5 max-w-none">
             <form method="dialog">
                 <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"><i class="fas fa-times"></i></button>
             </form>
@@ -516,7 +516,7 @@
                     
                     <div class="grid grid-cols-1 gap-4">
                         <div class="form-control">
-                            <label class="cursor-pointer label">
+                            <label class="cursor-pointer label justify-between items-center">
                                 <div class="flex items-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -526,8 +526,9 @@
                                 </div>
                                 <input type="checkbox" id="debug-enabled" class="toggle toggle-primary" />
                             </label>
-                            <div class="label">
-                                <span class="label-text-alt text-gray-500">Shows detailed token estimation and processing information in browser console</span>
+                            <div class="flex items-start">
+                                <div class="w-5 mr-2 flex-shrink-0"></div>
+                                <span class="label-text-alt text-gray-500 leading-relaxed">Shows detailed token estimation and processing information in browser console</span>
                             </div>
                         </div>
                     </div>

@@ -169,8 +169,8 @@ dialog.modal .modal-box {
     background: white !important;
     border-radius: 0.5rem !important;
     padding: 2rem !important;
-    max-width: 32rem !important;
-    width: 100% !important;
+    max-width: 80vw !important;
+    width: 80vw !important;
     max-height: 80vh !important;
     overflow-y: auto !important;
     position: relative !important;
