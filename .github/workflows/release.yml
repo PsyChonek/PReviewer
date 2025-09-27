@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: tag_name
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
+          release_name: PReviewer ${{ steps.tag_name.outputs.TAG_NAME }}
+          draft: false
+          prerelease: ${{ contains(steps.tag_name.outputs.TAG_NAME, '-') }}
+
+  build-and-release:
+    needs: create-release
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact_name: "*.exe"
+          - os: macos-latest
+            platform: macos
+            artifact_name: "*.dmg"
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: "*.AppImage"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile CSS
+        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
+
+      - name: Build and package
+        run: npm run make
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find release assets (Windows)
+        if: matrix.platform == 'windows'
+        id: find_assets_windows
+        shell: bash
+        run: |
+          asset_path=$(find out/make -name "*.exe" | head -1)
+          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
+          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+
+      - name: Find release assets (macOS)
+        if: matrix.platform == 'macos'
+        id: find_assets_macos
+        run: |
+          asset_path=$(find out/make -name "*.dmg" | head -1)
+          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
+          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+
+      - name: Find release assets (Linux)
+        if: matrix.platform == 'linux'
+        id: find_assets_linux
+        run: |
+          asset_path=$(find out/make -name "*.AppImage" | head -1)
+          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
+          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+
+      - name: Upload Release Asset (Windows)
+        if: matrix.platform == 'windows'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_assets_windows.outputs.asset_path }}
+          asset_name: ${{ steps.find_assets_windows.outputs.asset_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Asset (macOS)
+        if: matrix.platform == 'macos'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_assets_macos.outputs.asset_path }}
+          asset_name: ${{ steps.find_assets_macos.outputs.asset_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Asset (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_assets_linux.outputs.asset_path }}
+          asset_name: ${{ steps.find_assets_linux.outputs.asset_name }}
+          asset_content_type: application/octet-stream
