@@ -63,17 +63,17 @@ test.describe('PR Reviewer Electron App', () => {
     // In a real E2E test, you'd connect to the actual Electron window
 
     // Mock the expected behavior
-    const expectedTitle = 'AI PR Reviewer';
+    const expectedTitle = 'PReviewer';
     const mockPage = {
       title: () => Promise.resolve(expectedTitle),
       locator: (selector) => ({
         isVisible: () => Promise.resolve(true),
-        textContent: () => Promise.resolve('AI PR Reviewer')
+        textContent: () => Promise.resolve('PReviewer')
       })
     };
 
     const title = await mockPage.title();
-    expect(title).toContain('AI PR Reviewer');
+    expect(title).toContain('PReviewer');
   });
 });
 

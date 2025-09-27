@@ -1555,7 +1555,7 @@ function stopReview() {
 // Output Functions
 function clearOutput() {
     const outputContent = document.getElementById('output-content');
-    const welcomeMarkdown = `# Welcome to Local AI PR Reviewer! <i class="fas fa-rocket"></i>
+    const welcomeMarkdown = `# Welcome to PReviewer! <i class="fas fa-rocket"></i>
 
 ## Getting Started:
 1. Configure your AI provider (Ollama or Azure AI) in Settings

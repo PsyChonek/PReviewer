@@ -24,27 +24,27 @@ const createWindow = () => {
     show: false
   });
 
-  // Load the React-built app
-  if (process.env.NODE_ENV === 'development') {
-    // In development, load from webpack dev server for HMR
-    console.log('Loading development URL: http://localhost:3000');
-    mainWindow.loadURL('http://localhost:3000').catch(err => {
-      console.error('Failed to load URL:', err);
-    });
-    
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-      console.error('Page failed to load:', errorCode, errorDescription, validatedURL);
-    });
-    
-    mainWindow.webContents.on('did-finish-load', () => {
-      console.log('Page finished loading successfully');
-    });
-    
+  // Load the app - Check for development vs production
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev) {
+    // In development, load from Vite dev server
+    const devServerUrl = 'http://localhost:3002';
+    console.log('Loading development URL:', devServerUrl);
+    mainWindow.loadURL(devServerUrl);
+  } else {
+    // In production, load the built files
+    console.log('Loading production file');
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
+
+  // Development tools and shortcuts
+  if (isDev) {
     mainWindow.webContents.openDevTools();
-    
+
     try {
       const { globalShortcut } = require('electron');
-      
+
       // Add keyboard shortcuts for development
       globalShortcut.register('F5', () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -59,10 +59,6 @@ const createWindow = () => {
     } catch (error) {
       console.log('Dev tools not available:', error.message);
     }
-  } else {
-    // In production, load the built React app
-    console.log('Loading production file: dist/index.html');
-    mainWindow.loadFile('dist/index.html');
   }
   
   // Add error and success handlers for both dev and prod

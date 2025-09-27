@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: http://localhost:3000 ws://localhost:3000; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000; style-src 'self' 'unsafe-inline' http://localhost:3000; font-src 'self'; connect-src 'self' http://localhost:3000 ws://localhost:3000;">
-    <title>Local AI PR Reviewer</title>
-
-    <!-- Tailwind CSS + DaisyUI will be injected by webpack -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: http://localhost:3002 ws://localhost:3002; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3002; style-src 'self' 'unsafe-inline' http://localhost:3002 https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' http://localhost:3002 ws://localhost:3002;">
+    <title>PReviewer</title>
 
     <!-- FontAwesome -->
-    <link href="./fontawesome/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+
+    <!-- Tailwind CSS + DaisyUI will be imported in index.tsx -->
 
     <!-- Custom styles -->
     <style>
@@ -68,5 +68,6 @@
 </head>
 <body class="bg-base-100">
     <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

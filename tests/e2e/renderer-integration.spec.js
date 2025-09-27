@@ -18,7 +18,7 @@ test.describe('Renderer Process Integration', () => {
     // Check if main elements are present
     await expect(page.locator('nav')).toBeVisible();
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.locator('h1')).toContainText('AI PR Reviewer');
+    await expect(page.locator('h1')).toContainText('PReviewer');
 
     // Check for main sections
     await expect(page.locator('#repo-path')).toBeVisible();
@@ -267,7 +267,7 @@ test.describe('Renderer Process Integration', () => {
     await clearBtn.click();
 
     // Output should be reset to welcome message
-    await expect(page.locator('#output-content')).toContainText('Welcome to Local AI PR Reviewer');
+    await expect(page.locator('#output-content')).toContainText('Welcome to Local PReviewer');
 
     // Add content back for copy test
     await page.evaluate(() => {

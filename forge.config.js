@@ -1,4 +1,5 @@
-const path = require('path');
+const { FusesPlugin } = require('@electron-forge/plugin-fuses');
+const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
@@ -25,24 +26,39 @@ module.exports = {
   ],
   plugins: [
     {
-      name: '@electron-forge/plugin-webpack',
+      name: '@electron-forge/plugin-vite',
       config: {
-        mainConfig: './webpack.main.config.js',
-        renderer: {
-          config: './webpack.renderer.config.js',
-          entryPoints: [
-            {
-              html: './src/index.html',
-              js: './src/renderer.tsx',
-              name: 'main_window',
-              preload: {
-                js: './src/preload.js',
-              },
-            },
-          ],
-        },
-        devContentSecurityPolicy: "default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-eval' 'unsafe-inline' data:",
+        // Build configuration for main and preload scripts
+        build: [
+          {
+            entry: 'main.js',
+            config: 'vite.main.config.js',
+            target: 'main',
+          },
+          {
+            entry: 'src/preload.js',
+            config: 'vite.preload.config.js',
+            target: 'preload',
+          },
+        ],
+        renderer: [
+          {
+            name: 'main_window',
+            config: 'vite.renderer.config.js',
+          },
+        ],
       },
     },
+    // Fuses are used to enable/disable various Electron functionality
+    // at package time, before code signing the application
+    new FusesPlugin({
+      version: FuseVersion.V1,
+      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.EnableCookieEncryption]: true,
+      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+      [FuseV1Options.EnableNodeCliInspectArguments]: false,
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
   ],
 };

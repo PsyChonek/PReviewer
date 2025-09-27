@@ -377,7 +377,7 @@ describe('UI Components', () => {
       clearOutput();
 
       const outputContent = document.getElementById('output-content');
-      expect(outputContent.innerHTML).toContain('Welcome to Local AI PR Reviewer');
+      expect(outputContent.innerHTML).toContain('Welcome to Local PReviewer');
     });
 
     test('should append output with different styles', () => {
@@ -410,7 +410,7 @@ describe('UI Components', () => {
       appendOutput('Actual output', 'info');
 
       const outputContent = document.getElementById('output-content');
-      expect(outputContent.innerHTML).not.toContain('Welcome to Local AI PR Reviewer');
+      expect(outputContent.innerHTML).not.toContain('Welcome to Local PReviewer');
       expect(outputContent.innerHTML).toContain('Actual output');
     });
   });

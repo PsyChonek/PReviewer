@@ -17,7 +17,7 @@ const OutputSection: React.FC<OutputSectionProps> = ({
     if (!markdown.trim()) {
       return (
         <div className="text-center text-base-content/60 py-8">
-          <h3 className="text-xl font-bold mb-4">Welcome to Local AI PR Reviewer! <i className="fas fa-rocket"></i></h3>
+          <h3 className="text-xl font-bold mb-4">Welcome to PReviewer! <i className="fas fa-rocket"></i></h3>
           <div className="text-left max-w-2xl mx-auto space-y-2">
             <p><strong>Getting Started:</strong></p>
             <p>1. Configure your AI provider (Ollama or Azure AI) in Settings</p>
@@ -59,7 +59,7 @@ const OutputSection: React.FC<OutputSectionProps> = ({
           <h2 className="card-title text-2xl">
             <i className="fas fa-bullseye"></i> AI Review Output
           </h2>
-          <div className="btn-group" role="group" aria-label="Output actions">
+          <div className="flex gap-2" role="group" aria-label="Output actions">
             <button
               className="btn btn-sm btn-outline"
               onClick={onClearOutput}

@@ -9,7 +9,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenConfig }) => {
     <nav className="navbar bg-primary text-primary-content shadow-lg" role="banner" aria-label="Main navigation">
       <div className="flex-1">
         <h1 className="text-xl font-bold">
-          <i className="fas fa-search"></i> AI PR Reviewer 
+          <i className="fas fa-search"></i> PReviewer 
           <span className="badge badge-accent badge-sm ml-2">HMR ACTIVE</span>
         </h1>
       </div>
