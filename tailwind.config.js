@@ -4,7 +4,9 @@ module.exports = {
     "./index.html",
     "./renderer.js",
     "./*.html",
-    "./*.js"
+    "./*.js",
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./dist/**/*.{html,js}"
   ],
   safelist: [
     'modal',

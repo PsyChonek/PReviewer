@@ -16,6 +16,7 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
+      sandbox: false, // Disable sandbox for development
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'assets/icon.png'), // Optional icon
@@ -23,10 +24,59 @@ const createWindow = () => {
     show: false
   });
 
-  mainWindow.loadFile('index.html');
+  // Load the React-built app
+  if (process.env.NODE_ENV === 'development') {
+    // In development, load from webpack dev server for HMR
+    console.log('Loading development URL: http://localhost:3000');
+    mainWindow.loadURL('http://localhost:3000').catch(err => {
+      console.error('Failed to load URL:', err);
+    });
+    
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      console.error('Page failed to load:', errorCode, errorDescription, validatedURL);
+    });
+    
+    mainWindow.webContents.on('did-finish-load', () => {
+      console.log('Page finished loading successfully');
+    });
+    
+    mainWindow.webContents.openDevTools();
+    
+    try {
+      const { globalShortcut } = require('electron');
+      
+      // Add keyboard shortcuts for development
+      globalShortcut.register('F5', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reloadIgnoringCache();
+        }
+      });
+      globalShortcut.register('CommandOrControl+R', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reloadIgnoringCache();
+        }
+      });
+    } catch (error) {
+      console.log('Dev tools not available:', error.message);
+    }
+  } else {
+    // In production, load the built React app
+    console.log('Loading production file: dist/index.html');
+    mainWindow.loadFile('dist/index.html');
+  }
+  
+  // Add error and success handlers for both dev and prod
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Page failed to load:', errorCode, errorDescription, validatedURL);
+  });
+  
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Page finished loading successfully');
+  });
   
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
+    console.log('Window ready to show');
     mainWindow.show();
   });
 
