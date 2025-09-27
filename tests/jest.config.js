@@ -4,21 +4,21 @@ module.exports = {
 
   // Test file patterns
   testMatch: [
-    '**/tests/**/*.test.js',
-    '**/tests/**/*.spec.js'
+    '**/*.test.js',
+    '**/*.spec.js'
   ],
 
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/setup.js'],
 
   // Coverage configuration
   collectCoverage: false,
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   collectCoverageFrom: [
-    'main.js',
-    'renderer.js',
-    'preload.js',
+    '../src/main.js',
+    '../src/renderer.js',
+    '../src/preload.js',
     '!**/node_modules/**',
     '!**/tests/**',
     '!**/coverage/**',
@@ -48,21 +48,21 @@ module.exports = {
   projects: [
     {
       displayName: 'unit',
-      testMatch: ['<rootDir>/tests/unit/**/*.test.js'],
+      testMatch: ['<rootDir>/unit/**/*.test.js'],
       testEnvironment: 'node',
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
+      setupFilesAfterEnv: ['<rootDir>/setup.js']
     },
     {
       displayName: 'integration',
-      testMatch: ['<rootDir>/tests/integration/**/*.test.js'],
+      testMatch: ['<rootDir>/integration/**/*.test.js'],
       testEnvironment: 'node',
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
+      setupFilesAfterEnv: ['<rootDir>/setup.js']
     },
     {
       displayName: 'renderer',
-      testMatch: ['<rootDir>/tests/renderer/**/*.test.js'],
+      testMatch: ['<rootDir>/renderer/**/*.test.js'],
       testEnvironment: 'jsdom',
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js', '<rootDir>/tests/renderer-setup.js']
+      setupFilesAfterEnv: ['<rootDir>/setup.js', '<rootDir>/renderer-setup.js']
     }
   ],
 

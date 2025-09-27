@@ -1,18 +1,18 @@
 {
   "name": "previewer-electron",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:e2e": "playwright test",
-    "test:unit": "jest --testPathPattern=tests/unit",
-    "test:integration": "jest --testPathPattern=tests/integration"
+    "test": "jest --config tests/jest.config.js",
+    "test:watch": "jest --config tests/jest.config.js --watch",
+    "test:coverage": "jest --config tests/jest.config.js --coverage",
+    "test:e2e": "playwright test --config tests/playwright.config.js",
+    "test:unit": "jest --config tests/jest.config.js --testPathPattern=tests/unit",
+    "test:integration": "jest --config tests/jest.config.js --testPathPattern=tests/integration"
   },
   "author": "Daniel Vazač",
   "license": "MIT",

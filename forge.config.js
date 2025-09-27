@@ -31,7 +31,7 @@ module.exports = {
         // Build configuration for main and preload scripts
         build: [
           {
-            entry: 'main.js',
+            entry: 'src/main.js',
             config: 'vite.main.config.js',
             target: 'main',
           },

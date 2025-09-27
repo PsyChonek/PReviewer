@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read the renderer.js file and extract the token estimation function
-const rendererPath = path.join(__dirname, '../../renderer.js');
+const rendererPath = path.join(__dirname, '../../src/renderer.js');
 const rendererContent = fs.readFileSync(rendererPath, 'utf8');
 
 // Create a mock environment for the functions

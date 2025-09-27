@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const htmlPath = path.join(__dirname, '../../index.html');
+const htmlPath = path.join(__dirname, '../../src/index.html');
 const htmlContent = fs.readFileSync(htmlPath, 'utf8');
 
 // Parse and setup DOM using JSDOM (already available in jsdom environment)
@@ -24,7 +24,7 @@ if (typeof document === 'undefined') {
 require('../renderer-setup');
 
 // Load renderer functions
-const rendererPath = path.join(__dirname, '../../renderer.js');
+const rendererPath = path.join(__dirname, '../../src/renderer.js');
 const rendererContent = fs.readFileSync(rendererPath, 'utf8');
 
 // Modify renderer content to make variables accessible
