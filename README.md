@@ -1,45 +1,37 @@
-# PReviewer - Local AI-Powered Pull Request Reviewer
+# PReviewer - Local AI-Powered Code Review Tool
 
-A desktop application that uses local AI models (via Ollama) to analyze Git repository changes and provide intelligent code review feedback. Available in two versions: a Python/Tkinter application and a modern Electron application with DaisyUI styling.
+A modern Electron desktop application that uses local AI models (via Ollama or Azure OpenAI) to analyze Git repository changes and provide intelligent code review feedback. Built with React 19, TypeScript, and DaisyUI for a sleek, responsive interface.
 
 ## 🚀 Features
 
-- **Local AI Analysis**: Uses Ollama to run AI models locally for privacy and security
+- **Local AI Analysis**: Uses Ollama for privacy-focused local AI processing
+- **Azure OpenAI Integration**: Optional cloud-based AI analysis support
 - **Git Integration**: Seamlessly works with any Git repository
 - **Branch Comparison**: Compare changes between any two branches or commits
-- **Modern UI**: Clean, GitHub-inspired interface with syntax highlighting
+- **Modern UI**: Clean interface built with React 19, TypeScript, and DaisyUI
 - **Export Options**: Save review results to text or markdown files
 - **Progress Tracking**: Real-time status updates and progress indicators
-- **Comprehensive Output**: Detailed analysis with formatted feedback
-- **Two Application Versions**:
-  - **Python/Tkinter**: Classic desktop application
-  - **Electron**: Modern web-based UI with DaisyUI and Tailwind CSS
+- **Comprehensive Output**: Detailed analysis with formatted feedback and syntax highlighting
+- **Cross-Platform**: Runs on Windows, macOS, and Linux
 
 ## 📋 Description
 
-PReviewer is a desktop GUI application that automates code review processes by leveraging local AI models. It's available in two versions:
-
-**Python/Tkinter Version**: A traditional desktop application built with Python and Tkinter.
-
-**Electron Version**: A modern web-based application built with Electron, featuring DaisyUI components and Tailwind CSS for a sleek, responsive interface.
-
-Both versions analyze Git diffs between branches and provide detailed feedback on:
+PReviewer is a modern desktop application built with Electron that automates code review processes by leveraging local AI models. The application provides intelligent analysis of Git repository changes with detailed feedback on:
 
 - **Code Quality**: Identifies potential bugs, security vulnerabilities, and performance issues
 - **Best Practices**: Suggests improvements based on coding standards
 - **Architecture Review**: Evaluates code structure and design patterns
 - **Security Analysis**: Highlights potential security risks in code changes
 
-The application works entirely locally using Ollama, ensuring your code never leaves your machine while still providing powerful AI-driven insights.
+The application prioritizes privacy by working locally with Ollama, ensuring your code never leaves your machine while still providing powerful AI-driven insights. Azure OpenAI integration is available for teams that prefer cloud-based analysis.
 
 ## 🛠️ Setup Instructions
 
 ### Prerequisites
 
-- **Python 3.8+** with Tkinter support (for Python version)
-- **Node.js 18+** and **npm** (for Electron version)
+- **Node.js 18+** and **npm**
 - **Git** installed and accessible from command line
-- **Ollama** for running local AI models
+- **Ollama** for running local AI models (optional: Azure OpenAI for cloud-based analysis)
 
 ### 1. Install Ollama
 
@@ -79,198 +71,122 @@ ollama pull phi3:mini        # Lightweight option
 
 ### 3. Setup Application
 
-Choose between the Python/Tkinter version or the modern Electron version:
-
-#### Option A: Python/Tkinter Version
-
-##### Using pip (recommended)
-
 ```bash
 # Clone the repository
 git clone https://github.com/PsyChonek/PReviewer.git
 cd PReviewer
 
-# Install required packages
-pip install requests
-
-# Run the application
-python3 pr_reviwer_app.py
-```
-
-##### Using virtual environment
-
-```bash
-# Create virtual environment
-python3 -m venv prereviewer_env
-source prereviewer_env/bin/activate  # On Windows: prereviewer_env\Scripts\activate
-
-# Install dependencies
-pip install requests
-
-# Run the application
-python3 pr_reviwer_app.py
-```
-
-#### Option B: Electron Version (Recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/PsyChonek/PReviewer.git
-cd PReviewer/electron-previewer
-
 # Install dependencies
 npm install
 
-# Run in development mode
-npm run dev
-
-# Or build and run in production mode
+# Start development with hot-reloading
 npm start
+
+# Or package for distribution
+npm run package
 ```
 
-### 4. Fix Tkinter Issues (macOS with pyenv)
+### 4. Development Commands
 
-If you encounter `ModuleNotFoundError: No module named '_tkinter'` on macOS:
-
-1. **Install Tcl/Tk using Homebrew:**
-
-   ```sh
-   brew install tcl-tk@8
-   ```
-
-2. **Set environment variables:**
-
-   ```sh
-   export LDFLAGS="-L$(brew --prefix tcl-tk)/lib"
-   export CPPFLAGS="-I$(brew --prefix tcl-tk)/include"
-   export PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig"
-   export PATH="$(brew --prefix tcl-tk)/bin:$PATH"
-   ```
-
-3. **Reinstall Python with Tk support:**
-
-   ```sh
-   env PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" pyenv install 3.12.2
-   ```
-
-4. **Set the Python version:**
-
-   ```sh
-   pyenv global 3.12.2
-   ```
+- `npm start` - Start the Electron app in development mode with hot-reloading (CSS compilation automatic)
+- `npm test` - Run all Jest tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:e2e` - Run E2E tests with Playwright
+- `npm run package` - Package the app for distribution
+- `npm run make` - Create distributable packages
 
 ## 🎯 How to Use
 
-### Using the Python/Tkinter Application
-
-1. **Start Ollama**: Ensure Ollama is running with `ollama serve`
-2. **Launch PReviewer**: Run `python3 pr_reviwer_app.py`
+1. **Start AI Service**:
+   - For local analysis: Ensure Ollama is running with `ollama serve`
+   - For cloud analysis: Configure Azure OpenAI credentials in settings
+2. **Launch PReviewer**: Run `npm start`
 3. **Configure Settings**:
-   - Ollama URL (default: `http://localhost:11434/api/generate`)
-   - AI Model (e.g., `codellama`, `mistral`, `phi3:mini`)
-4. **Select Repository**: Browse and select your Git repository folder
-5. **Choose Branches**:
-   - **From Branch**: Branch containing new changes to review
-   - **To Branch**: Target branch (usually `main` or `master`)
-6. **Start Review**: Click "🚀 Start AI Review" to analyze the changes
-
-### Using the Electron Application
-
-1. **Start Ollama**: Ensure Ollama is running with `ollama serve`
-2. **Launch PReviewer**: Run `npm run dev` or `npm start`
-3. **Configure Settings**:
-   - Ollama URL (default: `http://localhost:11434/api/generate`)
-   - AI Model (choose from available models)
+   - Choose AI provider (Ollama or Azure OpenAI)
+   - Select AI model from available options
+   - Set API URLs and credentials as needed
 4. **Select Repository**: Click "Browse" to select your Git repository folder
 5. **Choose Branches**: Select from and to branches using the dropdowns
 6. **Start Review**: Click "Start AI Review" to analyze the changes
-
-Both versions provide the same core functionality with different user interfaces.
+7. **View Results**: Review the detailed analysis with syntax highlighting and export options
 
 ## 🔧 Configuration
 
-### Python/Tkinter Configuration
+### AI Provider Settings
 
-The application allows you to configure:
+**Ollama (Local)**:
+- API URL: `http://localhost:11434/api/generate`
+- Models: codellama, mistral, phi3:mini, and other installed models
 
-- **Ollama API URL**: Default is `http://localhost:11434/api/generate`
-- **AI Model**: Choose from downloaded models (codellama, mistral, phi3:mini, etc.)
-- **Repository Path**: Any local Git repository
-- **Branch Selection**: Any local branches in the repository
+**Azure OpenAI (Cloud)**:
+- API URL: Your Azure OpenAI endpoint
+- API Key: Your Azure OpenAI API key
+- Models: GPT-4, GPT-3.5-turbo, and other deployed models
 
-### Electron Configuration
+### Application Architecture
 
-The Electron version includes additional configuration options and npm scripts:
+**Built with:**
+- **Frontend**: React 19 with TypeScript and functional components
+- **Styling**: DaisyUI 5 + Tailwind CSS 4
+- **Desktop Framework**: Electron with secure IPC communication
+- **Git Operations**: simple-git library
+- **Build System**: Vite for bundling and Electron Forge for packaging
 
-**Available npm scripts:**
+**Configuration Storage:**
+- AI provider settings: localStorage
+- Repository paths and preferences: Application state
+- Debug mode and other settings: Persistent across sessions
 
-- `npm run dev`: Development mode with hot-reloading and Tailwind CSS watching
-- `npm start`: Production mode with optimized CSS build
-- `npm run build-css`: Build and watch Tailwind CSS in development
-- `npm run build-css-prod`: Build optimized CSS for production
-- `npm run build`: Create distributable packages (requires electron-builder setup)
+## 🎨 Application Features
 
-**Dependencies:**
-
-- **Runtime**: Axios for HTTP requests, Simple-git for Git operations
-- **Development**: Tailwind CSS, DaisyUI, Electron, and development tools
-
-## 🎨 Features Overview
-
-### Python/Tkinter Application
-
-- **Modern UI**: GitHub-inspired design with clean, intuitive interface
-- **Syntax Highlighting**: Colored output for different types of feedback
-- **Progress Indicators**: Real-time updates on analysis progress
-- **Export Functionality**: Save results to text or markdown files
-- **Clipboard Integration**: Copy results with one click
-- **Context Menus**: Right-click for additional options
-- **Error Handling**: Comprehensive error messages and troubleshooting tips
-
-### Electron Application
-
-- **Modern Web UI**: Built with DaisyUI and Tailwind CSS
-- **Responsive Design**: Adapts to different window sizes
-- **Real-time Updates**: Live progress tracking during analysis
-- **Enhanced UX**: Smooth animations and modern components
-- **Export Functionality**: Save results in multiple formats
-- **Cross-platform**: Runs on Windows, macOS, and Linux
+- **Modern React UI**: Built with React 19, TypeScript, and DaisyUI components
+- **Responsive Design**: Adapts to different window sizes and screen resolutions
+- **Real-time Progress**: Live updates and progress tracking during AI analysis
+- **Syntax Highlighting**: Colored output for code reviews using the marked library
+- **Multiple Export Formats**: Save results to text or markdown files
+- **Secure IPC**: Safe communication between Electron processes
+- **Cross-platform**: Runs natively on Windows, macOS, and Linux
+- **Git Integration**: Full branch management and diff analysis
+- **Error Handling**: Comprehensive error messages and user guidance
+- **Settings Persistence**: Configuration saved across application sessions
 
 ## 🚨 Troubleshooting
 
-### Common Issues (Both Versions)
+### AI Connection Issues
 
-#### Ollama Connection Issues
-
+**Ollama Connection:**
 - Ensure Ollama is running: `ollama serve`
 - Verify the model is downloaded: `ollama list`
-- Check the API URL in the configuration
+- Check the API URL in settings (default: `http://localhost:11434/api/generate`)
 
-#### Git Repository Issues
+**Azure OpenAI Connection:**
+- Verify your API key and endpoint are correct
+- Ensure your Azure OpenAI deployment is active
+- Check network connectivity and firewall settings
+
+### Git Repository Issues
 
 - Ensure the selected folder is a Git repository (contains `.git` folder)
 - Verify branches exist locally using `git branch`
+- Check that Git is installed and accessible from command line
 
-### Python/Tkinter Specific Issues
+### Application Issues
 
-#### Python/Tkinter Issues
-
-- Follow the macOS Tkinter setup instructions above
-- Ensure Python 3.8+ is installed
-- Install required packages: `pip install requests`
-
-### Electron Specific Issues
-
-#### Node.js and npm Issues
-
+**Installation Problems:**
 - Ensure Node.js 18+ is installed: `node --version`
 - Clear npm cache if installation fails: `npm cache clean --force`
 - Delete `node_modules` and `package-lock.json`, then run `npm install` again
 
-#### Build Issues
+**Build/Development Issues:**
+- CSS compilation is handled automatically by Vite with Tailwind CSS plugin
+- For styling issues, check the `src/index.css` file and DaisyUI configuration
+- Check console logs in the Electron DevTools for runtime errors
+- If Vite build fails, ensure all dependencies are installed and Node.js 18+ is being used
 
-- For CSS build issues, ensure Tailwind CSS is properly installed
-- If development mode doesn't work, try running `npm run build-css-prod` first
+**Testing Issues:**
+- Ensure all dependencies are installed: `npm install`
+- For test failures, run `npm test` to see detailed error messages
+- Check Jest configuration in `package.json` and test files in `tests/` directory
 
 ## 📝 License
 

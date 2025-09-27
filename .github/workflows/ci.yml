@@ -15,51 +15,54 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
-
       - name: TypeScript check
         run: npx tsc --noEmit
 
-  unit-tests:
+      - name: Build renderer (includes CSS compilation)
+        run: npm run package --dry-run || echo "Dry run to verify build setup"
+
+  tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-type: [unit, integration, coverage]
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run unit tests
+        if: matrix.test-type == 'unit'
         run: npm run test:unit
 
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Run integration tests
+        if: matrix.test-type == 'integration'
         run: npm run test:integration
+
+      - name: Run tests with coverage
+        if: matrix.test-type == 'coverage'
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        if: matrix.test-type == 'coverage'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -69,7 +72,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -89,6 +92,33 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run package
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: out/
+          retention-days: 7
+
   security-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -101,12 +131,12 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript
+          languages: javascript-typescript
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
