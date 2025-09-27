@@ -1,36 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { BranchInfo } from '../types';
+import { formatTokenCount } from '../utils/tokenEstimation';
+import BranchSelector from './BranchSelector';
 
 interface RepositorySectionProps {
-  repoPath: string | null;
-  fromBranch: string;
-  toBranch: string;
   onRepoPathChange: (path: string | null) => void;
-  onFromBranchChange: (branch: string) => void;
-  onToBranchChange: (branch: string) => void;
+  onBranchChange: (fromBranch: string, toBranch: string) => void;
   onStartReview: () => void;
   onStopReview: () => void;
   reviewInProgress: boolean;
   onOpenConfig: () => void;
+  estimatedInputTokens: number;
 }
 
 const RepositorySection: React.FC<RepositorySectionProps> = ({
-  repoPath,
-  fromBranch,
-  toBranch,
   onRepoPathChange,
-  onFromBranchChange,
-  onToBranchChange,
+  onBranchChange,
   onStartReview,
   onStopReview,
   reviewInProgress,
-  onOpenConfig
+  onOpenConfig,
+  estimatedInputTokens
 }) => {
+  const [repoPath, setRepoPath] = useState<string | null>(null);
+  const [fromBranch, setFromBranch] = useState<string>('');
+  const [toBranch, setToBranch] = useState<string>('');
   const [branches, setBranches] = useState<BranchInfo[]>([]);
-  const [filteredFromBranches, setFilteredFromBranches] = useState<BranchInfo[]>([]);
-  const [filteredToBranches, setFilteredToBranches] = useState<BranchInfo[]>([]);
-  const [fromBranchFilter, setFromBranchFilter] = useState('');
-  const [toBranchFilter, setToBranchFilter] = useState('');
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
   useEffect(() => {
@@ -38,23 +33,22 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
       loadBranches();
     } else {
       setBranches([]);
-      setFilteredFromBranches([]);
-      setFilteredToBranches([]);
     }
   }, [repoPath]);
 
-  useEffect(() => {
-    filterBranches(fromBranchFilter, 'from');
-  }, [branches, fromBranchFilter]);
 
+  // Notify parent when branches change
   useEffect(() => {
-    filterBranches(toBranchFilter, 'to');
-  }, [branches, toBranchFilter]);
+    if (fromBranch && toBranch) {
+      onBranchChange(fromBranch, toBranch);
+    }
+  }, [fromBranch, toBranch, onBranchChange]);
 
   const selectRepository = async () => {
     try {
       const selectedPath = await window.electronAPI.selectDirectory();
       if (selectedPath) {
+        setRepoPath(selectedPath);
         onRepoPathChange(selectedPath);
       }
     } catch (error) {
@@ -67,8 +61,27 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 
     setIsLoadingBranches(true);
     try {
-      const branchList = await window.electronAPI.getBranches(repoPath);
-      setBranches(branchList);
+      const branchList = await window.electronAPI.getGitBranches(repoPath);
+      // Convert string array to BranchInfo array
+      const branchInfoList: BranchInfo[] = branchList.map(branchName => ({
+        name: branchName,
+        type: branchName.startsWith('remotes/') ? 'remote' : 'local'
+      }));
+      setBranches(branchInfoList);
+
+      // Auto-select target branch (main/master if available)
+      if (branchInfoList.length > 0 && !toBranch) {
+        const preferredTargets = ['main', 'master'];
+        const targetBranch = preferredTargets.find(target =>
+          branchInfoList.some(branch => branch.name === target)
+        ) || branchInfoList[0].name;
+        setToBranch(targetBranch);
+      }
+
+      // Auto-select first branch as source if not already selected
+      if (branchInfoList.length > 0 && !fromBranch) {
+        setFromBranch(branchInfoList[0].name);
+      }
     } catch (error) {
       console.error('Failed to load branches:', error);
       setBranches([]);
@@ -77,16 +90,13 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
     }
   };
 
-  const filterBranches = (filter: string, type: 'from' | 'to') => {
-    const filtered = branches.filter(branch =>
-      branch.name.toLowerCase().includes(filter.toLowerCase())
-    );
 
-    if (type === 'from') {
-      setFilteredFromBranches(filtered);
-    } else {
-      setFilteredToBranches(filtered);
-    }
+  const handleFromBranchSelect = (branchName: string) => {
+    setFromBranch(branchName);
+  };
+
+  const handleToBranchSelect = (branchName: string) => {
+    setToBranch(branchName);
   };
 
   const canStartReview = repoPath && fromBranch && toBranch && fromBranch !== toBranch && !reviewInProgress;
@@ -145,105 +155,46 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label" htmlFor="from-branch-button">
-                <span className="label-text font-medium">From Branch (Source)</span>
-              </label>
-              <div className="dropdown dropdown-bottom w-full">
-                <div
-                  id="from-branch-button"
-                  tabIndex={0}
-                  role="button"
-                  className={`btn btn-outline w-full justify-start ${!repoPath ? 'btn-disabled' : ''}`}
-                >
-                  <span id="from-branch-display">
-                    {!repoPath ? 'Select repository first...' : fromBranch || 'Select from branch...'}
-                  </span>
-                  <i className="fas fa-chevron-down ml-auto"></i>
-                </div>
-                {repoPath && (
-                  <div tabIndex={0} className="dropdown-content z-[1] menu p-0 shadow bg-base-100 rounded-box w-full">
-                    <div className="p-2">
-                      <input
-                        type="text"
-                        placeholder="Search branches..."
-                        className="input input-bordered input-sm w-full"
-                        value={fromBranchFilter}
-                        onChange={(e) => setFromBranchFilter(e.target.value)}
-                      />
-                    </div>
-                    <ul className="menu menu-lg max-h-60 overflow-y-auto">
-                      {isLoadingBranches ? (
-                        <li><span className="loading loading-spinner loading-sm"></span> Loading...</li>
-                      ) : filteredFromBranches.length > 0 ? (
-                        filteredFromBranches.map((branch) => (
-                          <li key={branch.name}>
-                            <a onClick={() => onFromBranchChange(branch.name)}>
-                              {branch.name}
-                              {branch.type === 'remote' && <span className="badge badge-sm badge-secondary ml-2">remote</span>}
-                            </a>
-                          </li>
-                        ))
-                      ) : (
-                        <li><span>No branches found</span></li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="label-text-alt text-sm text-gray-500 mt-1">Branch containing the changes to review</div>
-            </div>
+            <BranchSelector
+              id="from-branch-button"
+              label="From Branch (Source)"
+              helpText="Branch containing the changes to review"
+              disabled={!repoPath}
+              selectedBranch={fromBranch}
+              branches={branches}
+              isLoading={isLoadingBranches}
+              onBranchSelect={handleFromBranchSelect}
+              placeholder="Select from branch..."
+              disabledText="Select repository first..."
+            />
 
-            <div className="form-control">
-              <label className="label" htmlFor="to-branch-button">
-                <span className="label-text font-medium">To Branch (Target)</span>
-              </label>
-              <div className="dropdown dropdown-bottom w-full">
-                <div
-                  id="to-branch-button"
-                  tabIndex={0}
-                  role="button"
-                  className={`btn btn-outline w-full justify-start ${!repoPath ? 'btn-disabled' : ''}`}
-                >
-                  <span id="to-branch-display">
-                    {!repoPath ? 'Select repository first...' : toBranch || 'Select to branch...'}
-                  </span>
-                  <i className="fas fa-chevron-down ml-auto"></i>
-                </div>
-                {repoPath && (
-                  <div tabIndex={0} className="dropdown-content z-[1] menu p-0 shadow bg-base-100 rounded-box w-full">
-                    <div className="p-2">
-                      <input
-                        type="text"
-                        placeholder="Search branches..."
-                        className="input input-bordered input-sm w-full"
-                        value={toBranchFilter}
-                        onChange={(e) => setToBranchFilter(e.target.value)}
-                      />
-                    </div>
-                    <ul className="menu menu-lg max-h-60 overflow-y-auto">
-                      {isLoadingBranches ? (
-                        <li><span className="loading loading-spinner loading-sm"></span> Loading...</li>
-                      ) : filteredToBranches.length > 0 ? (
-                        filteredToBranches.map((branch) => (
-                          <li key={branch.name}>
-                            <a onClick={() => onToBranchChange(branch.name)}>
-                              {branch.name}
-                              {branch.type === 'remote' && <span className="badge badge-sm badge-secondary ml-2">remote</span>}
-                            </a>
-                          </li>
-                        ))
-                      ) : (
-                        <li><span>No branches found</span></li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="label-text-alt text-sm text-gray-500 mt-1">Target branch to compare against (usually main/master)</div>
-            </div>
+            <BranchSelector
+              id="to-branch-button"
+              label="To Branch (Target)"
+              helpText="Target branch to compare against (usually main/master)"
+              disabled={!repoPath}
+              selectedBranch={toBranch}
+              branches={branches}
+              isLoading={isLoadingBranches}
+              onBranchSelect={handleToBranchSelect}
+              placeholder="Select to branch..."
+              disabledText="Select repository first..."
+            />
           </div>
         </div>
+
+        {/* Estimated Input Tokens Display */}
+        {estimatedInputTokens > 0 && canStartReview && (
+          <div className="alert alert-success mt-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <h3 className="font-bold text-lg text-success-content">Ready for Review</h3>
+              <div className="text-sm text-success-content">Estimated input tokens: <span className="font-semibold">{formatTokenCount(estimatedInputTokens)}</span></div>
+            </div>
+          </div>
+        )}
 
         <div className="card-actions justify-center mt-6">
           {!reviewInProgress ? (

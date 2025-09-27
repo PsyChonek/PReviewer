@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   testAzureAIConnection: (config) => ipcRenderer.invoke('test-azure-ai-connection', config),
 
+  // Config management
+  loadConfig: () => ipcRenderer.invoke('load-config'),
+  
+  saveConfig: (config) => ipcRenderer.invoke('save-config', config),
+
   // Progress listeners
   onOllamaProgress: (callback) => {
     ipcRenderer.on('ollama-progress', callback);

@@ -36,10 +36,15 @@ module.exports = {
   },
 
   // Module paths
-  moduleFileExtensions: ['js', 'json'],
+  moduleFileExtensions: ['js', 'json', 'ts', 'tsx'],
 
   // Transform configuration
   transform: {},
+
+  // Mock TypeScript files for now
+  moduleNameMapper: {
+    '\\.(ts|tsx)$': '<rootDir>/mocks/empty.js'
+  },
 
   // Test timeout
   testTimeout: 30000,

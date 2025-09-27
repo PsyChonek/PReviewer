@@ -3,7 +3,6 @@ export interface AppState {
   reviewInProgress: boolean;
   reviewStartTime: number | null;
   currentOutputMarkdown: string;
-  debugMode: boolean;
 }
 
 export interface AIProviderConfig {
@@ -50,12 +49,17 @@ declare global {
   interface Window {
     electronAPI: {
       selectDirectory: () => Promise<string | null>;
-      getBranches: (repoPath: string) => Promise<BranchInfo[]>;
-      getDiff: (repoPath: string, fromBranch: string, toBranch: string) => Promise<string>;
-      testOllamaConnection: (url: string, model: string) => Promise<{ success: boolean; message: string }>;
-      testAzureConnection: (endpoint: string, apiKey: string, deployment: string) => Promise<{ success: boolean; message: string }>;
-      reviewWithOllama: (url: string, model: string, prompt: string) => Promise<{ success: boolean; content?: string; error?: string }>;
-      reviewWithAzure: (endpoint: string, apiKey: string, deployment: string, prompt: string) => Promise<{ success: boolean; content?: string; error?: string }>;
+      getGitBranches: (repoPath: string) => Promise<string[]>;
+      getGitDiff: (repoPath: string, fromBranch: string, toBranch: string) => Promise<string>;
+      fixGitOwnership: (repoPath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+      callOllamaAPI: (config: { url: string; model: string; prompt: string }) => Promise<string>;
+      testOllamaConnection: (config: { url: string; model: string }) => Promise<{ success: boolean; error?: string; version?: string; modelResponse?: string }>;
+      callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }) => Promise<string>;
+      testAzureAIConnection: (config: { endpoint: string; apiKey: string; deploymentName: string }) => Promise<{ success: boolean; error?: string; deploymentName?: string; modelResponse?: string }>;
+      loadConfig: () => Promise<any>;
+      saveConfig: (config: any) => Promise<{ success: boolean; error?: string }>;
+      onOllamaProgress: (callback: (event: any, data: any) => void) => () => void;
+      onAzureAIProgress: (callback: (event: any, data: any) => void) => () => void;
     };
   }
 }

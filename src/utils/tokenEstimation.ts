@@ -63,3 +63,18 @@ export function formatDuration(seconds: number): string {
         return `${hours}h ${minutes}m`;
     }
 }
+
+export function formatTokenCount(count: number): string {
+    if (count < 1000) {
+        return count.toString();
+    } else if (count < 1000000) {
+        const k = count / 1000;
+        return k % 1 === 0 ? `${k}K` : `${k.toFixed(1)}K`;
+    } else if (count < 1000000000) {
+        const m = count / 1000000;
+        return m % 1 === 0 ? `${m}M` : `${m.toFixed(1)}M`;
+    } else {
+        const b = count / 1000000000;
+        return b % 1 === 0 ? `${b}B` : `${b.toFixed(1)}B`;
+    }
+}

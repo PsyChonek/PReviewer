@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
 const simpleGit = require('simple-git');
 const axios = require('axios');
 const OpenAI = require('openai');
@@ -69,17 +70,157 @@ const createWindow = () => {
   mainWindow.webContents.on('did-finish-load', () => {
     console.log('Page finished loading successfully');
   });
+
+  // Add keyboard shortcut handling as fallback
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      console.log('F12 detected via before-input-event');
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
   
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     console.log('Window ready to show');
     mainWindow.show();
+
+    // Register F12 shortcut after window is ready
+    try {
+      const { globalShortcut } = require('electron');
+      const registered = globalShortcut.register('F12', () => {
+        console.log('F12 pressed - toggling dev tools');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.toggleDevTools();
+        }
+      });
+
+      if (registered) {
+        console.log('F12 shortcut registered successfully');
+      } else {
+        console.log('F12 shortcut registration failed');
+      }
+    } catch (error) {
+      console.log('F12 shortcut not available:', error.message);
+    }
   });
 
   // Open DevTools in development
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
+};
+
+// Config file management
+let getConfigPath = () => {
+  let userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'config.json');
+};
+
+let getDefaultConfigPath = () => {
+  return path.join(__dirname, '..', 'config.json');
+};
+
+async function loadDefaultConfig() {
+  try {
+    let defaultConfigPath = getDefaultConfigPath();
+    let data = await fs.readFile(defaultConfigPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Failed to load default config:', error);
+    // Return minimal fallback config
+    return {
+      defaults: {
+        aiProvider: {
+          provider: 'ollama',
+          ollama: { url: 'http://localhost:11434', model: 'llama3.2:3b' },
+          azure: { endpoint: '', apiKey: '', deployment: '' }
+        },
+        debugMode: false
+      },
+      prompts: {
+        basePrompt: 'You are an expert code reviewer. Analyze the following code changes and provide feedback.',
+        userPrompt: ''
+      }
+    };
+  }
+}
+
+async function loadUserConfig() {
+  try {
+    let userConfigPath = getConfigPath();
+    let data = await fs.readFile(userConfigPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    // File doesn't exist or is corrupted, return empty object
+    return {};
+  }
+}
+
+async function saveUserConfig(config) {
+  try {
+    let userConfigPath = getConfigPath();
+    let userDir = path.dirname(userConfigPath);
+
+    // Ensure directory exists
+    await fs.mkdir(userDir, { recursive: true });
+
+    // Load existing user config and merge
+    let existingConfig = await loadUserConfig();
+    let mergedConfig = { ...existingConfig, ...config };
+
+    await fs.writeFile(userConfigPath, JSON.stringify(mergedConfig, null, 2));
+    console.log('User config saved to:', userConfigPath);
+  } catch (error) {
+    console.error('Failed to save user config:', error);
+    throw error;
+  }
+}
+
+// IPC handlers for config
+ipcMain.handle('load-config', async () => {
+  try {
+    let defaultConfig = await loadDefaultConfig();
+    let userConfig = await loadUserConfig();
+
+    // Merge default config with user overrides
+    let mergedConfig = mergeDeep(defaultConfig, userConfig);
+    return mergedConfig;
+  } catch (error) {
+    console.error('Failed to load config:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-config', async (event, config) => {
+  try {
+    await saveUserConfig(config);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Deep merge utility function
+function mergeDeep(target, source) {
+  const output = Object.assign({}, target);
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach(key => {
+      if (isObject(source[key])) {
+        if (!(key in target))
+          Object.assign(output, { [key]: source[key] });
+        else
+          output[key] = mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(output, { [key]: source[key] });
+      }
+    });
+  }
+  return output;
+}
+
+function isObject(item) {
+  return item && typeof item === 'object' && !Array.isArray(item);
 };
 
 // IPC handlers for file operations
@@ -136,10 +277,10 @@ ipcMain.handle('get-git-branches', async (event, repoPath) => {
 ipcMain.handle('fix-git-ownership', async (event, repoPath) => {
   try {
     const { exec } = require('child_process');
-    const { promisify } = require('util');
-    const execAsync = promisify(exec);
+    let { promisify } = require('util');
+    let execAsync = promisify(exec);
 
-    const command = `git config --global --add safe.directory "${repoPath}"`;
+    let command = `git config --global --add safe.directory "${repoPath}"`;
     await execAsync(command);
 
     return { success: true, message: 'Git ownership fixed successfully!' };
@@ -638,6 +779,15 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  // Unregister all global shortcuts
+  try {
+    const { globalShortcut } = require('electron');
+    globalShortcut.unregisterAll();
+    console.log('Global shortcuts unregistered');
+  } catch (error) {
+    console.log('Error unregistering shortcuts:', error.message);
+  }
+
   if (process.platform !== 'darwin') {
     app.quit();
   }

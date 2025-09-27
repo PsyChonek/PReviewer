@@ -108,6 +108,33 @@ test.describe('Renderer Process Integration', () => {
     await expect(modal).not.toHaveAttribute('open');
   });
 
+  test('should handle prompt reset functionality', async ({ page }) => {
+    // Open settings
+    await page.locator('button[aria-label="Open configuration settings"]').click();
+
+    // Wait for modal to be ready
+    const modal = page.locator('#config-modal');
+    await expect(modal).toHaveAttribute('open');
+    await page.waitForTimeout(500);
+
+    // Check if prompt reset buttons are present
+    const basePromptResetBtn = page.locator('button:has-text("Reset")').first();
+    const userPromptClearBtn = page.locator('button:has-text("Clear")');
+    const resetAllBtn = page.locator('button:has-text("Reset All Prompts")');
+
+    await expect(basePromptResetBtn).toBeAttached();
+    await expect(userPromptClearBtn).toBeAttached();
+    await expect(resetAllBtn).toBeAttached();
+
+    // Verify buttons have correct titles
+    await expect(basePromptResetBtn).toHaveAttribute('title', 'Reset to default prompt');
+    await expect(userPromptClearBtn).toHaveAttribute('title', 'Clear user prompt');
+    await expect(resetAllBtn).toHaveAttribute('title', 'Reset both prompts to defaults');
+
+    // Close modal
+    await page.locator('button:has-text("Close")').click();
+  });
+
   test('should handle repository selection simulation', async ({ page }) => {
     // Mock electronAPI if not available
     await page.addInitScript(() => {

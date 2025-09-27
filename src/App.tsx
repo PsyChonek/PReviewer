@@ -2,73 +2,151 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import RepositorySection from './components/RepositorySection';
 import OutputSection from './components/OutputSection';
+import ConfigModal from './components/ConfigModal';
+import ProgressTracker from './components/ProgressTracker';
 import { AppState, AIProviderConfig } from './types';
 import { buildPrompt, DEFAULT_BASE_PROMPT } from './utils/prompts';
 import { estimateTokens } from './utils/tokenEstimation';
+import { getDefaultPrompts } from './utils/config';
+import { useTokenStore } from './store/tokenStore';
+import { useConfigStore } from './store/configStore';
 
 const App: React.FC = () => {
+  const {
+    setEstimatedInputTokens: setStoreEstimatedTokens,
+    setCurrentSessionInputTokens,
+    setCurrentSessionOutputTokens,
+    addToTotalInputTokens,
+    addToTotalOutputTokens,
+    resetCurrentSession,
+    estimatedInputTokens: storeEstimatedTokens
+  } = useTokenStore();
+
+  const { aiConfig, basePrompt, userPrompt, debugMode } = useConfigStore();
   const [appState, setAppState] = useState<AppState>({
     currentRepoPath: null,
     reviewInProgress: false,
     reviewStartTime: null,
-    currentOutputMarkdown: '',
-    debugMode: false
+    currentOutputMarkdown: ''
   });
 
   const [fromBranch, setFromBranch] = useState<string>('');
   const [toBranch, setToBranch] = useState<string>('');
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [testingConnection, setTestingConnection] = useState<boolean>(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string; provider?: string } | null>(null);
+  const [reviewStats, setReviewStats] = useState<{
+    tokens: number;
+    inputTokens: number;
+    outputTokens: number;
+    tokensPerSecond: number;
+    processingTime: number;
+    responseTime: number;
+    stage: string;
+    progress: number;
+  } | null>(null);
 
-  const [aiConfig, setAiConfig] = useState<AIProviderConfig>({
-    provider: 'ollama',
-    ollama: {
-      url: 'http://localhost:11434/api/generate',
-      model: 'codellama'
-    },
-    azure: {
-      endpoint: '',
-      apiKey: '',
-      deployment: ''
-    }
-  });
+  const [estimatedInputTokens, setEstimatedInputTokens] = useState<number>(0);
 
-  const [basePrompt, setBasePrompt] = useState<string>(DEFAULT_BASE_PROMPT);
-  const [userPrompt, setUserPrompt] = useState<string>('');
 
+  // Set up progress listeners with access to current estimatedInputTokens
   useEffect(() => {
-    loadConfiguration();
-  }, []);
+    const ollamaProgressCleanup = window.electronAPI.onOllamaProgress((event, data) => {
+      setReviewStats(prevStats => ({
+        tokens: data.tokens || 0,
+        inputTokens: data.actualInputTokens || estimatedInputTokens,
+        outputTokens: data.actualOutputTokens || data.tokens || 0,
+        tokensPerSecond: data.tokensPerSecond || 0,
+        processingTime: data.processingTime || 0,
+        responseTime: data.responseTime || 0,
+        stage: data.stage || data.message || '',
+        progress: data.progress || 0
+      }));
 
-  const loadConfiguration = () => {
-    const savedConfig = localStorage.getItem('aiConfig');
-    if (savedConfig) {
-      try {
-        setAiConfig(JSON.parse(savedConfig));
-      } catch (error) {
-        console.error('Failed to load configuration:', error);
+      // Update current session tokens live during review
+      setCurrentSessionInputTokens(data.actualInputTokens || storeEstimatedTokens);
+      setCurrentSessionOutputTokens(data.actualOutputTokens || data.tokens || 0);
+
+      // Update total tokens when review completes (try multiple completion indicators)
+      if ((data.stage === 'complete' || data.progress === 100) && (data.actualInputTokens || data.actualOutputTokens)) {
+        const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
+        const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
+
+        console.log('Updating total tokens from progress listener:', {
+          stage: data.stage,
+          progress: data.progress,
+          inputTokens: newInputTokens,
+          outputTokens: newOutputTokens
+        });
+
+        if (newInputTokens > 0) {
+          addToTotalInputTokens(newInputTokens);
+          console.log('Added input tokens to total:', newInputTokens);
+        }
+
+        if (newOutputTokens > 0) {
+          addToTotalOutputTokens(newOutputTokens);
+          console.log('Added output tokens to total:', newOutputTokens);
+        }
       }
-    }
+    });
 
-    const savedBasePrompt = localStorage.getItem('basePrompt');
-    if (savedBasePrompt) {
-      setBasePrompt(savedBasePrompt);
-    }
+    const azureProgressCleanup = window.electronAPI.onAzureAIProgress((event, data) => {
+      setReviewStats(prevStats => ({
+        tokens: data.tokens || 0,
+        inputTokens: data.actualInputTokens || estimatedInputTokens,
+        outputTokens: data.actualOutputTokens || data.tokens || 0,
+        tokensPerSecond: data.tokensPerSecond || 0,
+        processingTime: data.processingTime || 0,
+        responseTime: data.responseTime || 0,
+        stage: data.stage || data.message || '',
+        progress: data.progress || 0
+      }));
 
-    const savedUserPrompt = localStorage.getItem('userPrompt');
-    if (savedUserPrompt) {
-      setUserPrompt(savedUserPrompt);
-    }
+      // Update current session tokens live during review
+      setCurrentSessionInputTokens(data.actualInputTokens || storeEstimatedTokens);
+      setCurrentSessionOutputTokens(data.actualOutputTokens || data.tokens || 0);
 
-    const savedDebugMode = localStorage.getItem('debugMode') === 'true';
-    setAppState(prev => ({ ...prev, debugMode: savedDebugMode }));
-  };
+      // Update total tokens when review completes (try multiple completion indicators)
+      if ((data.stage === 'complete' || data.progress === 100) && (data.actualInputTokens || data.actualOutputTokens)) {
+        const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
+        const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
 
-  const saveConfiguration = () => {
-    localStorage.setItem('aiConfig', JSON.stringify(aiConfig));
-    localStorage.setItem('basePrompt', basePrompt);
-    localStorage.setItem('userPrompt', userPrompt);
-    localStorage.setItem('debugMode', appState.debugMode.toString());
-  };
+        console.log('Updating total tokens from progress listener:', {
+          stage: data.stage,
+          progress: data.progress,
+          inputTokens: newInputTokens,
+          outputTokens: newOutputTokens
+        });
+
+        if (newInputTokens > 0) {
+          addToTotalInputTokens(newInputTokens);
+          console.log('Added input tokens to total:', newInputTokens);
+        }
+
+        if (newOutputTokens > 0) {
+          addToTotalOutputTokens(newOutputTokens);
+          console.log('Added output tokens to total:', newOutputTokens);
+        }
+      }
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      ollamaProgressCleanup();
+      azureProgressCleanup();
+    };
+  }, [estimatedInputTokens]);
+
+  // Calculate input tokens when branches, repo, or prompts change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      calculateInputTokens();
+    }, 500); // Debounce to avoid too many calculations
+
+    return () => clearTimeout(timer);
+  }, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt]);
+
 
   const handleStartReview = async () => {
     if (!appState.currentRepoPath || !fromBranch || !toBranch) {
@@ -83,9 +161,13 @@ const App: React.FC = () => {
       currentOutputMarkdown: ''
     }));
 
+    // Reset review stats and current session tokens
+    setReviewStats(null);
+    resetCurrentSession();
+
     try {
       // Get the diff
-      const diff = await window.electronAPI.getDiff(appState.currentRepoPath, fromBranch, toBranch);
+      const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
 
       if (!diff || diff.trim() === '') {
         setAppState(prev => ({
@@ -99,26 +181,32 @@ const App: React.FC = () => {
       // Build the prompt
       const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
 
-      if (appState.debugMode) {
+      if (debugMode) {
         console.log('Estimated tokens:', estimateTokens(fullPrompt));
         console.log('Full prompt:', fullPrompt);
       }
 
       // Call the appropriate AI service
       let result;
-      if (aiConfig.provider === 'ollama') {
-        result = await window.electronAPI.reviewWithOllama(
-          aiConfig.ollama.url,
-          aiConfig.ollama.model,
-          fullPrompt
-        );
-      } else {
-        result = await window.electronAPI.reviewWithAzure(
-          aiConfig.azure.endpoint,
-          aiConfig.azure.apiKey,
-          aiConfig.azure.deployment,
-          fullPrompt
-        );
+      try {
+        if (aiConfig.provider === 'ollama') {
+          const response = await window.electronAPI.callOllamaAPI({
+            url: aiConfig.ollama.url,
+            model: aiConfig.ollama.model,
+            prompt: fullPrompt
+          });
+          result = { success: true, content: response };
+        } else {
+          const response = await window.electronAPI.callAzureAI({
+            endpoint: aiConfig.azure.endpoint,
+            apiKey: aiConfig.azure.apiKey,
+            deploymentName: aiConfig.azure.deployment,
+            prompt: fullPrompt
+          });
+          result = { success: true, content: response };
+        }
+      } catch (apiError) {
+        result = { success: false, error: String(apiError) };
       }
 
       if (result.success && result.content) {
@@ -127,6 +215,37 @@ const App: React.FC = () => {
           currentOutputMarkdown: result.content || '',
           reviewInProgress: false
         }));
+
+        // Update total tokens when review completes successfully
+        const currentStats = reviewStats;
+        console.log('Review completed successfully, updating totals:', {
+          currentStats,
+          storeEstimatedTokens
+        });
+
+        if (currentStats) {
+          const inputTokensToAdd = currentStats.inputTokens || storeEstimatedTokens;
+          const outputTokensToAdd = currentStats.outputTokens || currentStats.tokens;
+
+          console.log('Adding tokens:', { inputTokensToAdd, outputTokensToAdd });
+
+          if (inputTokensToAdd > 0) {
+            addToTotalInputTokens(inputTokensToAdd);
+            console.log('Updated total input tokens (from completion):', inputTokensToAdd);
+          }
+
+          if (outputTokensToAdd > 0) {
+            addToTotalOutputTokens(outputTokensToAdd);
+            console.log('Updated total output tokens (from completion):', outputTokensToAdd);
+          }
+        } else {
+          // Fallback: use estimated input tokens at minimum
+          console.log('No current stats, using estimated input tokens:', storeEstimatedTokens);
+          if (storeEstimatedTokens > 0) {
+            addToTotalInputTokens(storeEstimatedTokens);
+            console.log('Updated total input tokens (fallback):', storeEstimatedTokens);
+          }
+        }
       } else {
         setAppState(prev => ({
           ...prev,
@@ -180,31 +299,120 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleOpenConfig = () => {
-    setShowConfigModal(true);
+  const calculateInputTokens = async () => {
+    if (!appState.currentRepoPath || !fromBranch || !toBranch || fromBranch === toBranch) {
+      console.log('calculateInputTokens: Missing requirements', {
+        repoPath: appState.currentRepoPath,
+        fromBranch,
+        toBranch
+      });
+      setEstimatedInputTokens(0);
+      setStoreEstimatedTokens(0);
+      return;
+    }
+
+    try {
+      console.log('calculateInputTokens: Getting diff...');
+      const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
+      if (!diff || diff.trim() === '') {
+        console.log('calculateInputTokens: No diff found');
+        setEstimatedInputTokens(0);
+        setStoreEstimatedTokens(0);
+        return;
+      }
+
+      console.log('calculateInputTokens: Building prompt...');
+      const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+      const inputTokens = estimateTokens(fullPrompt);
+      console.log('calculateInputTokens: Estimated tokens:', inputTokens);
+      setEstimatedInputTokens(inputTokens);
+      setStoreEstimatedTokens(inputTokens);
+    } catch (error) {
+      console.error('Failed to calculate input tokens:', error);
+      setEstimatedInputTokens(0);
+      setStoreEstimatedTokens(0);
+    }
   };
 
-  const handleSaveConfig = () => {
-    saveConfiguration();
-    setShowConfigModal(false);
+  const handleOpenConfig = () => {
+    setShowConfigModal(true);
+    setConnectionTestResult(null); // Clear previous test results
+  };
+
+
+  const handleTestConnection = async (configToTest: AIProviderConfig) => {
+    setTestingConnection(true);
+    setConnectionTestResult(null);
+
+    try {
+      let result;
+      let providerName: string;
+
+      if (configToTest.provider === 'ollama') {
+        result = await window.electronAPI.testOllamaConnection({
+          url: configToTest.ollama.url,
+          model: configToTest.ollama.model
+        });
+        providerName = 'Ollama';
+      } else {
+        result = await window.electronAPI.testAzureAIConnection({
+          endpoint: configToTest.azure.endpoint,
+          apiKey: configToTest.azure.apiKey,
+          deploymentName: configToTest.azure.deployment
+        });
+        providerName = 'Azure AI';
+      }
+
+      if (result.success) {
+        const modelInfo = configToTest.provider === 'ollama'
+          ? (result as any).version || (result as any).modelResponse || 'OK'
+          : result.modelResponse || 'OK';
+
+        setConnectionTestResult({
+          success: true,
+          message: `${providerName} connection successful! Model responded: "${modelInfo}"`,
+          provider: providerName
+        });
+      } else {
+        setConnectionTestResult({
+          success: false,
+          message: `${providerName} test failed: ${result.error}`,
+          provider: providerName
+        });
+      }
+    } catch (error) {
+      setConnectionTestResult({
+        success: false,
+        message: `Connection test failed: ${error}`,
+        provider: configToTest.provider
+      });
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   return (
     <div className="bg-base-100">
-      <Navbar onOpenConfig={handleOpenConfig} />
+      <Navbar />
 
       <main className="container mx-auto px-4 py-6 max-w-7xl" role="main">
         <RepositorySection
-          repoPath={appState.currentRepoPath}
-          fromBranch={fromBranch}
-          toBranch={toBranch}
           onRepoPathChange={(path) => setAppState(prev => ({ ...prev, currentRepoPath: path }))}
-          onFromBranchChange={setFromBranch}
-          onToBranchChange={setToBranch}
+          onBranchChange={(fromBranch, toBranch) => {
+            setFromBranch(fromBranch);
+            setToBranch(toBranch);
+          }}
           onStartReview={handleStartReview}
           onStopReview={handleStopReview}
           reviewInProgress={appState.reviewInProgress}
           onOpenConfig={handleOpenConfig}
+          estimatedInputTokens={storeEstimatedTokens}
+        />
+
+        <ProgressTracker
+          reviewStats={reviewStats}
+          estimatedInputTokens={storeEstimatedTokens}
+          reviewInProgress={appState.reviewInProgress}
         />
 
         <OutputSection
@@ -212,154 +420,19 @@ const App: React.FC = () => {
           onClearOutput={handleClearOutput}
           onCopyOutput={handleCopyOutput}
           onExportOutput={handleExportOutput}
+          reviewInProgress={appState.reviewInProgress}
+          reviewStats={reviewStats}
+          estimatedInputTokens={storeEstimatedTokens}
         />
       </main>
 
-      {/* Configuration Modal - Simplified for now */}
-      {showConfigModal && (
-        <dialog open className="modal">
-          <div className="modal-box w-4/5 max-w-none">
-            <form method="dialog">
-              <button
-                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                onClick={() => setShowConfigModal(false)}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </form>
-            <h3 className="font-bold text-lg mb-4">Configuration Settings</h3>
-
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-md font-semibold mb-3">AI Provider Selection</h4>
-                <div className="form-control mb-4">
-                  <label className="label">
-                    <span className="label-text font-medium">AI Provider</span>
-                  </label>
-                  <select
-                    className="select select-bordered w-full"
-                    value={aiConfig.provider}
-                    onChange={(e) => setAiConfig(prev => ({ ...prev, provider: e.target.value as 'ollama' | 'azure' }))}
-                  >
-                    <option value="ollama">Ollama (Local)</option>
-                    <option value="azure">Azure AI (Cloud)</option>
-                  </select>
-                </div>
-              </div>
-
-              {aiConfig.provider === 'ollama' && (
-                <div>
-                  <h4 className="text-md font-semibold mb-3">Ollama Settings</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text font-medium">Ollama URL</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={aiConfig.ollama.url}
-                        onChange={(e) => setAiConfig(prev => ({
-                          ...prev,
-                          ollama: { ...prev.ollama, url: e.target.value }
-                        }))}
-                      />
-                    </div>
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text font-medium">Ollama Model</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={aiConfig.ollama.model}
-                        onChange={(e) => setAiConfig(prev => ({
-                          ...prev,
-                          ollama: { ...prev.ollama, model: e.target.value }
-                        }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {aiConfig.provider === 'azure' && (
-                <div>
-                  <h4 className="text-md font-semibold mb-3">Azure AI Settings</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text font-medium">Azure AI Endpoint</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={aiConfig.azure.endpoint}
-                        onChange={(e) => setAiConfig(prev => ({
-                          ...prev,
-                          azure: { ...prev.azure, endpoint: e.target.value }
-                        }))}
-                      />
-                    </div>
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text font-medium">API Key</span>
-                      </label>
-                      <input
-                        type="password"
-                        className="input input-bordered w-full"
-                        value={aiConfig.azure.apiKey}
-                        onChange={(e) => setAiConfig(prev => ({
-                          ...prev,
-                          azure: { ...prev.azure, apiKey: e.target.value }
-                        }))}
-                      />
-                    </div>
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text font-medium">Deployment Name</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={aiConfig.azure.deployment}
-                        onChange={(e) => setAiConfig(prev => ({
-                          ...prev,
-                          azure: { ...prev.azure, deployment: e.target.value }
-                        }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <h4 className="text-md font-semibold mb-3">Debug Options</h4>
-                <div className="form-control">
-                  <label className="cursor-pointer label justify-between items-center">
-                    <span className="label-text font-medium">Enable Debug Logging</span>
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-primary"
-                      checked={appState.debugMode}
-                      onChange={(e) => setAppState(prev => ({ ...prev, debugMode: e.target.checked }))}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-action">
-              <button type="button" className="btn btn-primary" onClick={handleSaveConfig}>
-                Save Settings
-              </button>
-              <button className="btn" onClick={() => setShowConfigModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </dialog>
-      )}
+      <ConfigModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        onTestConnection={handleTestConnection}
+        testingConnection={testingConnection}
+        connectionTestResult={connectionTestResult}
+      />
     </div>
   );
 };

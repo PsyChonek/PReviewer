@@ -18,6 +18,8 @@
   "license": "MIT",
   "description": "PReviewer - Electron App with DaisyUI",
   "devDependencies": {
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-typescript": "^7.27.1",
     "@electron-forge/cli": "^7.9.0",
     "@electron-forge/maker-deb": "^7.9.0",
     "@electron-forge/maker-rpm": "^7.9.0",
@@ -33,6 +35,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "autoprefixer": "^10.4.21",
+    "babel-jest": "^30.1.2",
     "daisyui": "^5.1.24",
     "electron": "^37.3.1",
     "electron-mock-ipc": "^0.3.12",
@@ -49,6 +52,7 @@
     "spectron": "^19.0.0",
     "tailwindcss": "^4.1.13",
     "tmp": "^0.2.1",
+    "ts-jest": "^29.4.4",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"
   },
@@ -58,7 +62,8 @@
     "axios": "^1.12.2",
     "marked": "^16.3.0",
     "openai": "^4.104.0",
-    "simple-git": "^3.28.0"
+    "simple-git": "^3.28.0",
+    "zustand": "^5.0.8"
   },
   "build": {
     "appId": "com.danielvazac.pr-reviewer",
