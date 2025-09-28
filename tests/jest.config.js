@@ -67,7 +67,22 @@ module.exports = {
       displayName: 'renderer',
       testMatch: ['<rootDir>/renderer/**/*.test.js'],
       testEnvironment: 'jsdom',
-      setupFilesAfterEnv: ['<rootDir>/setup.js', '<rootDir>/renderer-setup.js']
+      setupFilesAfterEnv: ['<rootDir>/setup.js', '<rootDir>/react-setup.js'],
+      moduleNameMapper: {
+        '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
+      },
+      transform: {
+        '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', {
+          presets: [
+            ['@babel/preset-env', { targets: { node: 'current' } }],
+            ['@babel/preset-react', { runtime: 'automatic' }],
+            '@babel/preset-typescript'
+          ]
+        }]
+      },
+      transformIgnorePatterns: [
+        'node_modules/(?!((@testing-library|@babel)/.*\\.js$))'
+      ]
     }
   ],
 

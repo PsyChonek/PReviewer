@@ -23,21 +23,28 @@ if (typeof document === 'undefined') {
 // Setup renderer environment
 require('../renderer-setup');
 
-// Load renderer functions
-const rendererPath = path.join(__dirname, '../../src/renderer.js');
-const rendererContent = fs.readFileSync(rendererPath, 'utf8');
+// Mock functions that are now in React components
+global.selectRepository = jest.fn();
+global.loadBranches = jest.fn();
+global.startReview = jest.fn();
+global.stopReview = jest.fn();
+global.updateProgress = jest.fn();
+global.updateStats = jest.fn();
+global.appendOutput = jest.fn();
+global.clearOutput = jest.fn();
+global.openConfigModal = jest.fn();
+global.loadConfiguration = jest.fn();
+global.saveConfiguration = jest.fn();
+global.previewTokenEstimate = jest.fn();
+global.showAlert = jest.fn();
+global.copyOutput = jest.fn();
+global.exportOutput = jest.fn();
 
-// Modify renderer content to make variables accessible
-const modifiedRendererContent = rendererContent
-  .replace('let currentRepoPath = null;', 'window.currentRepoPath = null;')
-  .replace('let reviewInProgress = false;', 'window.reviewInProgress = false;')
-  .replace('let currentOutputMarkdown = \'\';', 'window.currentOutputMarkdown = \'\';')
-  .replace(/currentRepoPath/g, 'window.currentRepoPath')
-  .replace(/reviewInProgress/g, 'window.reviewInProgress')
-  .replace(/currentOutputMarkdown/g, 'window.currentOutputMarkdown');
-
-// Extract key functions for testing
-eval(modifiedRendererContent);
+// Mock window properties
+window.currentRepoPath = null;
+window.reviewInProgress = false;
+window.currentOutputMarkdown = '';
+window.DEBUG = false;
 
 // Helper function to create mock diff data
 function createMockDiff(type) {

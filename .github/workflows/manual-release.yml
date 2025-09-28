@@ -21,6 +21,10 @@ on:
         type: string
         default: 'Release created via manual trigger'
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   create-tag-and-release:
     runs-on: ubuntu-latest
@@ -100,8 +104,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
+      - name: Build renderer
+        run: npm run build:renderer || vite build --config vite.renderer.config.js
 
       - name: Update package.json version
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version

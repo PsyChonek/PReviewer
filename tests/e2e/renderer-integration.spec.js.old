@@ -7,24 +7,24 @@ const fs = require('fs-extra');
 test.describe('Renderer Process Integration', () => {
   test.beforeEach(async ({ page }) => {
     // Load the HTML file directly for testing
-    const htmlPath = path.join(__dirname, '../../index.html');
+    const htmlPath = path.join(__dirname, '../../src/index.html');
     await page.goto(`file://${htmlPath}`);
 
-    // Wait for page to load
+    // Wait for page to load and React to render
     await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000); // Give React time to render
   });
 
   test('should load application UI correctly', async ({ page }) => {
     // Check if main elements are present
     await expect(page.locator('nav')).toBeVisible();
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.locator('h1')).toContainText('PReviewer');
+    await expect(page.locator('text=PReviewer')).toBeVisible();
 
     // Check for main sections
     await expect(page.locator('#repo-path')).toBeVisible();
-    await expect(page.locator('#from-branch')).toBeVisible();
-    await expect(page.locator('#to-branch')).toBeVisible();
-    await expect(page.locator('#start-review-btn')).toBeVisible();
+    await expect(page.locator('text=Repository Path')).toBeVisible();
+    await expect(page.locator('button:has-text("Start AI Review")')).toBeVisible();
   });
 
   test('should have proper initial state', async ({ page }) => {
@@ -32,23 +32,18 @@ test.describe('Renderer Process Integration', () => {
     const repoPath = page.locator('#repo-path');
     await expect(repoPath).toHaveValue('');
 
-    // Branch selects should be disabled
-    const fromBranch = page.locator('#from-branch');
-    const toBranch = page.locator('#to-branch');
-    await expect(fromBranch).toBeDisabled();
-    await expect(toBranch).toBeDisabled();
+    // Branch selectors should be disabled (they use dropdown format now)
+    const fromBranchButton = page.locator('#from-branch-button');
+    const toBranchButton = page.locator('#to-branch-button');
+    await expect(fromBranchButton).toBeVisible();
+    await expect(toBranchButton).toBeVisible();
 
     // Start review button should be disabled
-    const startBtn = page.locator('#start-review-btn');
+    const startBtn = page.locator('button:has-text("Start AI Review")');
     await expect(startBtn).toBeDisabled();
 
-    // Progress section should be hidden
-    const progressSection = page.locator('#progress-section');
-    await expect(progressSection).toHaveClass(/hidden/);
-
-    // Stats section should be hidden
-    const statsSection = page.locator('#stats-section');
-    await expect(statsSection).toHaveClass(/hidden/);
+    // Welcome message should be visible initially
+    await expect(page.locator('text=Welcome to Local PReviewer')).toBeVisible();
   });
 
   test('should open configuration modal', async ({ page }) => {

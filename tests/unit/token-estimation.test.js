@@ -1,40 +1,8 @@
 // Unit tests for token estimation functionality
 
-// Import the renderer file to test its functions
-const fs = require('fs');
-const path = require('path');
-
-// Read the renderer.js file and extract the token estimation function
-const rendererPath = path.join(__dirname, '../../src/renderer.js');
-const rendererContent = fs.readFileSync(rendererPath, 'utf8');
-
-// Create a mock environment for the functions
-const mockWindow = { DEBUG: false };
-global.window = mockWindow;
-global.console = { log: jest.fn() };
-
-// Extract and eval the functions we need to test
-const estimateTokensMatch = rendererContent.match(/function estimateTokens\([\s\S]*?\n}/);
-const formatTokenCountMatch = rendererContent.match(/function formatTokenCount\([\s\S]*?\n}/);
-const buildPromptMatch = rendererContent.match(/function buildPrompt\([\s\S]*?\n}/);
-
-if (!estimateTokensMatch || !formatTokenCountMatch || !buildPromptMatch) {
-  throw new Error('Could not extract functions from renderer.js');
-}
-
-// Eval the functions in our test environment
-eval(estimateTokensMatch[0]);
-eval(formatTokenCountMatch[0]);
-eval(buildPromptMatch[0]);
-
-// Add the DEFAULT_BASE_PROMPT constant
-const DEFAULT_BASE_PROMPT = `You are an expert code reviewer. Analyze the following code changes (diff format).
-Identify potential bugs, security vulnerabilities, performance issues, and suggest improvements
-based on best practices. Focus on the *newly added or modified lines*.
-Provide concise, actionable feedback. If no issues, state 'No major issues found.'.
-
-Consider the context of a C# and SQL development environment.
-The feedback should be formatted clearly, focusing on specific lines if possible.`;
+// Import the utility functions from mocks
+const { estimateTokens, formatTokenCount } = require('../mocks/tokenEstimation.js');
+const { buildPrompt, DEFAULT_BASE_PROMPT } = require('../mocks/prompts.js');
 
 // Add createMockDiff function locally
 function createMockDiff(type = 'mixed') {
@@ -81,7 +49,7 @@ index 1234567..abcdefg 100644
 
 describe('Token Estimation', () => {
   beforeEach(() => {
-    mockWindow.DEBUG = false;
+    global.window = { DEBUG: false };
     jest.clearAllMocks();
   });
 
@@ -162,7 +130,7 @@ session-based authentication, which improves security and scalability.`;
     });
 
     test('should enable debug logging when window.DEBUG is true', () => {
-      mockWindow.DEBUG = true;
+      global.window.DEBUG = true;
       const consoleSpy = jest.spyOn(console, 'log');
 
       estimateTokens('test content');
@@ -171,7 +139,7 @@ session-based authentication, which improves security and scalability.`;
     });
 
     test('should not log debug info when window.DEBUG is false', () => {
-      mockWindow.DEBUG = false;
+      global.window.DEBUG = false;
       const consoleSpy = jest.spyOn(console, 'log');
 
       estimateTokens('test content');

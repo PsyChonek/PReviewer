@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
@@ -58,8 +62,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
+      - name: Build renderer
+        run: npm run build:renderer || vite build --config vite.renderer.config.js
 
       - name: Build and package
         run: npm run make
