@@ -10,11 +10,10 @@ export default defineConfig(async () => {
     plugins: [react(), tailwindcss()],
     root: 'src',
     build: {
+      outDir: '../.vite/renderer',
       rollupOptions: {
         input: path.resolve(__dirname, 'src/index.html'),
       },
-      outDir: '../dist/renderer',
-      emptyOutDir: true,
     },
     server: {
       port: 3002,

@@ -1,5 +1,5 @@
 {
-  "name": "previewer-electron",
+  "name": "PReviewer",
   "version": "1.0.0",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -16,7 +16,7 @@
   },
   "author": "Daniel Vazač",
   "license": "MIT",
-  "description": "PReviewer - Electron App with DaisyUI",
+  "description": "PReviewer",
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
@@ -84,6 +84,9 @@
       "dist/**/*",
       "node_modules/**/*",
       "!node_modules/.cache"
+    ],
+    "asarUnpack": [
+      "node_modules/simple-git"
     ],
     "extraMetadata": {
       "main": "main.js"

@@ -173,3 +173,6 @@ temp/
 
 node_modules
 .claude
+
+# Vite ignore
+.vite/

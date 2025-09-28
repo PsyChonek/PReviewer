@@ -20,7 +20,7 @@ const createWindow = () => {
       sandbox: false, // Disable sandbox for development
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, 'assets/icon.png'), // Optional icon
+    icon: path.join(process.resourcesPath, 'assets', 'icon.png'), // Icon from assets directory
     titleBarStyle: 'default',
     show: false
   });
@@ -34,9 +34,11 @@ const createWindow = () => {
     console.log('Loading development URL:', devServerUrl);
     mainWindow.loadURL(devServerUrl);
   } else {
-    // In production, load the built files
+    // In production, load the built files from .vite/renderer
     console.log('Loading production file');
-    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    const rendererPath = path.join(process.resourcesPath, '.vite', 'renderer', 'index.html');
+    console.log('Renderer path:', rendererPath);
+    mainWindow.loadFile(rendererPath);
   }
 
   // Development tools and shortcuts

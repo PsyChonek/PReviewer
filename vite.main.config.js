@@ -9,4 +9,19 @@ export default defineConfig({
     // run in the main process correctly.
     conditions: ['electron-main', 'node'],
   },
+  build: {
+    outDir: '.vite/build',
+    rollupOptions: {
+      external: [
+        'simple-git',
+        'axios',
+        'openai',
+        'marked',
+        'zustand',
+        'electron-squirrel-startup',
+        '@fortawesome/fontawesome-free',
+        '@tailwindcss/typography'
+      ],
+    },
+  },
 });
