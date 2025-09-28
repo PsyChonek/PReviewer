@@ -4,7 +4,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   // Test directory
-  testDir: './tests/e2e',
+  testDir: './e2e',
 
   // Global timeout for all tests
   timeout: 60000,
@@ -31,8 +31,8 @@ module.exports = defineConfig({
   ],
 
   // Global setup and teardown
-  globalSetup: require.resolve('./tests/e2e/global-setup.js'),
-  globalTeardown: require.resolve('./tests/e2e/global-teardown.js'),
+  globalSetup: require.resolve('./e2e/global-setup.js'),
+  globalTeardown: require.resolve('./e2e/global-teardown.js'),
 
   // Shared settings for all projects
   use: {

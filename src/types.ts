@@ -51,7 +51,6 @@ declare global {
       selectDirectory: () => Promise<string | null>;
       getGitBranches: (repoPath: string) => Promise<string[]>;
       getGitDiff: (repoPath: string, fromBranch: string, toBranch: string) => Promise<string>;
-      fixGitOwnership: (repoPath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
       callOllamaAPI: (config: { url: string; model: string; prompt: string }) => Promise<string>;
       testOllamaConnection: (config: { url: string; model: string }) => Promise<{ success: boolean; error?: string; version?: string; modelResponse?: string }>;
       callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }) => Promise<string>;

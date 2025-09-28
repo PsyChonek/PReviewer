@@ -8,10 +8,10 @@ async function globalSetup() {
   console.log('Setting up E2E test environment...');
 
   // Build CSS if not already built
-  const cssPath = path.join(__dirname, '../../dist/style.css');
+  const cssPath = path.join(__dirname, '../../src/compiled-styles.css');
   if (!existsSync(cssPath)) {
     console.log('Building CSS for tests...');
-    execSync('npm run build-css-prod', {
+    execSync('npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css', {
       cwd: path.join(__dirname, '../..'),
       stdio: 'inherit'
     });
@@ -47,8 +47,8 @@ async function globalSetup() {
     execSync('git add app.js', { cwd: testRepoPath, stdio: 'inherit' });
     execSync('git commit -m "Add test function"', { cwd: testRepoPath, stdio: 'inherit' });
 
-    // Switch back to main
-    execSync('git checkout main', { cwd: testRepoPath, stdio: 'inherit' });
+    // Switch back to master (default branch)
+    execSync('git checkout master', { cwd: testRepoPath, stdio: 'inherit' });
   }
 
   console.log('E2E test environment setup complete');

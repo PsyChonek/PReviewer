@@ -86,3 +86,8 @@ The app uses Electron IPC for secure communication between processes. Main funct
 - AI provider settings stored in localStorage
 - Repository paths and branch selections maintained in application state
 - Debug mode and other preferences persist across sessions
+
+### Test workflows
+
+Use act https://nektosact.com/introduction.html
+- Commands like: `act -W '.\.github\workflows\ci.yml'`

@@ -70,8 +70,78 @@ function createMockDiff(type) {
 
 describe('UI Components', () => {
   beforeEach(() => {
-    // Reset DOM to initial state
-    document.body.innerHTML = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/)[1];
+    // Reset DOM to initial state with required elements for renderer.js functions
+    document.body.innerHTML = `
+      <div id="root">
+        <nav role="navigation">Navigation</nav>
+        <main role="main">
+          <section role="region">
+            <input id="repo-path" type="text" />
+            <label for="repo-path">Repository Path</label>
+            <button onclick="selectRepository()" aria-label="Browse for repository">Browse</button>
+
+            <div class="dropdown">
+              <button id="from-branch-button" aria-label="Select from branch" disabled>From Branch</button>
+              <label for="from-branch-button">From Branch</label>
+              <ul id="from-branch-list"></ul>
+            </div>
+            <div id="from-branch-skeleton"></div>
+            <div id="from-branch-display"></div>
+
+            <div class="dropdown">
+              <button id="to-branch-button" aria-label="Select to branch" disabled>To Branch</button>
+              <label for="to-branch-button">To Branch</label>
+              <ul id="to-branch-list"></ul>
+            </div>
+            <div id="to-branch-skeleton"></div>
+            <div id="to-branch-display"></div>
+
+            <button id="start-review-btn" onclick="startReview()" disabled>Start Review</button>
+            <button id="stop-review-btn" onclick="stopReview()" style="display:none">Stop Review</button>
+            <button aria-label="Browse for repository">Browse</button>
+            <button aria-label="Settings">Settings</button>
+            <button aria-label="Clear output text">Clear</button>
+
+            <!-- Token preview and statistics elements -->
+            <div id="token-preview"></div>
+            <div id="token-warning"></div>
+            <div id="stats-tokens"></div>
+            <div id="stats-time"></div>
+            <div id="stats-model"></div>
+          </section>
+
+          <section role="region">
+            <div id="output-content"></div>
+            <div id="review-progress"></div>
+            <div id="progress-bar"></div>
+            <div id="progress-text" aria-live="polite"></div>
+            <div id="progress-section"></div>
+            <div id="stage-indicator"></div>
+            <div id="stats-display"></div>
+            <div id="stats-section" class="hidden"></div>
+            <div id="debug-section" class="hidden"></div>
+            <div id="status-text" aria-live="polite"></div>
+            <div id="elapsed-time"></div>
+            <div id="status-spinner"></div>
+          </section>
+        </main>
+
+        <div id="toast-container"></div>
+
+        <!-- Modal for configuration -->
+        <dialog id="config-modal">
+          <form method="dialog">
+            <input id="provider-select" />
+            <input id="api-endpoint" />
+            <input id="api-key" />
+            <input id="deployment-name" />
+            <input id="model-name" />
+            <input id="base-prompt" />
+            <button type="submit">Save</button>
+          </form>
+        </dialog>
+      </div>
+    `;
 
     // Reset localStorage
     localStorage.clear();
