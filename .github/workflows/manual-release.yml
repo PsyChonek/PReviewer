@@ -81,12 +81,12 @@ jobs:
             content_type: "application/octet-stream"
           - os: macos-latest
             platform: macos
-            artifact_pattern: "*.dmg"
-            content_type: "application/octet-stream"
+            artifact_pattern: "*.zip"
+            content_type: "application/zip"
           - os: ubuntu-latest
             platform: linux
-            artifact_pattern: "*.AppImage"
-            content_type: "application/octet-stream"
+            artifact_pattern: "*.deb"
+            content_type: "application/vnd.debian.binary-package"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -100,8 +100,15 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Clean npm cache
+        run: npm cache clean --force
+        continue-on-error: true
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
+        env:
+          npm_config_cache: ${{ runner.temp }}/.npm
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
 
       - name: Update package.json version
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
@@ -110,6 +117,8 @@ jobs:
         run: npm run make
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
+        timeout-minutes: 30
 
       - name: Find release assets
         id: find_assets
