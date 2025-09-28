@@ -29,8 +29,8 @@ jobs:
   create-tag-and-release:
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       tag_name: ${{ steps.create_tag.outputs.tag_name }}
+      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,15 +60,14 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.create_tag.outputs.tag_name }}
-          release_name: PReviewer ${{ steps.create_tag.outputs.tag_name }}
+          name: PReviewer ${{ steps.create_tag.outputs.tag_name }}
           body: ${{ github.event.inputs.release_notes }}
           draft: false
           prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
+          generate_release_notes: true
 
   build-and-upload:
     needs: create-tag-and-release
@@ -98,14 +97,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Build renderer
-        run: npm run build:renderer || vite build --config vite.renderer.config.js
 
       - name: Update package.json version
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
@@ -115,7 +111,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Find and upload release assets
+      - name: Find release assets
+        id: find_assets
         shell: bash
         run: |
           # Find the built artifact
@@ -126,17 +123,14 @@ jobs:
             exit 1
           fi
 
-          asset_name=$(basename "$asset_path")
+          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
           echo "Found asset: $asset_path"
-          echo "Asset name: $asset_name"
 
-          # Upload to release
-          curl \
-            -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: ${{ matrix.content_type }}" \
-            --data-binary @"$asset_path" \
-            "${{ needs.create-tag-and-release.outputs.upload_url }}?name=$asset_name"
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-tag-and-release.outputs.tag_name }}
+          files: ${{ steps.find_assets.outputs.asset_path }}
 
   notify-completion:
     needs: [create-tag-and-release, build-and-upload]

@@ -13,7 +13,7 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
       release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - uses: actions/checkout@v4
@@ -24,14 +24,13 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-          release_name: PReviewer ${{ steps.tag_name.outputs.TAG_NAME }}
+          name: PReviewer ${{ steps.tag_name.outputs.TAG_NAME }}
           draft: false
           prerelease: ${{ contains(steps.tag_name.outputs.TAG_NAME, '-') }}
+          generate_release_notes: true
 
   build-and-release:
     needs: create-release
@@ -56,14 +55,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Build renderer
-        run: npm run build:renderer || vite build --config vite.renderer.config.js
 
       - name: Build and package
         run: npm run make
@@ -95,35 +91,11 @@ jobs:
           echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
           echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
 
-      - name: Upload Release Asset (Windows)
-        if: matrix.platform == 'windows'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_assets_windows.outputs.asset_path }}
-          asset_name: ${{ steps.find_assets_windows.outputs.asset_name }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Asset (macOS)
-        if: matrix.platform == 'macos'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_assets_macos.outputs.asset_path }}
-          asset_name: ${{ steps.find_assets_macos.outputs.asset_name }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Asset (Linux)
-        if: matrix.platform == 'linux'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_assets_linux.outputs.asset_path }}
-          asset_name: ${{ steps.find_assets_linux.outputs.asset_name }}
-          asset_content_type: application/octet-stream
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: |
+            ${{ steps.find_assets_windows.outputs.asset_path }}
+            ${{ steps.find_assets_macos.outputs.asset_path }}
+            ${{ steps.find_assets_linux.outputs.asset_path }}
