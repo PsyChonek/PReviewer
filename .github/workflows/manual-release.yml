@@ -101,7 +101,7 @@ jobs:
         run: npm ci
 
       - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
+        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
 
       - name: Update package.json version
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version

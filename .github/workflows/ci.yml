@@ -25,7 +25,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Compile CSS and verify build setup
-        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
+        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
 
   tests:
     runs-on: ubuntu-latest
@@ -110,7 +110,7 @@ jobs:
         run: npm ci
 
       - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
+        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
 
       - name: Build application
         run: npm run make

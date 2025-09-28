@@ -59,7 +59,7 @@ jobs:
         run: npm ci
 
       - name: Compile CSS
-        run: npx @tailwindcss/cli@latest -i src/styles.css -o src/compiled-styles.css
+        run: npx @tailwindcss/cli@latest -i src/index.css -o src/compiled-styles.css
 
       - name: Build and package
         run: npm run make
