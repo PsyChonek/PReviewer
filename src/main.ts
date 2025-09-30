@@ -530,7 +530,7 @@ ipcMain.handle(
 			let responseText = '';
 
 			// Use streaming endpoint for real-time progress
-			const streamUrl = url.replace('/api/generate', '/api/generate');
+			const streamUrl = url.replace('/api/generate', '/api/generate-stream');
 
 			// Calculate request size for data transfer tracking
 			const requestData = { model: model, prompt: prompt, stream: true };
