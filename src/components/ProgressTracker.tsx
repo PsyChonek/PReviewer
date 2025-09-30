@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface ProgressTrackerProps {
 	reviewStats: {
@@ -20,6 +20,49 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 	estimatedInputTokens,
 	reviewInProgress,
 }) => {
+	const [smoothTime, setSmoothTime] = useState(0);
+	const [smoothSpeed, setSmoothSpeed] = useState(0);
+	const startTimeRef = useRef<number | null>(null);
+	const lastTokensRef = useRef(0);
+	const lastUpdateRef = useRef(Date.now());
+
+	// Start timer when review begins
+	useEffect(() => {
+		if (reviewInProgress && !startTimeRef.current) {
+			startTimeRef.current = Date.now();
+		} else if (!reviewInProgress) {
+			startTimeRef.current = null;
+		}
+	}, [reviewInProgress]);
+
+	// Smooth update loop for time and speed
+	useEffect(() => {
+		if (!reviewInProgress) {
+			return;
+		}
+
+		const interval = setInterval(() => {
+			if (startTimeRef.current) {
+				const elapsed = (Date.now() - startTimeRef.current) / 1000;
+				setSmoothTime(elapsed);
+
+				// Calculate smooth speed based on current tokens
+				const currentTokens = reviewStats?.outputTokens || 0;
+				if (elapsed > 0) {
+					const instantSpeed = currentTokens / elapsed;
+					setSmoothSpeed(instantSpeed);
+				}
+			}
+		}, 100); // Update every 100ms for smooth animation
+
+		return () => clearInterval(interval);
+	}, [reviewInProgress, reviewStats?.outputTokens]);
+
+	// Calculate average speed when completed
+	const avgSpeed = reviewStats && !reviewInProgress
+		? reviewStats.outputTokens / (reviewStats.responseTime / 1000)
+		: smoothSpeed;
+
 	if (!reviewInProgress && !reviewStats) {
 		return null;
 	}
@@ -68,22 +111,18 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 									{reviewStats?.outputTokens || 0}
 								</div>
 							</div>
-							{reviewStats?.tokensPerSecond && (
-								<>
-									<div>
-										<span className="text-base-content/70">Speed:</span>
-										<div className="font-mono">
-											{reviewStats.tokensPerSecond.toFixed(1)} tok/s
-										</div>
-									</div>
-									<div>
-										<span className="text-base-content/70">Processing:</span>
-										<div className="font-mono">
-											{(reviewStats.processingTime / 1000).toFixed(1)}s
-										</div>
-									</div>
-								</>
-							)}
+							<div>
+								<span className="text-base-content/70">Speed:</span>
+								<div className="font-mono">
+									{smoothSpeed.toFixed(1)} tok/s
+								</div>
+							</div>
+							<div>
+								<span className="text-base-content/70">Processing:</span>
+								<div className="font-mono">
+									{smoothTime.toFixed(1)}s
+								</div>
+							</div>
 						</div>
 					</div>
 				)}
@@ -105,9 +144,9 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 								<div className="font-mono">{reviewStats.outputTokens}</div>
 							</div>
 							<div>
-								<span className="text-base-content/70">Speed:</span>
+								<span className="text-base-content/70">Avg Speed:</span>
 								<div className="font-mono">
-									{reviewStats.tokensPerSecond.toFixed(1)} tok/s
+									{avgSpeed.toFixed(1)} tok/s
 								</div>
 							</div>
 							<div>
