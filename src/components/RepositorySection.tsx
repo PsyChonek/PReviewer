@@ -29,12 +29,45 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
   useEffect(() => {
-    if (repoPath) {
-      loadBranches();
-    } else {
-      setBranches([]);
-    }
-  }, [repoPath]);
+    const loadBranches = async () => {
+      if (!repoPath) {
+        setBranches([]);
+        return;
+      }
+
+      setIsLoadingBranches(true);
+      try {
+        const branchList = await window.electronAPI.getGitBranches(repoPath);
+        // Convert string array to BranchInfo array
+        const branchInfoList: BranchInfo[] = branchList.map(branchName => ({
+          name: branchName,
+          type: branchName.startsWith('remotes/') ? 'remote' : 'local'
+        }));
+        setBranches(branchInfoList);
+
+        // Auto-select target branch (main/master if available)
+        if (branchInfoList.length > 0 && !toBranch) {
+          const preferredTargets = ['main', 'master'];
+          const targetBranch = preferredTargets.find(target =>
+            branchInfoList.some(branch => branch.name === target)
+          ) || branchInfoList[0].name;
+          setToBranch(targetBranch);
+        }
+
+        // Auto-select first branch as source if not already selected
+        if (branchInfoList.length > 0 && !fromBranch) {
+          setFromBranch(branchInfoList[0].name);
+        }
+      } catch (error) {
+        console.error('Failed to load branches:', error);
+        setBranches([]);
+      } finally {
+        setIsLoadingBranches(false);
+      }
+    };
+
+    loadBranches();
+  }, [repoPath, fromBranch, toBranch]);
 
 
   // Notify parent when branches change
@@ -53,40 +86,6 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
       }
     } catch (error) {
       console.error('Failed to select repository:', error);
-    }
-  };
-
-  const loadBranches = async () => {
-    if (!repoPath) return;
-
-    setIsLoadingBranches(true);
-    try {
-      const branchList = await window.electronAPI.getGitBranches(repoPath);
-      // Convert string array to BranchInfo array
-      const branchInfoList: BranchInfo[] = branchList.map(branchName => ({
-        name: branchName,
-        type: branchName.startsWith('remotes/') ? 'remote' : 'local'
-      }));
-      setBranches(branchInfoList);
-
-      // Auto-select target branch (main/master if available)
-      if (branchInfoList.length > 0 && !toBranch) {
-        const preferredTargets = ['main', 'master'];
-        const targetBranch = preferredTargets.find(target =>
-          branchInfoList.some(branch => branch.name === target)
-        ) || branchInfoList[0].name;
-        setToBranch(targetBranch);
-      }
-
-      // Auto-select first branch as source if not already selected
-      if (branchInfoList.length > 0 && !fromBranch) {
-        setFromBranch(branchInfoList[0].name);
-      }
-    } catch (error) {
-      console.error('Failed to load branches:', error);
-      setBranches([]);
-    } finally {
-      setIsLoadingBranches(false);
     }
   };
 

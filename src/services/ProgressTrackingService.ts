@@ -57,19 +57,19 @@ export class ProgressTrackingService {
     }
   }
 
-  private handleProgressUpdate(data: any, provider: string): void {
+  private handleProgressUpdate(data: Record<string, unknown>, provider: string): void {
     const progressData: ProgressData = {
-      tokens: data.tokens || 0,
-      inputTokens: data.actualInputTokens || this.estimatedInputTokens,
-      outputTokens: data.actualOutputTokens || data.tokens || 0,
-      tokensPerSecond: data.tokensPerSecond || 0,
-      processingTime: data.processingTime || 0,
-      responseTime: data.responseTime || 0,
-      stage: data.stage || data.message || `Processing (${provider})`,
-      progress: data.progress || 0,
-      actualInputTokens: data.actualInputTokens,
-      actualOutputTokens: data.actualOutputTokens,
-      message: data.message
+      tokens: (data.tokens as number) || 0,
+      inputTokens: (data.actualInputTokens as number) || this.estimatedInputTokens,
+      outputTokens: (data.actualOutputTokens as number) || (data.tokens as number) || 0,
+      tokensPerSecond: (data.tokensPerSecond as number) || 0,
+      processingTime: (data.processingTime as number) || 0,
+      responseTime: (data.responseTime as number) || 0,
+      stage: (data.stage as string) || (data.message as string) || `Processing (${provider})`,
+      progress: (data.progress as number) || 0,
+      actualInputTokens: data.actualInputTokens as number | undefined,
+      actualOutputTokens: data.actualOutputTokens as number | undefined,
+      message: data.message as string | undefined
     };
 
     this.currentProgress = progressData;

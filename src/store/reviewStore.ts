@@ -40,7 +40,7 @@ interface ReviewState {
   resetReviewState: () => void;
 }
 
-export const useReviewStore = create<ReviewState>((set, get) => ({
+export const useReviewStore = create<ReviewState>((set, _get) => ({
   // Initial state
   reviewInProgress: false,
   reviewStartTime: null,

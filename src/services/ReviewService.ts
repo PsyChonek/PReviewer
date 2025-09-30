@@ -132,7 +132,7 @@ export class ReviewService {
 
   async testConnection(aiConfig: AIProviderConfig): Promise<{ success: boolean; message: string; provider: string }> {
     try {
-      let result: any;
+      let result: { success: boolean; error?: string; version?: string; modelResponse?: string; deploymentName?: string };
       let providerName: string;
 
       if (aiConfig.provider === 'ollama') {

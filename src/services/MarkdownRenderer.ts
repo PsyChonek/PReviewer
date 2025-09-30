@@ -24,9 +24,10 @@ export class MarkdownRenderer {
     }
 
     // Use marked library if available
-    if (typeof window !== "undefined" && (window as any).marked) {
+    if (typeof window !== "undefined" && 'marked' in window) {
       try {
-        const html = (window as any).marked.parse(markdown);
+        const marked = (window as { marked: { parse: (text: string) => string } }).marked;
+        const html = marked.parse(markdown);
         return {
           html,
           isUsingLibrary: true
@@ -71,7 +72,7 @@ export class MarkdownRenderer {
   }
 
   isMarkdownLibraryAvailable(): boolean {
-    return typeof window !== "undefined" && !!(window as any).marked;
+    return typeof window !== "undefined" && 'marked' in window;
   }
 
   getLibraryInfo(): { name: string; version?: string } | null {
@@ -79,7 +80,7 @@ export class MarkdownRenderer {
       return null;
     }
 
-    const marked = (window as any).marked;
+    const marked = (window as { marked?: { version?: string } }).marked;
     return {
       name: 'marked',
       version: marked?.version || 'unknown'

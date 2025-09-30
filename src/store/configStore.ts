@@ -44,7 +44,7 @@ const DEFAULT_AI_CONFIG: AIProviderConfig = {
 
 export const useConfigStore = create<ConfigState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       // Initial state
       aiConfig: DEFAULT_AI_CONFIG,
       basePrompt: getDefaultPrompts().basePrompt,

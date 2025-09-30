@@ -5,9 +5,8 @@ import OutputSection from './components/OutputSection';
 import ConfigModal from './components/ConfigModal';
 import ProgressTracker from './components/ProgressTracker';
 import { AppState, AIProviderConfig } from './types';
-import { buildPrompt, DEFAULT_BASE_PROMPT } from './utils/prompts';
+import { buildPrompt } from './utils/prompts';
 import { estimateTokens } from './utils/tokenEstimation';
-import { getDefaultPrompts } from './utils/config';
 import { useTokenStore } from './store/tokenStore';
 import { useConfigStore } from './store/configStore';
 
@@ -52,7 +51,7 @@ const App: React.FC = () => {
   // Set up progress listeners with access to current estimatedInputTokens
   useEffect(() => {
     const ollamaProgressCleanup = window.electronAPI.onOllamaProgress((event, data) => {
-      setReviewStats(prevStats => ({
+      setReviewStats(_prevStats => ({
         tokens: data.tokens || 0,
         inputTokens: data.actualInputTokens || estimatedInputTokens,
         outputTokens: data.actualOutputTokens || data.tokens || 0,
@@ -92,7 +91,7 @@ const App: React.FC = () => {
     });
 
     const azureProgressCleanup = window.electronAPI.onAzureAIProgress((event, data) => {
-      setReviewStats(prevStats => ({
+      setReviewStats(_prevStats => ({
         tokens: data.tokens || 0,
         inputTokens: data.actualInputTokens || estimatedInputTokens,
         outputTokens: data.actualOutputTokens || data.tokens || 0,
@@ -136,16 +135,53 @@ const App: React.FC = () => {
       ollamaProgressCleanup();
       azureProgressCleanup();
     };
-  }, [estimatedInputTokens]);
+  }, [estimatedInputTokens, storeEstimatedTokens, setCurrentSessionInputTokens, setCurrentSessionOutputTokens, addToTotalInputTokens, addToTotalOutputTokens]);
 
   // Calculate input tokens when branches, repo, or prompts change
   useEffect(() => {
+    const calculateTokens = async () => {
+      if (!appState.currentRepoPath || !fromBranch || !toBranch || fromBranch === toBranch) {
+        console.log('calculateInputTokens: Missing requirements', {
+          repoPath: appState.currentRepoPath,
+          fromBranch,
+          toBranch
+        });
+        setEstimatedInputTokens(0);
+        setStoreEstimatedTokens(0);
+        return;
+      }
+
+      try {
+        console.log('calculateInputTokens: Getting diff...');
+        const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
+        if (!diff || diff.trim() === '') {
+          console.log('calculateInputTokens: No diff found');
+          setEstimatedInputTokens(0);
+          setStoreEstimatedTokens(0);
+          return;
+        }
+
+        console.log('calculateInputTokens: Building prompt...');
+        const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+
+        console.log('calculateInputTokens: Estimating tokens...');
+        const tokens = estimateTokens(fullPrompt);
+        console.log('calculateInputTokens: Estimated tokens:', tokens);
+        setEstimatedInputTokens(tokens);
+        setStoreEstimatedTokens(tokens);
+      } catch (error) {
+        console.error('Error calculating input tokens:', error);
+        setEstimatedInputTokens(0);
+        setStoreEstimatedTokens(0);
+      }
+    };
+
     const timer = setTimeout(() => {
-      calculateInputTokens();
+      calculateTokens();
     }, 500); // Debounce to avoid too many calculations
 
     return () => clearTimeout(timer);
-  }, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt]);
+  }, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt, setStoreEstimatedTokens]);
 
 
   const handleStartReview = async () => {
@@ -299,40 +335,6 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const calculateInputTokens = async () => {
-    if (!appState.currentRepoPath || !fromBranch || !toBranch || fromBranch === toBranch) {
-      console.log('calculateInputTokens: Missing requirements', {
-        repoPath: appState.currentRepoPath,
-        fromBranch,
-        toBranch
-      });
-      setEstimatedInputTokens(0);
-      setStoreEstimatedTokens(0);
-      return;
-    }
-
-    try {
-      console.log('calculateInputTokens: Getting diff...');
-      const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
-      if (!diff || diff.trim() === '') {
-        console.log('calculateInputTokens: No diff found');
-        setEstimatedInputTokens(0);
-        setStoreEstimatedTokens(0);
-        return;
-      }
-
-      console.log('calculateInputTokens: Building prompt...');
-      const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
-      const inputTokens = estimateTokens(fullPrompt);
-      console.log('calculateInputTokens: Estimated tokens:', inputTokens);
-      setEstimatedInputTokens(inputTokens);
-      setStoreEstimatedTokens(inputTokens);
-    } catch (error) {
-      console.error('Failed to calculate input tokens:', error);
-      setEstimatedInputTokens(0);
-      setStoreEstimatedTokens(0);
-    }
-  };
 
   const handleOpenConfig = () => {
     setShowConfigModal(true);
@@ -365,7 +367,7 @@ const App: React.FC = () => {
 
       if (result.success) {
         const modelInfo = configToTest.provider === 'ollama'
-          ? (result as any).version || (result as any).modelResponse || 'OK'
+          ? ('version' in result ? result.version : '') || result.modelResponse || 'OK'
           : result.modelResponse || 'OK';
 
         setConnectionTestResult({

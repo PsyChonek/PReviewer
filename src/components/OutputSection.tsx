@@ -1,5 +1,4 @@
 import React from "react";
-import { formatTokenCount } from "../utils/tokenEstimation";
 import WelcomeMessage from "./WelcomeMessage";
 import ActionButtons from "./ActionButtons";
 import StatsDisplay from "./StatsDisplay";
@@ -30,8 +29,9 @@ const OutputSection: React.FC<OutputSectionProps> = ({ outputContent, onClearOut
 		}
 
 		// Use marked library if available, otherwise just display as text
-		if (typeof window !== "undefined" && (window as any).marked) {
-			return <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: (window as any).marked.parse(markdown) }} />;
+		if (typeof window !== "undefined" && 'marked' in window) {
+			const marked = (window as { marked: { parse: (text: string) => string } }).marked;
+			return <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }} />;
 		}
 
 		// Fallback: basic markdown-like formatting

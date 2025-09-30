@@ -1,11 +1,7 @@
 import React from 'react';
 import { useConfigStore } from '../store/configStore';
 
-interface DebugSectionProps {
-  // No props needed - using global store
-}
-
-const DebugSection: React.FC<DebugSectionProps> = () => {
+const DebugSection: React.FC = () => {
   const { debugMode, setDebugMode } = useConfigStore();
   return (
     <div>

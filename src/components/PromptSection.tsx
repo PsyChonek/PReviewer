@@ -1,11 +1,7 @@
 import React from 'react';
 import { useConfigStore } from '../store/configStore';
 
-interface PromptSectionProps {
-  // No props needed - using global store
-}
-
-const PromptSection: React.FC<PromptSectionProps> = () => {
+const PromptSection: React.FC = () => {
   const { basePrompt, setBasePrompt, userPrompt, setUserPrompt, resetPrompts } = useConfigStore();
   return (
     <div>

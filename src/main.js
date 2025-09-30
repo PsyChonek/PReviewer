@@ -152,7 +152,7 @@ async function loadUserConfig() {
     let userConfigPath = getConfigPath();
     let data = await fs.readFile(userConfigPath, 'utf8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     // File doesn't exist or is corrupted, return empty object
     return {};
   }
@@ -431,7 +431,7 @@ ipcMain.handle('call-ollama-api', async (event, { url, model, prompt }) => {
 
                 resolve(responseText);
               }
-            } catch (parseError) {
+            } catch {
               // Ignore JSON parse errors for partial chunks
             }
           }

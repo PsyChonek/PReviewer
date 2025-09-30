@@ -21,13 +21,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 }) => {
   const {
     aiConfig,
-    setAiConfig,
-    basePrompt,
-    setBasePrompt,
-    userPrompt,
-    setUserPrompt,
-    debugMode,
-    setDebugMode
+    setAiConfig
   } = useConfigStore();
 
   const handleSave = () => {

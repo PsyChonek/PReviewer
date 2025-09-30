@@ -45,6 +45,18 @@ export interface PreviewData {
   totalEstimate: number;
 }
 
+export interface ProgressData {
+  tokens?: number;
+  actualInputTokens?: number;
+  actualOutputTokens?: number;
+  tokensPerSecond?: number;
+  processingTime?: number;
+  responseTime?: number;
+  stage?: string;
+  message?: string;
+  progress?: number;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -55,10 +67,10 @@ declare global {
       testOllamaConnection: (config: { url: string; model: string }) => Promise<{ success: boolean; error?: string; version?: string; modelResponse?: string }>;
       callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }) => Promise<string>;
       testAzureAIConnection: (config: { endpoint: string; apiKey: string; deploymentName: string }) => Promise<{ success: boolean; error?: string; deploymentName?: string; modelResponse?: string }>;
-      loadConfig: () => Promise<any>;
-      saveConfig: (config: any) => Promise<{ success: boolean; error?: string }>;
-      onOllamaProgress: (callback: (event: any, data: any) => void) => () => void;
-      onAzureAIProgress: (callback: (event: any, data: any) => void) => () => void;
+      loadConfig: () => Promise<AIProviderConfig>;
+      saveConfig: (config: AIProviderConfig) => Promise<{ success: boolean; error?: string }>;
+      onOllamaProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
+      onAzureAIProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
     };
   }
 }
