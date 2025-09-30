@@ -1,4 +1,4 @@
-export interface ProgressData {
+export interface ProgressData extends Record<string, unknown> {
 	tokens: number;
 	inputTokens: number;
 	outputTokens: number;
@@ -58,7 +58,7 @@ export class ProgressTrackingService {
 	}
 
 	private handleProgressUpdate(
-		data: Record<string, unknown>,
+		data: Record<string, unknown> | ProgressData,
 		provider: string
 	): void {
 		const progressData: ProgressData = {

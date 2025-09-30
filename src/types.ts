@@ -45,7 +45,7 @@ export interface PreviewData {
 	totalEstimate: number;
 }
 
-export interface ProgressData {
+export interface ProgressData extends Record<string, unknown> {
 	tokens?: number;
 	actualInputTokens?: number;
 	actualOutputTokens?: number;
@@ -99,7 +99,7 @@ declare global {
 			}>;
 			loadConfig: () => Promise<AIProviderConfig>;
 			saveConfig: (
-				config: AIProviderConfig
+				config: Partial<AIProviderConfig>
 			) => Promise<{ success: boolean; error?: string }>;
 			onOllamaProgress: (
 				callback: (event: unknown, data: ProgressData) => void
