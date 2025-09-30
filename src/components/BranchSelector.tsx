@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BranchInfo } from '../types';
 
 interface BranchSelectorProps {
@@ -27,27 +27,51 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
 	disabledText,
 }) => {
 	const [filter, setFilter] = useState<string>('');
+	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const detailsRef = useRef<HTMLDetailsElement>(null);
 
 	// Filter branches based on internal filter state
 	const filteredBranches = branches.filter((branch) =>
 		branch.name.toLowerCase().includes(filter.toLowerCase())
 	);
+
 	const handleBranchSelect = (branchName: string) => {
 		onBranchSelect(branchName);
 		setFilter(''); // Clear filter
-		// Close dropdown
-		const detailsElement = document.getElementById(id)?.closest('details');
-		if (detailsElement) {
-			detailsElement.open = false;
-		}
+		setIsOpen(false);
 	};
+
+	// Close dropdown when clicking outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (
+				detailsRef.current &&
+				!detailsRef.current.contains(event.target as Node)
+			) {
+				setIsOpen(false);
+			}
+		};
+
+		if (isOpen) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [isOpen]);
 
 	return (
 		<div className="form-control">
 			<label className="label" htmlFor={id}>
 				<span className="label-text font-medium">{label}</span>
 			</label>
-			<details className="dropdown dropdown-bottom w-full">
+			<details
+				ref={detailsRef}
+				className="dropdown dropdown-bottom w-full"
+				open={isOpen}
+				onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
+			>
 				<summary
 					id={id}
 					className={`btn btn-outline w-full justify-start ${disabled ? 'btn-disabled' : ''}`}
@@ -66,7 +90,7 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
 								onChange={(e) => setFilter(e.target.value)}
 							/>
 						</div>
-						<ul className="menu menu-lg max-h-60 overflow-y-auto">
+						<ul className="menu max-h-60 overflow-y-auto flex-nowrap">
 							{isLoading ? (
 								<li>
 									<span className="loading loading-spinner loading-sm"></span>{' '}
@@ -75,10 +99,18 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
 							) : filteredBranches.length > 0 ? (
 								filteredBranches.map((branch) => (
 									<li key={branch.name}>
-										<a onClick={() => handleBranchSelect(branch.name)}>
-											{branch.name}
+										<a
+											onClick={() => handleBranchSelect(branch.name)}
+											className={`flex items-center justify-between hover:bg-base-300 ${selectedBranch === branch.name ? 'bg-primary text-primary-content' : ''}`}
+										>
+											<span className="flex items-center gap-2">
+												<i
+													className={`fas ${branch.type === 'remote' ? 'fa-cloud' : 'fa-code-branch'} text-sm`}
+												></i>
+												<span className="font-mono text-sm">{branch.name}</span>
+											</span>
 											{branch.type === 'remote' && (
-												<span className="badge badge-sm badge-secondary ml-2">
+												<span className="badge badge-xs badge-secondary">
 													remote
 												</span>
 											)}
@@ -87,7 +119,9 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
 								))
 							) : (
 								<li>
-									<span>No branches found</span>
+									<span className="text-gray-500 italic">
+										No branches found
+									</span>
 								</li>
 							)}
 						</ul>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { AIProviderConfig } from '../types';
 import PromptSection from './PromptSection';
 import DebugSection from './DebugSection';
@@ -24,6 +24,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 	connectionTestResult,
 }) => {
 	const { aiConfig, setAiConfig } = useConfigStore();
+	const modalBoxRef = useRef<HTMLDivElement>(null);
 
 	const handleSave = () => {
 		// Configuration is automatically saved via Zustand persistence
@@ -33,11 +34,32 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 	const handleTestConnection = () => {
 		onTestConnection(aiConfig);
 	};
+
+	// Close modal when clicking outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (
+				modalBoxRef.current &&
+				!modalBoxRef.current.contains(event.target as Node)
+			) {
+				onClose();
+			}
+		};
+
+		if (isOpen) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [isOpen, onClose]);
+
 	if (!isOpen) return null;
 
 	return (
 		<dialog open className="modal">
-			<div className="modal-box w-4/5 max-w-none">
+			<div ref={modalBoxRef} className="modal-box w-4/5 max-w-none">
 				<form method="dialog">
 					<button
 						className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"

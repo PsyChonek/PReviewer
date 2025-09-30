@@ -57,11 +57,20 @@ export interface ProgressData extends Record<string, unknown> {
 	progress?: number;
 }
 
+export interface GitOperationResult {
+	success: boolean;
+	message?: string;
+	error?: string;
+	summary?: unknown;
+}
+
 declare global {
 	interface Window {
 		electronAPI: {
 			selectDirectory: () => Promise<string | null>;
 			getGitBranches: (repoPath: string) => Promise<string[]>;
+			gitFetch: (repoPath: string) => Promise<GitOperationResult>;
+			gitPull: (repoPath: string) => Promise<GitOperationResult>;
 			getGitDiff: (
 				repoPath: string,
 				fromBranch: string,

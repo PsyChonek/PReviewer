@@ -41,6 +41,11 @@ export default [
 				URL: 'readonly',
 				ClipboardItem: 'readonly',
 				fetch: 'readonly',
+				// DOM types
+				HTMLDetailsElement: 'readonly',
+				HTMLDivElement: 'readonly',
+				MouseEvent: 'readonly',
+				Node: 'readonly',
 			},
 		},
 		plugins: {
