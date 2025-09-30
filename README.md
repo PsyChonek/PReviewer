@@ -115,10 +115,12 @@ npm run package
 ### AI Provider Settings
 
 **Ollama (Local)**:
+
 - API URL: `http://localhost:11434/api/generate`
 - Models: codellama, mistral, phi3:mini, and other installed models
 
 **Azure OpenAI (Cloud)**:
+
 - API URL: Your Azure OpenAI endpoint
 - API Key: Your Azure OpenAI API key
 - Models: GPT-4, GPT-3.5-turbo, and other deployed models
@@ -126,6 +128,7 @@ npm run package
 ### Application Architecture
 
 **Built with:**
+
 - **Frontend**: React 19 with TypeScript and functional components
 - **Styling**: DaisyUI 5 + Tailwind CSS 4
 - **Desktop Framework**: Electron with secure IPC communication
@@ -133,6 +136,7 @@ npm run package
 - **Build System**: Vite for bundling and Electron Forge for packaging
 
 **Configuration Storage:**
+
 - AI provider settings: localStorage
 - Repository paths and preferences: Application state
 - Debug mode and other settings: Persistent across sessions
@@ -155,11 +159,13 @@ npm run package
 ### AI Connection Issues
 
 **Ollama Connection:**
+
 - Ensure Ollama is running: `ollama serve`
 - Verify the model is downloaded: `ollama list`
 - Check the API URL in settings (default: `http://localhost:11434/api/generate`)
 
 **Azure OpenAI Connection:**
+
 - Verify your API key and endpoint are correct
 - Ensure your Azure OpenAI deployment is active
 - Check network connectivity and firewall settings
@@ -173,17 +179,20 @@ npm run package
 ### Application Issues
 
 **Installation Problems:**
+
 - Ensure Node.js 18+ is installed: `node --version`
 - Clear npm cache if installation fails: `npm cache clean --force`
 - Delete `node_modules` and `package-lock.json`, then run `npm install` again
 
 **Build/Development Issues:**
+
 - CSS compilation is handled automatically by Vite with Tailwind CSS plugin
 - For styling issues, check the `src/index.css` file and DaisyUI configuration
 - Check console logs in the Electron DevTools for runtime errors
 - If Vite build fails, ensure all dependencies are installed and Node.js 18+ is being used
 
 **Testing Issues:**
+
 - Ensure all dependencies are installed: `npm install`
 - For test failures, run `npm test` to see detailed error messages
 - Check Jest configuration in `package.json` and test files in `tests/` directory

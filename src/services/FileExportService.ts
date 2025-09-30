@@ -1,117 +1,132 @@
 import { markdownRenderer } from './MarkdownRenderer';
 
 export interface ExportOptions {
-  filename?: string;
-  includeTimestamp?: boolean;
-  includeMetadata?: boolean;
-  format?: 'markdown' | 'html' | 'txt';
+	filename?: string;
+	includeTimestamp?: boolean;
+	includeMetadata?: boolean;
+	format?: 'markdown' | 'html' | 'txt';
 }
 
 export interface ExportMetadata {
-  exportDate: string;
-  wordCount: number;
-  characterCount: number;
-  estimatedReadingTime: number;
-  source?: string;
+	exportDate: string;
+	wordCount: number;
+	characterCount: number;
+	estimatedReadingTime: number;
+	source?: string;
 }
 
 export class FileExportService {
-  private static instance: FileExportService;
+	private static instance: FileExportService;
 
-  private constructor() {}
+	private constructor() {}
 
-  static getInstance(): FileExportService {
-    if (!FileExportService.instance) {
-      FileExportService.instance = new FileExportService();
-    }
-    return FileExportService.instance;
-  }
+	static getInstance(): FileExportService {
+		if (!FileExportService.instance) {
+			FileExportService.instance = new FileExportService();
+		}
+		return FileExportService.instance;
+	}
 
-  async exportToFile(content: string, options: ExportOptions = {}): Promise<void> {
-    const {
-      filename = this.generateFilename(options.format || 'markdown', options.includeTimestamp),
-      includeMetadata = false,
-      format = 'markdown'
-    } = options;
+	async exportToFile(
+		content: string,
+		options: ExportOptions = {}
+	): Promise<void> {
+		const {
+			filename = this.generateFilename(
+				options.format || 'markdown',
+				options.includeTimestamp
+			),
+			includeMetadata = false,
+			format = 'markdown',
+		} = options;
 
-    let exportContent = content;
-    let mimeType = 'text/plain';
-    let fileExtension = '.txt';
+		let exportContent = content;
+		let mimeType = 'text/plain';
+		let fileExtension = '.txt';
 
-    // Prepare content based on format
-    switch (format) {
-      case 'markdown':
-        if (includeMetadata) {
-          exportContent = this.addMetadataToMarkdown(content);
-        }
-        mimeType = 'text/markdown';
-        fileExtension = '.md';
-        break;
+		// Prepare content based on format
+		switch (format) {
+			case 'markdown':
+				if (includeMetadata) {
+					exportContent = this.addMetadataToMarkdown(content);
+				}
+				mimeType = 'text/markdown';
+				fileExtension = '.md';
+				break;
 
-      case 'html':
-        exportContent = this.convertToHtml(content, includeMetadata);
-        mimeType = 'text/html';
-        fileExtension = '.html';
-        break;
+			case 'html':
+				exportContent = this.convertToHtml(content, includeMetadata);
+				mimeType = 'text/html';
+				fileExtension = '.html';
+				break;
 
-      case 'txt':
-        exportContent = this.convertToPlainText(content, includeMetadata);
-        mimeType = 'text/plain';
-        fileExtension = '.txt';
-        break;
-    }
+			case 'txt':
+				exportContent = this.convertToPlainText(content, includeMetadata);
+				mimeType = 'text/plain';
+				fileExtension = '.txt';
+				break;
+		}
 
-    // Create and download the file
-    const blob = new Blob([exportContent], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith(fileExtension) ? filename : filename + fileExtension;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+		// Create and download the file
+		const blob = new Blob([exportContent], { type: mimeType });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename.endsWith(fileExtension)
+			? filename
+			: filename + fileExtension;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
 
-  async copyToClipboard(content: string): Promise<boolean> {
-    try {
-      await navigator.clipboard.writeText(content);
-      return true;
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-      return false;
-    }
-  }
+	async copyToClipboard(content: string): Promise<boolean> {
+		try {
+			await navigator.clipboard.writeText(content);
+			return true;
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			return false;
+		}
+	}
 
-  async copyHtmlToClipboard(content: string): Promise<boolean> {
-    try {
-      const htmlContent = this.convertToHtml(content, false);
+	async copyHtmlToClipboard(content: string): Promise<boolean> {
+		try {
+			const htmlContent = this.convertToHtml(content, false);
 
-      // Try to copy as both HTML and plain text
-      const clipboardItem = new ClipboardItem({
-        'text/html': new Blob([htmlContent], { type: 'text/html' }),
-        'text/plain': new Blob([content], { type: 'text/plain' })
-      });
+			// Try to copy as both HTML and plain text
+			const clipboardItem = new ClipboardItem({
+				'text/html': new Blob([htmlContent], { type: 'text/html' }),
+				'text/plain': new Blob([content], { type: 'text/plain' }),
+			});
 
-      await navigator.clipboard.write([clipboardItem]);
-      return true;
-    } catch (error) {
-      // Fallback to plain text
-      console.warn('Failed to copy HTML to clipboard, falling back to plain text:', error);
-      return this.copyToClipboard(content);
-    }
-  }
+			await navigator.clipboard.write([clipboardItem]);
+			return true;
+		} catch (error) {
+			// Fallback to plain text
+			console.warn(
+				'Failed to copy HTML to clipboard, falling back to plain text:',
+				error
+			);
+			return this.copyToClipboard(content);
+		}
+	}
 
-  private generateFilename(format: string, includeTimestamp: boolean = true): string {
-    const base = 'pr-review';
-    const timestamp = includeTimestamp ? `-${Date.now()}` : '';
-    const extension = format === 'markdown' ? '.md' : format === 'html' ? '.html' : '.txt';
-    return `${base}${timestamp}${extension}`;
-  }
+	private generateFilename(
+		format: string,
+		includeTimestamp: boolean = true
+	): string {
+		const base = 'pr-review';
+		const timestamp = includeTimestamp ? `-${Date.now()}` : '';
+		const extension =
+			format === 'markdown' ? '.md' : format === 'html' ? '.html' : '.txt';
+		return `${base}${timestamp}${extension}`;
+	}
 
-  private addMetadataToMarkdown(content: string): string {
-    const metadata = this.generateMetadata(content);
-    const metadataBlock = `---
+	private addMetadataToMarkdown(content: string): string {
+		const metadata = this.generateMetadata(content);
+		const metadataBlock = `---
 Export Date: ${metadata.exportDate}
 Word Count: ${metadata.wordCount}
 Character Count: ${metadata.characterCount}
@@ -120,14 +135,14 @@ Generated by: PReviewer
 ---
 
 `;
-    return metadataBlock + content;
-  }
+		return metadataBlock + content;
+	}
 
-  private convertToHtml(content: string, includeMetadata: boolean): string {
-    const rendered = markdownRenderer.render(content);
-    const metadata = includeMetadata ? this.generateMetadata(content) : null;
+	private convertToHtml(content: string, includeMetadata: boolean): string {
+		const rendered = markdownRenderer.render(content);
+		const metadata = includeMetadata ? this.generateMetadata(content) : null;
 
-    const htmlTemplate = `<!DOCTYPE html>
+		const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -172,7 +187,9 @@ Generated by: PReviewer
     </style>
 </head>
 <body>
-    ${metadata ? `
+    ${
+			metadata
+				? `
     <div class="metadata">
         <h3>Export Information</h3>
         <p><strong>Export Date:</strong> ${metadata.exportDate}</p>
@@ -181,25 +198,30 @@ Generated by: PReviewer
         <p><strong>Estimated Reading Time:</strong> ${metadata.estimatedReadingTime} min</p>
         <p><strong>Generated by:</strong> PReviewer</p>
     </div>
-    ` : ''}
+    `
+				: ''
+		}
     <div class="content">
         ${rendered.isUsingLibrary ? rendered.html : `<pre>${rendered.html}</pre>`}
     </div>
 </body>
 </html>`;
 
-    return htmlTemplate;
-  }
+		return htmlTemplate;
+	}
 
-  private convertToPlainText(content: string, includeMetadata: boolean): string {
-    const plainText = markdownRenderer.extractPlainText(content);
+	private convertToPlainText(
+		content: string,
+		includeMetadata: boolean
+	): string {
+		const plainText = markdownRenderer.extractPlainText(content);
 
-    if (!includeMetadata) {
-      return plainText;
-    }
+		if (!includeMetadata) {
+			return plainText;
+		}
 
-    const metadata = this.generateMetadata(content);
-    const metadataText = `Export Information:
+		const metadata = this.generateMetadata(content);
+		const metadataText = `Export Information:
 Export Date: ${metadata.exportDate}
 Word Count: ${metadata.wordCount}
 Character Count: ${metadata.characterCount}
@@ -210,48 +232,52 @@ Generated by: PReviewer
 
 `;
 
-    return metadataText + plainText;
-  }
+		return metadataText + plainText;
+	}
 
-  private generateMetadata(content: string): ExportMetadata {
-    return {
-      exportDate: new Date().toLocaleString(),
-      wordCount: markdownRenderer.getWordCount(content),
-      characterCount: markdownRenderer.getCharacterCount(content),
-      estimatedReadingTime: markdownRenderer.getEstimatedReadingTime(content)
-    };
-  }
+	private generateMetadata(content: string): ExportMetadata {
+		return {
+			exportDate: new Date().toLocaleString(),
+			wordCount: markdownRenderer.getWordCount(content),
+			characterCount: markdownRenderer.getCharacterCount(content),
+			estimatedReadingTime: markdownRenderer.getEstimatedReadingTime(content),
+		};
+	}
 
-  getExportPreview(content: string, format: 'markdown' | 'html' | 'txt'): string {
-    switch (format) {
-      case 'html':
-        return this.convertToHtml(content, true);
-      case 'txt':
-        return this.convertToPlainText(content, true);
-      case 'markdown':
-      default:
-        return this.addMetadataToMarkdown(content);
-    }
-  }
+	getExportPreview(
+		content: string,
+		format: 'markdown' | 'html' | 'txt'
+	): string {
+		switch (format) {
+			case 'html':
+				return this.convertToHtml(content, true);
+			case 'txt':
+				return this.convertToPlainText(content, true);
+			case 'markdown':
+			default:
+				return this.addMetadataToMarkdown(content);
+		}
+	}
 
-  validateContent(content: string): { isValid: boolean; warnings: string[] } {
-    const warnings: string[] = [];
+	validateContent(content: string): { isValid: boolean; warnings: string[] } {
+		const warnings: string[] = [];
 
-    if (!content || content.trim().length === 0) {
-      return { isValid: false, warnings: ['Content is empty'] };
-    }
+		if (!content || content.trim().length === 0) {
+			return { isValid: false, warnings: ['Content is empty'] };
+		}
 
-    if (content.length > 1000000) { // 1MB limit
-      warnings.push('Content is very large and may cause performance issues');
-    }
+		if (content.length > 1000000) {
+			// 1MB limit
+			warnings.push('Content is very large and may cause performance issues');
+		}
 
-    const wordCount = markdownRenderer.getWordCount(content);
-    if (wordCount < 10) {
-      warnings.push('Content appears to be very short');
-    }
+		const wordCount = markdownRenderer.getWordCount(content);
+		if (wordCount < 10) {
+			warnings.push('Content appears to be very short');
+		}
 
-    return { isValid: true, warnings };
-  }
+		return { isValid: true, warnings };
+	}
 }
 
 export const fileExportService = FileExportService.getInstance();

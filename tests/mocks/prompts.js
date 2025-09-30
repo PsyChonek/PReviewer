@@ -30,16 +30,16 @@ Brief overview of the changes reviewed.
 - Suggestion 2`;
 
 module.exports = {
-  DEFAULT_BASE_PROMPT,
-  buildPrompt: (diff, basePrompt = null, userPrompt = null) => {
-    let prompt = basePrompt || DEFAULT_BASE_PROMPT;
+	DEFAULT_BASE_PROMPT,
+	buildPrompt: (diff, basePrompt = null, userPrompt = null) => {
+		let prompt = basePrompt || DEFAULT_BASE_PROMPT;
 
-    if (userPrompt && userPrompt.trim()) {
-      prompt += '\n\nAdditional Instructions:\n' + userPrompt.trim();
-    }
+		if (userPrompt && userPrompt.trim()) {
+			prompt += '\n\nAdditional Instructions:\n' + userPrompt.trim();
+		}
 
-    prompt += '\n---\nDiff:\n{diff}\n---\nReview:\n';
+		prompt += '\n---\nDiff:\n{diff}\n---\nReview:\n';
 
-    return prompt.replace('{diff}', diff);
-  }
+		return prompt.replace('{diff}', diff);
+	},
 };

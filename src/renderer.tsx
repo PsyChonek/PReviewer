@@ -27,7 +27,9 @@
  */
 
 import './index.css';
-console.log('👋 This message is being logged by "renderer.js", included via webpack');
+console.log(
+	'👋 This message is being logged by "renderer.js", included via webpack'
+);
 
 // Import and mount React app
 import React from 'react';
@@ -36,7 +38,7 @@ import App from './App';
 
 const container = document.getElementById('root');
 if (!container) {
-  throw new Error('Root element not found');
+	throw new Error('Root element not found');
 }
 
 const root = createRoot(container);

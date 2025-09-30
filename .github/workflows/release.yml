@@ -40,13 +40,13 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            artifact_name: "*.exe"
+            artifact_name: '*.exe'
           - os: macos-latest
             platform: macos
-            artifact_name: "*.dmg"
+            artifact_name: '*.dmg'
           - os: ubuntu-latest
             platform: linux
-            artifact_name: "*.AppImage"
+            artifact_name: '*.AppImage'
 
     runs-on: ${{ matrix.os }}
     steps:

@@ -1,14 +1,14 @@
-import { defineConfig } from "vite";
-import { builtinModules } from "module";
+import { defineConfig } from 'vite';
+import { builtinModules } from 'module';
 
 export default defineConfig({
 	resolve: {
-		conditions: ["electron-main", "node"],
+		conditions: ['electron-main', 'node'],
 	},
 	build: {
-		outDir: ".vite/build",
+		outDir: '.vite/build',
 		rollupOptions: {
-			external: ["electron", ...builtinModules],
+			external: ['electron', ...builtinModules],
 		},
 	},
 });

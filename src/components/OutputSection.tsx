@@ -1,7 +1,7 @@
-import React from "react";
-import WelcomeMessage from "./WelcomeMessage";
-import ActionButtons from "./ActionButtons";
-import StatsDisplay from "./StatsDisplay";
+import React from 'react';
+import WelcomeMessage from './WelcomeMessage';
+import ActionButtons from './ActionButtons';
+import StatsDisplay from './StatsDisplay';
 
 interface OutputSectionProps {
 	outputContent: string;
@@ -22,16 +22,30 @@ interface OutputSectionProps {
 	estimatedInputTokens?: number;
 }
 
-const OutputSection: React.FC<OutputSectionProps> = ({ outputContent, onClearOutput, onCopyOutput, onExportOutput, reviewInProgress, reviewStats, estimatedInputTokens = 0 }) => {
+const OutputSection: React.FC<OutputSectionProps> = ({
+	outputContent,
+	onClearOutput,
+	onCopyOutput,
+	onExportOutput,
+	reviewInProgress,
+	reviewStats,
+	estimatedInputTokens = 0,
+}) => {
 	const renderMarkdown = (markdown: string) => {
 		if (!markdown.trim()) {
 			return <WelcomeMessage />;
 		}
 
 		// Use marked library if available, otherwise just display as text
-		if (typeof window !== "undefined" && 'marked' in window) {
-			const marked = (window as { marked: { parse: (text: string) => string } }).marked;
-			return <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }} />;
+		if (typeof window !== 'undefined' && 'marked' in window) {
+			const marked = (window as { marked: { parse: (text: string) => string } })
+				.marked;
+			return (
+				<div
+					className="prose prose-sm max-w-none dark:prose-invert"
+					dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }}
+				/>
+			);
 		}
 
 		// Fallback: basic markdown-like formatting
@@ -43,7 +57,11 @@ const OutputSection: React.FC<OutputSectionProps> = ({ outputContent, onClearOut
 	};
 
 	return (
-		<section className="card bg-base-100 shadow-xl" aria-label="Output" role="region">
+		<section
+			className="card bg-base-100 shadow-xl"
+			aria-label="Output"
+			role="region"
+		>
 			<div className="card-body">
 				<div className="flex justify-between items-center mb-4">
 					<h2 className="card-title text-2xl">
@@ -62,7 +80,12 @@ const OutputSection: React.FC<OutputSectionProps> = ({ outputContent, onClearOut
 					reviewInProgress={reviewInProgress}
 				/>
 
-				<div className="bg-base-200 border border-base-300 rounded-lg output-text overflow-auto" role="log" aria-live="polite" aria-label="Review output display">
+				<div
+					className="bg-base-200 border border-base-300 rounded-lg output-text overflow-auto"
+					role="log"
+					aria-live="polite"
+					aria-label="Review output display"
+				>
 					<div className="px-6 py-4">{renderMarkdown(outputContent)}</div>
 				</div>
 			</div>

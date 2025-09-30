@@ -30,14 +30,14 @@ Brief overview of the changes reviewed.
 - Suggestion 2`;
 
 module.exports = {
-  getDefaultPrompts: () => ({
-    basePrompt: DEFAULT_BASE_PROMPT,
-    userPrompt: ''
-  }),
-  getDefaultConfig: () => ({
-    prompts: {
-      basePrompt: DEFAULT_BASE_PROMPT,
-      userPrompt: ''
-    }
-  })
+	getDefaultPrompts: () => ({
+		basePrompt: DEFAULT_BASE_PROMPT,
+		userPrompt: '',
+	}),
+	getDefaultConfig: () => ({
+		prompts: {
+			basePrompt: DEFAULT_BASE_PROMPT,
+			userPrompt: '',
+		},
+	}),
 };

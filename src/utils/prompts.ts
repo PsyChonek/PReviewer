@@ -29,14 +29,18 @@ Brief overview of the changes reviewed.
 - Suggestion 1
 - Suggestion 2`;
 
-export function buildPrompt(diff: string, basePrompt: string | null = null, userPrompt: string | null = null): string {
-    let prompt = basePrompt || DEFAULT_BASE_PROMPT;
+export function buildPrompt(
+	diff: string,
+	basePrompt: string | null = null,
+	userPrompt: string | null = null
+): string {
+	let prompt = basePrompt || DEFAULT_BASE_PROMPT;
 
-    if (userPrompt && userPrompt.trim()) {
-        prompt += '\n\nAdditional Instructions:\n' + userPrompt.trim();
-    }
+	if (userPrompt && userPrompt.trim()) {
+		prompt += '\n\nAdditional Instructions:\n' + userPrompt.trim();
+	}
 
-    prompt += '\n---\nDiff:\n{diff}\n---\nReview:\n';
+	prompt += '\n---\nDiff:\n{diff}\n---\nReview:\n';
 
-    return prompt.replace('{diff}', diff);
+	return prompt.replace('{diff}', diff);
 }

@@ -13,8 +13,8 @@ on:
         default: 'release'
         type: choice
         options:
-        - 'release'
-        - 'prerelease'
+          - 'release'
+          - 'prerelease'
       release_notes:
         description: 'Release notes (optional)'
         required: false
@@ -77,16 +77,16 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            artifact_pattern: "*.exe"
-            content_type: "application/octet-stream"
+            artifact_pattern: '*.exe'
+            content_type: 'application/octet-stream'
           - os: macos-latest
             platform: macos
-            artifact_pattern: "*.zip"
-            content_type: "application/zip"
+            artifact_pattern: '*.zip'
+            content_type: 'application/zip'
           - os: ubuntu-latest
             platform: linux
-            artifact_pattern: "*.deb"
-            content_type: "application/vnd.debian.binary-package"
+            artifact_pattern: '*.deb'
+            content_type: 'application/vnd.debian.binary-package'
 
     runs-on: ${{ matrix.os }}
     steps:
