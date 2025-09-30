@@ -165,54 +165,54 @@ const App: React.FC = () => {
 		addToTotalOutputTokens,
 	]);
 
-	// Calculate input tokens when branches, repo, or prompts change
-	useEffect(() => {
-		const calculateTokens = async () => {
-			if (
-				!appState.currentRepoPath ||
-				!fromBranch ||
-				!toBranch ||
-				fromBranch === toBranch
-			) {
-				console.log('calculateInputTokens: Missing requirements', {
-					repoPath: appState.currentRepoPath,
-					fromBranch,
-					toBranch,
-				});
+	const calculateTokens = async () => {
+		if (
+			!appState.currentRepoPath ||
+			!fromBranch ||
+			!toBranch ||
+			fromBranch === toBranch
+		) {
+			console.log('calculateInputTokens: Missing requirements', {
+				repoPath: appState.currentRepoPath,
+				fromBranch,
+				toBranch,
+			});
+			setEstimatedInputTokens(0);
+			setStoreEstimatedTokens(0);
+			return;
+		}
+
+		try {
+			console.log('calculateInputTokens: Getting diff...');
+			const diff = await window.electronAPI.getGitDiff(
+				appState.currentRepoPath,
+				fromBranch,
+				toBranch
+			);
+			if (!diff || diff.trim() === '') {
+				console.log('calculateInputTokens: No diff found');
 				setEstimatedInputTokens(0);
 				setStoreEstimatedTokens(0);
 				return;
 			}
 
-			try {
-				console.log('calculateInputTokens: Getting diff...');
-				const diff = await window.electronAPI.getGitDiff(
-					appState.currentRepoPath,
-					fromBranch,
-					toBranch
-				);
-				if (!diff || diff.trim() === '') {
-					console.log('calculateInputTokens: No diff found');
-					setEstimatedInputTokens(0);
-					setStoreEstimatedTokens(0);
-					return;
-				}
+			console.log('calculateInputTokens: Building prompt...');
+			const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
 
-				console.log('calculateInputTokens: Building prompt...');
-				const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+			console.log('calculateInputTokens: Estimating tokens...');
+			const tokens = estimateTokens(fullPrompt);
+			console.log('calculateInputTokens: Estimated tokens:', tokens);
+			setEstimatedInputTokens(tokens);
+			setStoreEstimatedTokens(tokens);
+		} catch (error) {
+			console.error('Error calculating input tokens:', error);
+			setEstimatedInputTokens(0);
+			setStoreEstimatedTokens(0);
+		}
+	};
 
-				console.log('calculateInputTokens: Estimating tokens...');
-				const tokens = estimateTokens(fullPrompt);
-				console.log('calculateInputTokens: Estimated tokens:', tokens);
-				setEstimatedInputTokens(tokens);
-				setStoreEstimatedTokens(tokens);
-			} catch (error) {
-				console.error('Error calculating input tokens:', error);
-				setEstimatedInputTokens(0);
-				setStoreEstimatedTokens(0);
-			}
-		};
-
+	// Calculate input tokens when branches, repo, or prompts change
+	useEffect(() => {
 		const timer = setTimeout(() => {
 			calculateTokens();
 		}, 500); // Debounce to avoid too many calculations
@@ -483,6 +483,7 @@ const App: React.FC = () => {
 					reviewInProgress={appState.reviewInProgress}
 					onOpenConfig={handleOpenConfig}
 					estimatedInputTokens={storeEstimatedTokens}
+					onRefreshDiff={calculateTokens}
 				/>
 
 				<ProgressTracker
