@@ -1,6 +1,25 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - 'release'
+          - 'prerelease'
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        type: string
+        default: 'Release created via manual trigger'
   push:
     tags:
       - 'v*'
@@ -10,47 +29,82 @@ permissions:
   actions: read
 
 jobs:
-  create-release:
+  prepare-release:
     runs-on: ubuntu-latest
     outputs:
-      tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-      release_id: ${{ steps.create_release.outputs.id }}
+      tag_name: ${{ steps.compute.outputs.tag_name }}
+      prerelease: ${{ steps.compute.outputs.prerelease }}
+      body: ${{ steps.compute.outputs.body }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Get tag name
-        id: tag_name
-        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Compute release metadata
+        id: compute
+        shell: bash
+        run: |
+          # If manual, create tag v<version> (if not present) and use provided notes/type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v$VERSION"
+            BODY="${{ github.event.inputs.release_notes }}"
+            PRERELEASE=$([ "${{ github.event.inputs.release_type }}" = "prerelease" ] && echo true || echo false)
 
-      - name: Create Release
+            # Create tag if it doesn't exist
+            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+              echo "Tag $TAG_NAME already exists, will reuse."
+            else
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+              git push origin "$TAG_NAME"
+            fi
+          else
+            # Push tag trigger
+            TAG_REF="${GITHUB_REF#refs/tags/}"
+            TAG_NAME="$TAG_REF"
+            BODY="Release created from pushed tag $TAG_NAME"
+            # prerelease if tag contains a hyphen (e.g., v1.2.3-beta.1)
+            if echo "$TAG_NAME" | grep -q '-'; then PRERELEASE=true; else PRERELEASE=false; fi
+          fi
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          # Use a single line body to avoid YAML issues
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+      - name: Create or update GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-          name: PReviewer ${{ steps.tag_name.outputs.TAG_NAME }}
+          tag_name: ${{ steps.compute.outputs.tag_name }}
+          name: PReviewer ${{ steps.compute.outputs.tag_name }}
           draft: false
-          prerelease: ${{ contains(steps.tag_name.outputs.TAG_NAME, '-') }}
+          prerelease: ${{ steps.compute.outputs.prerelease }}
+          body: ${{ steps.compute.outputs.body }}
           generate_release_notes: true
 
-  build-and-release:
-    needs: create-release
+  build-and-upload:
+    needs: prepare-release
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         include:
           - os: windows-latest
             platform: windows
-            artifact_name: '*.exe'
+            artifact_pattern: '*.exe'
           - os: macos-latest
             platform: macos
-            artifact_name: '*.dmg'
+            artifact_pattern: '*.dmg'
           - os: ubuntu-latest
             platform: linux
-            artifact_name: '*.AppImage'
-
-    runs-on: ${{ matrix.os }}
+            artifact_pattern: '*.deb'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,44 +112,49 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Clean npm cache
+        run: npm cache clean --force
+        continue-on-error: true
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
+        env:
+          npm_config_cache: ${{ runner.temp }}/.npm
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
+
+      - name: Update package.json version (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Ensure package.json reflects the chosen version
+          VERSION="${{ github.event.inputs.version }}"
+          npm version "$VERSION" --no-git-tag-version
 
       - name: Build and package
         run: npm run make
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
+        timeout-minutes: 40
 
-      - name: Find release assets (Windows)
-        if: matrix.platform == 'windows'
-        id: find_assets_windows
+      - name: Find release assets
+        id: find_assets
         shell: bash
         run: |
-          asset_path=$(find out/make -name "*.exe" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          # Find the built artifact
+          asset_path=$(find out/make -type f -name "${{ matrix.artifact_pattern }}" | head -n 1)
 
-      - name: Find release assets (macOS)
-        if: matrix.platform == 'macos'
-        id: find_assets_macos
-        run: |
-          asset_path=$(find out/make -name "*.dmg" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          if [ -z "$asset_path" ]; then
+            echo "No artifact found matching pattern: ${{ matrix.artifact_pattern }}"
+            echo "Contents of out/make (if exists):"
+            ls -R out/make || true
+            exit 1
+          fi
 
-      - name: Find release assets (Linux)
-        if: matrix.platform == 'linux'
-        id: find_assets_linux
-        run: |
-          asset_path=$(find out/make -name "*.AppImage" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          echo "asset_path=$asset_path" >> "$GITHUB_OUTPUT"
+          echo "Found asset: $asset_path"
 
-      - name: Upload Release Assets
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-release.outputs.tag_name }}
-          files: |
-            ${{ steps.find_assets_windows.outputs.asset_path }}
-            ${{ steps.find_assets_macos.outputs.asset_path }}
-            ${{ steps.find_assets_linux.outputs.asset_path }}
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          files: ${{ steps.find_assets.outputs.assets }}

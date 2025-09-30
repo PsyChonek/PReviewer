@@ -13,9 +13,19 @@ module.exports = {
 	rebuildConfig: {},
 	makers: [
 		{ name: '@electron-forge/maker-squirrel', config: {} },
-		{ name: '@electron-forge/maker-zip', platforms: ['darwin'] },
 		{ name: '@electron-forge/maker-deb', config: {} },
 		{ name: '@electron-forge/maker-rpm', config: {} },
+		{
+			name: '@electron-forge/maker-dmg',
+			config: {
+				background: './assets/dmg-background.png',
+				format: 'ULFO',
+				contents: (opts) => [
+					{ x: 180, y: 200, type: 'file', path: opts.appPath },
+					{ x: 460, y: 200, type: 'link', path: '/Applications' },
+				],
+			},
+		},
 	],
 	plugins: [
 		{
