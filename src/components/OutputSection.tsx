@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { marked } from 'marked';
 import WelcomeMessage from './WelcomeMessage';
 import ActionButtons from './ActionButtons';
 import StatsDisplay from './StatsDisplay';
@@ -31,6 +32,8 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 	reviewStats,
 	estimatedInputTokens = 0,
 }) => {
+	const [showRaw, setShowRaw] = useState(false);
+
 	const renderMarkdown = (markdown: string) => {
 		if (!markdown.trim()) {
 			return <WelcomeMessage />;
@@ -67,11 +70,22 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 					<h2 className="card-title text-2xl">
 						<i className="fas fa-bullseye"></i> Output
 					</h2>
-					<ActionButtons
-						onClearOutput={onClearOutput}
-						onCopyOutput={onCopyOutput}
-						onExportOutput={onExportOutput}
-					/>
+					<div className="flex gap-2">
+						<button
+							className="btn btn-sm btn-outline"
+							onClick={() => setShowRaw(!showRaw)}
+							title={showRaw ? 'Show Rendered' : 'Show Raw'}
+							disabled={!outputContent.trim()}
+						>
+							<i className={`fas ${showRaw ? 'fa-eye' : 'fa-code'}`}></i>
+							{showRaw ? 'Show Rendered' : 'Show Raw'}
+						</button>
+						<ActionButtons
+							onClearOutput={onClearOutput}
+							onCopyOutput={onCopyOutput}
+							onExportOutput={onExportOutput}
+						/>
+					</div>
 				</div>
 
 				<StatsDisplay
