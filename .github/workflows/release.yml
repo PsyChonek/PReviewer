@@ -89,26 +89,24 @@ jobs:
     strategy:
       matrix:
         include:
-          # Windows x64
           - os: windows-latest
             platform: windows
             arch: x64
             artifact_patterns: |
               *-x64*.exe
               *Setup.exe
-          # Windows ARM64
           - os: windows-latest
             platform: windows
             arch: arm64
             artifact_patterns: |
               *-arm64*.exe
-          # macOS (universal or x64)
+              *Setup-ARM64.exe
+              *Setup.exe
           - os: macos-latest
             platform: macos
-            arch: universal
+            arch: arm64
             artifact_patterns: |
               *.dmg
-          # Linux (deb + rpm in one runner)
           - os: ubuntu-latest
             platform: linux
             arch: x64
@@ -143,51 +141,58 @@ jobs:
           npm version "$VERSION" --no-git-tag-version
 
       - name: Build and package
-        run: npm run make
+        run: npm run make -- --arch=${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_CACHE: ${{ runner.temp }}/.electron
+          npm_config_arch: ${{ matrix.arch }}
+          npm_config_target_arch: ${{ matrix.arch }}
         timeout-minutes: 40
 
       - name: Find release assets
         id: find_assets
+        shell: bash
         run: |
           set -e
-
           base_dir="out/make"
-          
-          # Read multiline patterns
+
+          # Prefer arch-specific subfolder if it exists (Squirrel layout)
+          arch_subdir=""
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ -d "$base_dir/squirrel.windows/${{ matrix.arch }}" ]; then
+              arch_subdir="$base_dir/squirrel.windows/${{ matrix.arch }}"
+            fi
+          fi
+
+          search_root="${arch_subdir:-$base_dir}"
+
           patterns=$(cat <<'EOF'
           ${{ matrix.artifact_patterns }}
           EOF
           )
 
-          # Create temp file to collect all matches
           assets_file="assets.txt"
           : > "$assets_file"
 
-          # For each non-empty pattern, run find and append results
           while IFS= read -r pattern; do
             [ -z "$pattern" ] && continue
-            find "$base_dir" -type f -name "$pattern" -print >> "$assets_file" || true
+            find "$search_root" -type f -name "$pattern" -print >> "$assets_file" || true
           done <<EOF2
           $patterns
           EOF2
 
-          # De-duplicate and remove empty lines
           sort -u -o "$assets_file" "$assets_file"
           sed -i.bak '/^[[:space:]]*$/d' "$assets_file" 2>/dev/null || sed -i '/^[[:space:]]*$/d' "$assets_file"
           rm -f "$assets_file.bak" 2>/dev/null || true
 
           if [ ! -s "$assets_file" ]; then
-            echo "No artifacts found matching patterns:"
+            echo "No artifacts found under $search_root for patterns:"
             echo "$patterns"
-            echo "Contents of $base_dir:"
-            ls -R "$base_dir" || true
+            echo "Tree:"
+            ls -R "$search_root" || true
             exit 1
           fi
 
-          # Export as multiline output
           echo "assets<<EOF" >> "$GITHUB_OUTPUT"
           cat "$assets_file" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
