@@ -1,6 +1,25 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - 'release'
+          - 'prerelease'
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        type: string
+        default: 'Release created via manual trigger'
   push:
     tags:
       - 'v*'
@@ -10,47 +29,96 @@ permissions:
   actions: read
 
 jobs:
-  create-release:
+  prepare-release:
     runs-on: ubuntu-latest
     outputs:
-      tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-      release_id: ${{ steps.create_release.outputs.id }}
+      tag_name: ${{ steps.compute.outputs.tag_name }}
+      prerelease: ${{ steps.compute.outputs.prerelease }}
+      body: ${{ steps.compute.outputs.body }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Get tag name
-        id: tag_name
-        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Compute release metadata
+        id: compute
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v$VERSION"
+            BODY="${{ github.event.inputs.release_notes }}"
+            PRERELEASE=$([ "${{ github.event.inputs.release_type }}" = "prerelease" ] && echo true || echo false)
 
-      - name: Create Release
+            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+              echo "Tag $TAG_NAME already exists, will reuse."
+            else
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+              git push origin "$TAG_NAME"
+            fi
+          else
+            TAG_REF="${GITHUB_REF#refs/tags/}"
+            TAG_NAME="$TAG_REF"
+            BODY="Release created from pushed tag $TAG_NAME"
+            if echo "$TAG_NAME" | grep -q '-'; then PRERELEASE=true; else PRERELEASE=false; fi
+          fi
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+      - name: Create or update GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-          name: PReviewer ${{ steps.tag_name.outputs.TAG_NAME }}
+          tag_name: ${{ steps.compute.outputs.tag_name }}
+          name: PReviewer ${{ steps.compute.outputs.tag_name }}
           draft: false
-          prerelease: ${{ contains(steps.tag_name.outputs.TAG_NAME, '-') }}
+          prerelease: ${{ steps.compute.outputs.prerelease }}
+          body: ${{ steps.compute.outputs.body }}
           generate_release_notes: true
 
-  build-and-release:
-    needs: create-release
+  build-and-upload:
+    needs: prepare-release
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
         include:
+          # Windows x64
           - os: windows-latest
             platform: windows
-            artifact_name: '*.exe'
+            arch: x64
+            artifact_patterns: |
+              *-x64*.exe
+              *Setup.exe
+          # Windows ARM64
+          - os: windows-latest
+            platform: windows
+            arch: arm64
+            artifact_patterns: |
+              *-arm64*.exe
+          # macOS (universal or x64)
           - os: macos-latest
             platform: macos
-            artifact_name: '*.dmg'
+            arch: universal
+            artifact_patterns: |
+              *.dmg
+          # Linux (deb + rpm in one runner)
           - os: ubuntu-latest
             platform: linux
-            artifact_name: '*.AppImage'
-
-    runs-on: ${{ matrix.os }}
+            arch: x64
+            artifact_patterns: |
+              *.deb
+              *.rpm
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,44 +126,77 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Clean npm cache
+        run: npm cache clean --force
+        continue-on-error: true
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
+        env:
+          npm_config_cache: ${{ runner.temp }}/.npm
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
+
+      - name: Update package.json version (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          npm version "$VERSION" --no-git-tag-version
 
       - name: Build and package
         run: npm run make
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_CACHE: ${{ runner.temp }}/.electron
+        timeout-minutes: 40
 
-      - name: Find release assets (Windows)
-        if: matrix.platform == 'windows'
-        id: find_assets_windows
-        shell: bash
+      - name: Find release assets
+        id: find_assets
         run: |
-          asset_path=$(find out/make -name "*.exe" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          set -e
 
-      - name: Find release assets (macOS)
-        if: matrix.platform == 'macos'
-        id: find_assets_macos
-        run: |
-          asset_path=$(find out/make -name "*.dmg" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          base_dir="out/make"
+          
+          # Read multiline patterns
+          patterns=$(cat <<'EOF'
+          ${{ matrix.artifact_patterns }}
+          EOF
+          )
 
-      - name: Find release assets (Linux)
-        if: matrix.platform == 'linux'
-        id: find_assets_linux
-        run: |
-          asset_path=$(find out/make -name "*.AppImage" | head -1)
-          echo "asset_path=$asset_path" >> $GITHUB_OUTPUT
-          echo "asset_name=$(basename $asset_path)" >> $GITHUB_OUTPUT
+          # Create temp file to collect all matches
+          assets_file="assets.txt"
+          : > "$assets_file"
 
-      - name: Upload Release Assets
+          # For each non-empty pattern, run find and append results
+          while IFS= read -r pattern; do
+            [ -z "$pattern" ] && continue
+            find "$base_dir" -type f -name "$pattern" -print >> "$assets_file" || true
+          done <<EOF2
+          $patterns
+          EOF2
+
+          # De-duplicate and remove empty lines
+          sort -u -o "$assets_file" "$assets_file"
+          sed -i.bak '/^[[:space:]]*$/d' "$assets_file" 2>/dev/null || sed -i '/^[[:space:]]*$/d' "$assets_file"
+          rm -f "$assets_file.bak" 2>/dev/null || true
+
+          if [ ! -s "$assets_file" ]; then
+            echo "No artifacts found matching patterns:"
+            echo "$patterns"
+            echo "Contents of $base_dir:"
+            ls -R "$base_dir" || true
+            exit 1
+          fi
+
+          # Export as multiline output
+          echo "assets<<EOF" >> "$GITHUB_OUTPUT"
+          cat "$assets_file" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "Found assets:"
+          cat "$assets_file"
+
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-release.outputs.tag_name }}
-          files: |
-            ${{ steps.find_assets_windows.outputs.asset_path }}
-            ${{ steps.find_assets_macos.outputs.asset_path }}
-            ${{ steps.find_assets_linux.outputs.asset_path }}
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          files: ${{ steps.find_assets.outputs.assets }}
