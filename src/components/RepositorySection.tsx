@@ -158,7 +158,9 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 						<button
 							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
 							onClick={onRefreshDiff}
-							disabled={!repoPath || !fromBranch || !toBranch || fromBranch === toBranch}
+							disabled={
+								!repoPath || !fromBranch || !toBranch || fromBranch === toBranch
+							}
 							title="Recalculate diff and token estimation"
 							aria-label="Recalculate diff and token estimation"
 						>

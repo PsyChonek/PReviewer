@@ -269,7 +269,7 @@ function mergeDeep(target: Config, source: Config): Config {
 					output[sourceKey] = mergeDeep(
 						target[sourceKey] as Config,
 						source[sourceKey] as Config
-					) as typeof output[typeof sourceKey];
+					) as (typeof output)[typeof sourceKey];
 				}
 			} else {
 				Object.assign(output, { [key]: source[sourceKey] });
@@ -308,7 +308,10 @@ interface GitOperationResult {
 
 ipcMain.handle(
 	'git-fetch',
-	async (_event: IpcMainInvokeEvent, repoPath: string): Promise<GitOperationResult> => {
+	async (
+		_event: IpcMainInvokeEvent,
+		repoPath: string
+	): Promise<GitOperationResult> => {
 		try {
 			const git: SimpleGit = simpleGit(repoPath);
 			await git.fetch();
@@ -325,7 +328,10 @@ ipcMain.handle(
 
 ipcMain.handle(
 	'git-pull',
-	async (_event: IpcMainInvokeEvent, repoPath: string): Promise<GitOperationResult> => {
+	async (
+		_event: IpcMainInvokeEvent,
+		repoPath: string
+	): Promise<GitOperationResult> => {
 		try {
 			const git: SimpleGit = simpleGit(repoPath);
 			const result = await git.pull();
@@ -506,7 +512,10 @@ interface ProgressData {
 
 ipcMain.handle(
 	'call-ollama-api',
-	async (event: IpcMainInvokeEvent, { url, model, prompt }: OllamaConfig): Promise<string> => {
+	async (
+		event: IpcMainInvokeEvent,
+		{ url, model, prompt }: OllamaConfig
+	): Promise<string> => {
 		try {
 			// Send initial progress
 			event.sender.send('ollama-progress', {
@@ -579,12 +588,18 @@ ipcMain.handle(
 
 									// Update progress every 100ms or every 10 tokens
 									const now = Date.now();
-									if (now - lastProgressUpdate > 100 || totalTokens % 10 === 0) {
+									if (
+										now - lastProgressUpdate > 100 ||
+										totalTokens % 10 === 0
+									) {
 										const elapsed = (now - startTime) / 1000;
 										const tokensPerSecond = totalTokens / elapsed;
 
 										// Dynamic progress calculation based on response length
-										const estimatedTotalTokens = Math.max(100, prompt.length / 4); // Rough estimate
+										const estimatedTotalTokens = Math.max(
+											100,
+											prompt.length / 4
+										); // Rough estimate
 										const tokenProgress = Math.min(
 											25,
 											(totalTokens / estimatedTotalTokens) * 25
@@ -623,7 +638,8 @@ ipcMain.handle(
 										responseTime,
 										tokens: actualOutputTokens || totalTokens,
 										tokensPerSecond:
-											(actualOutputTokens || totalTokens) / (responseTime / 1000),
+											(actualOutputTokens || totalTokens) /
+											(responseTime / 1000),
 										bytesReceived: bytesReceived,
 										streamingContent: responseText,
 										isStreaming: false,

@@ -119,7 +119,9 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
 								))
 							) : (
 								<li>
-									<span className="text-gray-500 italic">No branches found</span>
+									<span className="text-gray-500 italic">
+										No branches found
+									</span>
 								</li>
 							)}
 						</ul>

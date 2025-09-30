@@ -59,9 +59,10 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 	}, [reviewInProgress, reviewStats?.outputTokens]);
 
 	// Calculate average speed when completed
-	const avgSpeed = reviewStats && !reviewInProgress
-		? reviewStats.outputTokens / (reviewStats.responseTime / 1000)
-		: smoothSpeed;
+	const avgSpeed =
+		reviewStats && !reviewInProgress
+			? reviewStats.outputTokens / (reviewStats.responseTime / 1000)
+			: smoothSpeed;
 
 	if (!reviewInProgress && !reviewStats) {
 		return null;
@@ -113,15 +114,11 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 							</div>
 							<div>
 								<span className="text-base-content/70">Speed:</span>
-								<div className="font-mono">
-									{smoothSpeed.toFixed(1)} tok/s
-								</div>
+								<div className="font-mono">{smoothSpeed.toFixed(1)} tok/s</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Processing:</span>
-								<div className="font-mono">
-									{smoothTime.toFixed(1)}s
-								</div>
+								<div className="font-mono">{smoothTime.toFixed(1)}s</div>
 							</div>
 						</div>
 					</div>
@@ -145,9 +142,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 							</div>
 							<div>
 								<span className="text-base-content/70">Avg Speed:</span>
-								<div className="font-mono">
-									{avgSpeed.toFixed(1)} tok/s
-								</div>
+								<div className="font-mono">{avgSpeed.toFixed(1)} tok/s</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Total Time:</span>
