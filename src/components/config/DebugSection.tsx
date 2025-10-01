@@ -1,8 +1,14 @@
 import React from 'react';
-import { useConfigStore } from '../../store/configStore';
 
-const DebugSection: React.FC = () => {
-	const { debugMode, setDebugMode } = useConfigStore();
+interface DebugSectionProps {
+	debugMode: boolean;
+	setDebugMode: (debug: boolean) => void;
+}
+
+const DebugSection: React.FC<DebugSectionProps> = ({
+	debugMode,
+	setDebugMode,
+}) => {
 	return (
 		<div>
 			<h4 className="text-md font-semibold mb-3">Debug Options</h4>

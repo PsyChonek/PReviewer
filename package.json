@@ -16,7 +16,7 @@
 		"test:unit": "jest --config tests/jest.config.js --testPathPattern=tests/unit",
 		"test:integration": "jest --config tests/jest.config.js --testPathPattern=tests/integration",
 		"format": "prettier --check .",
-		"format:fix": "prettier --write .",
+		"format:fix": "prettier --write --log-level=warn .",
 		"check": "npm run lint:fix && npm run format:fix && npx tsc --noEmit"
 	},
 	"author": "Daniel Vazač",

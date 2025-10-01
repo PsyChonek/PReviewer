@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AIProviderConfig } from '../../types';
 import PromptSection from './PromptSection';
 import DebugSection from './DebugSection';
@@ -25,16 +25,51 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 	testingConnection,
 	connectionTestResult,
 }) => {
-	const { aiConfig, setAiConfig } = useConfigStore();
+	const {
+		aiConfig: savedAiConfig,
+		setAiConfig,
+		basePrompt: savedBasePrompt,
+		setBasePrompt,
+		userPrompt: savedUserPrompt,
+		setUserPrompt,
+		debugMode: savedDebugMode,
+		setDebugMode,
+	} = useConfigStore();
 	const modalBoxRef = useRef<HTMLDivElement>(null);
 
+	// Local state for temporary changes
+	const [localAiConfig, setLocalAiConfig] =
+		useState<AIProviderConfig>(savedAiConfig);
+	const [localBasePrompt, setLocalBasePrompt] = useState(savedBasePrompt);
+	const [localUserPrompt, setLocalUserPrompt] = useState(savedUserPrompt);
+	const [localDebugMode, setLocalDebugMode] = useState(savedDebugMode);
+
+	// Reset local state when modal opens
+	useEffect(() => {
+		if (isOpen) {
+			setLocalAiConfig(savedAiConfig);
+			setLocalBasePrompt(savedBasePrompt);
+			setLocalUserPrompt(savedUserPrompt);
+			setLocalDebugMode(savedDebugMode);
+		}
+	}, [isOpen, savedAiConfig, savedBasePrompt, savedUserPrompt, savedDebugMode]);
+
 	const handleSave = () => {
-		// Configuration is automatically saved via Zustand persistence
+		// Save all changes to Zustand store
+		setAiConfig(localAiConfig);
+		setBasePrompt(localBasePrompt);
+		setUserPrompt(localUserPrompt);
+		setDebugMode(localDebugMode);
+		onClose();
+	};
+
+	const handleCancel = () => {
+		// Discard changes and close
 		onClose();
 	};
 
 	const handleTestConnection = () => {
-		onTestConnection(aiConfig);
+		onTestConnection(localAiConfig);
 	};
 
 	// Close modal when clicking outside
@@ -83,10 +118,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 							</label>
 							<select
 								className="select select-bordered w-full"
-								value={aiConfig.provider}
+								value={localAiConfig.provider}
 								onChange={(e) =>
-									setAiConfig({
-										...aiConfig,
+									setLocalAiConfig({
+										...localAiConfig,
 										provider: e.target.value as 'ollama' | 'azure',
 									})
 								}
@@ -97,19 +132,19 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 						</div>
 					</div>
 
-					{aiConfig.provider === 'ollama' && (
+					{localAiConfig.provider === 'ollama' && (
 						<OllamaSettings
-							aiConfig={aiConfig}
-							setAiConfig={setAiConfig}
+							aiConfig={localAiConfig}
+							setAiConfig={setLocalAiConfig}
 							onTestConnection={handleTestConnection}
 							testingConnection={testingConnection}
 						/>
 					)}
 
-					{aiConfig.provider === 'azure' && (
+					{localAiConfig.provider === 'azure' && (
 						<AzureSettings
-							aiConfig={aiConfig}
-							setAiConfig={setAiConfig}
+							aiConfig={localAiConfig}
+							setAiConfig={setLocalAiConfig}
 							onTestConnection={handleTestConnection}
 							testingConnection={testingConnection}
 						/>
@@ -131,9 +166,17 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 						</div>
 					)}
 
-					<PromptSection />
+					<PromptSection
+						basePrompt={localBasePrompt}
+						setBasePrompt={setLocalBasePrompt}
+						userPrompt={localUserPrompt}
+						setUserPrompt={setLocalUserPrompt}
+					/>
 
-					<DebugSection />
+					<DebugSection
+						debugMode={localDebugMode}
+						setDebugMode={setLocalDebugMode}
+					/>
 				</div>
 
 				<div className="modal-action">
@@ -144,8 +187,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 					>
 						Save Settings
 					</button>
-					<button className="btn" onClick={onClose}>
-						Close
+					<button className="btn" onClick={handleCancel}>
+						Cancel
 					</button>
 				</div>
 			</div>

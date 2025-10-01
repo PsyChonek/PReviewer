@@ -1,9 +1,25 @@
 import React from 'react';
-import { useConfigStore } from '../../store/configStore';
+import { getDefaultPrompts } from '../../utils/config';
 
-const PromptSection: React.FC = () => {
-	const { basePrompt, setBasePrompt, userPrompt, setUserPrompt, resetPrompts } =
-		useConfigStore();
+interface PromptSectionProps {
+	basePrompt: string;
+	setBasePrompt: (prompt: string) => void;
+	userPrompt: string;
+	setUserPrompt: (prompt: string) => void;
+}
+
+const PromptSection: React.FC<PromptSectionProps> = ({
+	basePrompt,
+	setBasePrompt,
+	userPrompt,
+	setUserPrompt,
+}) => {
+	const handleResetPrompts = () => {
+		const defaults = getDefaultPrompts();
+		setBasePrompt(defaults.basePrompt);
+		setUserPrompt(defaults.userPrompt);
+	};
+
 	return (
 		<div>
 			<h3 className="text-md font-semibold mb-3">Prompt Configuration</h3>
@@ -16,7 +32,7 @@ const PromptSection: React.FC = () => {
 						<button
 							type="button"
 							className="btn btn-ghost btn-xs hover:btn-warning"
-							onClick={() => resetPrompts()}
+							onClick={handleResetPrompts}
 							title="Reset to default prompt"
 						>
 							<i className="fas fa-undo"></i>
