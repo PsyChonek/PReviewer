@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { marked } from 'marked';
-import WelcomeMessage from './WelcomeMessage';
+import WelcomeMessage from '../layout/WelcomeMessage';
 import ActionButtons from './ActionButtons';
-import StatsDisplay from './StatsDisplay';
+import StatsDisplay from '../stats/StatsDisplay';
 
 interface OutputSectionProps {
 	outputContent: string;
@@ -39,23 +39,11 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 			return <WelcomeMessage />;
 		}
 
-		// Use marked library if available, otherwise just display as text
-		if (typeof window !== 'undefined' && 'marked' in window) {
-			const marked = (window as { marked: { parse: (text: string) => string } })
-				.marked;
-			return (
-				<div
-					className="prose prose-sm max-w-none dark:prose-invert"
-					dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }}
-				/>
-			);
-		}
-
-		// Fallback: basic markdown-like formatting
 		return (
-			<div className="prose prose-sm max-w-none dark:prose-invert">
-				<pre className="whitespace-pre-wrap font-sans">{markdown}</pre>
-			</div>
+			<div
+				className="prose prose-sm max-w-none dark:prose-invert"
+				dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }}
+			/>
 		);
 	};
 

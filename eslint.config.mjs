@@ -41,6 +41,7 @@ export default [
 				URL: 'readonly',
 				ClipboardItem: 'readonly',
 				fetch: 'readonly',
+				TextEncoder: 'readonly',
 				// DOM types
 				HTMLDetailsElement: 'readonly',
 				HTMLDivElement: 'readonly',

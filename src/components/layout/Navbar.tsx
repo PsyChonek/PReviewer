@@ -1,6 +1,6 @@
 import React from 'react';
-import { useTokenStore } from '../store/tokenStore';
-import { TokenUsageDisplay } from './TokenUsageDisplay';
+import { useTokenStore } from '../../store/tokenStore';
+import { TokenUsageDisplay } from '../stats/TokenUsageDisplay';
 
 const Navbar: React.FC = () => {
 	const { getLiveInputTokens, getLiveOutputTokens } = useTokenStore();

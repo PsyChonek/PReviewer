@@ -44,6 +44,27 @@ export class ReviewService {
 
 	async startReview(request: ReviewRequest): Promise<ReviewResult> {
 		try {
+			if (request.debugMode) {
+				console.log('=== Review Service Debug Info ===');
+				console.log('Configuration:', {
+					provider: request.aiConfig.provider,
+					model:
+						request.aiConfig.provider === 'ollama'
+							? request.aiConfig.ollama.model
+							: request.aiConfig.azure.deployment,
+					endpoint:
+						request.aiConfig.provider === 'ollama'
+							? request.aiConfig.ollama.url
+							: request.aiConfig.azure.endpoint,
+				});
+				console.log('Repository:', {
+					path: request.repoPath,
+					fromBranch: request.fromBranch,
+					toBranch: request.toBranch,
+					comparison: `${request.toBranch} → ${request.fromBranch}`,
+				});
+			}
+
 			// Validate inputs
 			if (!request.repoPath || !request.fromBranch || !request.toBranch) {
 				return {
@@ -76,12 +97,36 @@ export class ReviewService {
 			);
 
 			if (request.debugMode) {
-				console.log('Estimated tokens:', estimateTokens(fullPrompt));
+				const diffLines = diff.split('\n').length;
+				const diffSize = new TextEncoder().encode(diff).length;
+				const estimatedTokens = estimateTokens(fullPrompt);
+
+				console.log('Diff Metadata:', {
+					sizeBytes: diffSize,
+					sizeKB: (diffSize / 1024).toFixed(2),
+					lines: diffLines,
+					characters: diff.length,
+				});
+				console.log('Token Estimation:', {
+					estimated: estimatedTokens,
+					promptLength: fullPrompt.length,
+					basePromptLength: request.basePrompt.length,
+					userPromptLength: request.userPrompt.length,
+					diffLength: diff.length,
+				});
 				console.log('Full prompt:', fullPrompt);
 			}
 
 			// Call the appropriate AI service
+			const apiCallStart = Date.now();
 			try {
+				if (request.debugMode) {
+					console.log('API Call:', {
+						timestamp: new Date().toISOString(),
+						provider: request.aiConfig.provider,
+					});
+				}
+
 				let response: string;
 				if (request.aiConfig.provider === 'ollama') {
 					response = await window.electronAPI.callOllamaAPI({
@@ -98,8 +143,29 @@ export class ReviewService {
 					});
 				}
 
+				if (request.debugMode) {
+					const apiCallDuration = Date.now() - apiCallStart;
+					console.log('=== Review Service Completed ===');
+					console.log('API Response:', {
+						success: true,
+						duration: `${(apiCallDuration / 1000).toFixed(2)}s`,
+						responseLength: response.length,
+						responsePreview: response.substring(0, 100) + '...',
+					});
+				}
+
 				return { success: true, content: response };
 			} catch (apiError) {
+				const apiCallDuration = Date.now() - apiCallStart;
+
+				if (request.debugMode) {
+					console.error('API Error:', {
+						duration: `${(apiCallDuration / 1000).toFixed(2)}s`,
+						error: String(apiError),
+						stack: apiError instanceof Error ? apiError.stack : undefined,
+					});
+				}
+
 				return { success: false, error: String(apiError) };
 			}
 		} catch (error) {

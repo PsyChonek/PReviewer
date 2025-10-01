@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatTokenCount } from '../utils/tokenEstimation';
+import { formatTokenCount } from '../../utils/tokenEstimation';
 
 interface TokenUsageDisplayProps {
 	inputTokens: number;

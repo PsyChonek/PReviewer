@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BranchInfo } from '../types';
-import { formatTokenCount } from '../utils/tokenEstimation';
+import { BranchInfo } from '../../types';
+import { formatTokenCount } from '../../utils/tokenEstimation';
 import BranchSelector from './BranchSelector';
 import GitRefreshButton from './GitRefreshButton';
+import EstimatedTokensDisplay from './EstimatedTokensDisplay';
 
 interface RepositorySectionProps {
 	onRepoPathChange: (path: string | null) => void;
@@ -240,35 +241,11 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 					</div>
 				</div>
 
-				{/* Estimated Input Tokens Display */}
-				{estimatedInputTokens > 0 && canStartReview && (
-					<div className="alert alert-success mt-4">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							className="stroke-current shrink-0 w-6 h-6"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth="2"
-								d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-							></path>
-						</svg>
-						<div>
-							<h3 className="font-bold text-lg text-success-content">
-								Ready for Review
-							</h3>
-							<div className="text-sm text-success-content">
-								Estimated input tokens:{' '}
-								<span className="font-semibold">
-									{formatTokenCount(estimatedInputTokens)}
-								</span>
-							</div>
-						</div>
-					</div>
-				)}
+				<EstimatedTokensDisplay
+					estimatedInputTokens={estimatedInputTokens}
+					canStartReview={canStartReview}
+					formatTokenCount={formatTokenCount}
+				/>
 
 				<div className="card-actions justify-center mt-6">
 					{!reviewInProgress ? (

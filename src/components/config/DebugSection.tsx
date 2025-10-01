@@ -1,5 +1,5 @@
 import React from 'react';
-import { useConfigStore } from '../store/configStore';
+import { useConfigStore } from '../../store/configStore';
 
 const DebugSection: React.FC = () => {
 	const { debugMode, setDebugMode } = useConfigStore();

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BranchInfo } from '../types';
+import { BranchInfo } from '../../types';
 
 interface BranchSelectorProps {
 	id: string;

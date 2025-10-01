@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
-import RepositorySection from './components/RepositorySection';
-import OutputSection from './components/OutputSection';
-import ConfigModal from './components/ConfigModal';
-import ProgressTracker from './components/ProgressTracker';
+import Navbar from './components/layout/Navbar';
+import RepositorySection from './components/repository/RepositorySection';
+import OutputSection from './components/review/OutputSection';
+import ConfigModal from './components/config/ConfigModal';
+import ProgressTracker from './components/review/ProgressTracker';
 import { AppState, AIProviderConfig } from './types';
 import { buildPrompt } from './utils/prompts';
 import { estimateTokens } from './utils/tokenEstimation';
@@ -247,6 +247,27 @@ const App: React.FC = () => {
 		resetCurrentSession();
 
 		try {
+			if (debugMode) {
+				console.log('=== Review Debug Info ===');
+				console.log('Configuration:', {
+					provider: aiConfig.provider,
+					model:
+						aiConfig.provider === 'ollama'
+							? aiConfig.ollama.model
+							: aiConfig.azure.deployment,
+					endpoint:
+						aiConfig.provider === 'ollama'
+							? aiConfig.ollama.url
+							: aiConfig.azure.endpoint,
+				});
+				console.log('Repository:', {
+					path: appState.currentRepoPath,
+					fromBranch: fromBranch,
+					toBranch: toBranch,
+					comparison: `${toBranch} → ${fromBranch}`,
+				});
+			}
+
 			// Get the diff
 			const diff = await window.electronAPI.getGitDiff(
 				appState.currentRepoPath,
@@ -268,13 +289,37 @@ const App: React.FC = () => {
 			const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
 
 			if (debugMode) {
-				console.log('Estimated tokens:', estimateTokens(fullPrompt));
+				const diffLines = diff.split('\n').length;
+				const diffSize = new TextEncoder().encode(diff).length;
+				const estimatedTokens = estimateTokens(fullPrompt);
+
+				console.log('Diff Metadata:', {
+					sizeBytes: diffSize,
+					sizeKB: (diffSize / 1024).toFixed(2),
+					lines: diffLines,
+					characters: diff.length,
+				});
+				console.log('Token Estimation:', {
+					estimated: estimatedTokens,
+					promptLength: fullPrompt.length,
+					basePromptLength: basePrompt.length,
+					userPromptLength: userPrompt.length,
+					diffLength: diff.length,
+				});
 				console.log('Full prompt:', fullPrompt);
 			}
 
 			// Call the appropriate AI service
 			let result;
+			const apiCallStart = Date.now();
 			try {
+				if (debugMode) {
+					console.log('API Call:', {
+						timestamp: new Date().toISOString(),
+						provider: aiConfig.provider,
+					});
+				}
+
 				if (aiConfig.provider === 'ollama') {
 					const response = await window.electronAPI.callOllamaAPI({
 						url: aiConfig.ollama.url,
@@ -291,8 +336,26 @@ const App: React.FC = () => {
 					});
 					result = { success: true, content: response };
 				}
+
+				if (debugMode) {
+					const apiCallDuration = Date.now() - apiCallStart;
+					console.log('API Response:', {
+						success: true,
+						duration: `${(apiCallDuration / 1000).toFixed(2)}s`,
+						responseLength: result.content?.length || 0,
+					});
+				}
 			} catch (apiError) {
+				const apiCallDuration = Date.now() - apiCallStart;
 				result = { success: false, error: String(apiError) };
+
+				if (debugMode) {
+					console.error('API Error:', {
+						duration: `${(apiCallDuration / 1000).toFixed(2)}s`,
+						error: String(apiError),
+						stack: apiError instanceof Error ? apiError.stack : undefined,
+					});
+				}
 			}
 
 			if (result.success && result.content) {
@@ -308,6 +371,32 @@ const App: React.FC = () => {
 					currentStats,
 					storeEstimatedTokens,
 				});
+
+				if (debugMode && currentStats) {
+					const totalDuration = Date.now() - appState.reviewStartTime!;
+					const estimationAccuracy =
+						currentStats.inputTokens > 0
+							? (
+									(currentStats.inputTokens / storeEstimatedTokens) *
+									100
+								).toFixed(1)
+							: 'N/A';
+
+					console.log('=== Review Completed ===');
+					console.log('Performance Metrics:', {
+						totalDuration: `${(totalDuration / 1000).toFixed(2)}s`,
+						tokensPerSecond: currentStats.tokensPerSecond.toFixed(2),
+						processingTime: `${(currentStats.processingTime / 1000).toFixed(2)}s`,
+						responseTime: `${(currentStats.responseTime / 1000).toFixed(2)}s`,
+					});
+					console.log('Token Metrics:', {
+						estimatedInput: storeEstimatedTokens,
+						actualInput: currentStats.inputTokens,
+						actualOutput: currentStats.outputTokens,
+						total: currentStats.inputTokens + currentStats.outputTokens,
+						estimationAccuracy: `${estimationAccuracy}%`,
+					});
+				}
 
 				if (currentStats) {
 					const inputTokensToAdd =
