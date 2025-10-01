@@ -10,8 +10,11 @@ import {
 import path from 'path';
 import fs from 'fs/promises';
 import simpleGit, { SimpleGit } from 'simple-git';
-import axios, { AxiosError } from 'axios';
-import OpenAI from 'openai';
+import { OllamaProvider, OllamaConfig } from './providers/OllamaProvider';
+import {
+	AzureOpenAIProvider,
+	AzureOpenAIConfig,
+} from './providers/AzureOpenAIProvider';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -495,434 +498,26 @@ ipcMain.handle(
 	}
 );
 
+// Initialize AI providers
+const ollamaProvider = new OllamaProvider();
+const azureProvider = new AzureOpenAIProvider();
+
 // IPC handlers for Ollama API
-interface OllamaConfig {
-	url: string;
-	model: string;
-	prompt: string;
-}
-
-interface ProgressData {
-	stage: string;
-	progress: number;
-	message: string;
-	timestamp: number;
-	[key: string]: unknown;
-}
-
 ipcMain.handle(
 	'call-ollama-api',
-	async (
-		event: IpcMainInvokeEvent,
-		{ url, model, prompt }: OllamaConfig
-	): Promise<string> => {
-		try {
-			// Send initial progress
-			event.sender.send('ollama-progress', {
-				stage: 'connecting',
-				progress: 45,
-				message: 'Connecting to Ollama API...',
-				timestamp: Date.now(),
-			});
-
-			const startTime = Date.now();
-			let totalTokens = 0;
-			let responseText = '';
-
-			// Use streaming endpoint for real-time progress
-			const streamUrl = url.replace('/api/generate', '/api/generate-stream');
-
-			// Calculate request size for data transfer tracking
-			const requestData = { model: model, prompt: prompt, stream: true };
-			const requestSize = JSON.stringify(requestData).length;
-
-			// Send request started progress
-			event.sender.send('ollama-progress', {
-				stage: 'sending',
-				progress: 50,
-				message: 'Sending request to AI model...',
-				timestamp: Date.now(),
-				modelSize: prompt.length,
-				bytesUploaded: requestSize,
-				totalBytes: requestSize,
-			});
-
-			const response = await axios.post(streamUrl, requestData, {
-				timeout: 120000, // 2 minutes timeout
-				responseType: 'stream',
-			});
-
-			event.sender.send('ollama-progress', {
-				stage: 'processing',
-				progress: 60,
-				message: 'AI model is processing...',
-				timestamp: Date.now(),
-			});
-
-			return new Promise<string>((resolve, reject) => {
-				let buffer = '';
-				let lastProgressUpdate = Date.now();
-				let bytesReceived = 0;
-
-				response.data.on('data', (chunk: Buffer) => {
-					const chunkSize = chunk.length;
-					bytesReceived += chunkSize;
-
-					buffer += chunk.toString();
-					const lines = buffer.split('\n');
-					buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-					lines.forEach((line) => {
-						if (line.trim()) {
-							try {
-								const data = JSON.parse(line) as {
-									response?: string;
-									done?: boolean;
-									prompt_eval_count?: number;
-									eval_count?: number;
-								};
-
-								if (data.response) {
-									responseText += data.response;
-									totalTokens++;
-
-									// Update progress every 100ms or every 10 tokens
-									const now = Date.now();
-									if (
-										now - lastProgressUpdate > 100 ||
-										totalTokens % 10 === 0
-									) {
-										const elapsed = (now - startTime) / 1000;
-										const tokensPerSecond = totalTokens / elapsed;
-
-										// Dynamic progress calculation based on response length
-										const estimatedTotalTokens = Math.max(
-											100,
-											prompt.length / 4
-										); // Rough estimate
-										const tokenProgress = Math.min(
-											25,
-											(totalTokens / estimatedTotalTokens) * 25
-										);
-										const progress = Math.min(95, 60 + tokenProgress);
-
-										event.sender.send('ollama-progress', {
-											stage: 'streaming',
-											progress: progress,
-											message: `Receiving AI response... (${totalTokens} tokens, ${tokensPerSecond.toFixed(1)} t/s)`,
-											timestamp: now,
-											tokens: totalTokens,
-											tokensPerSecond: tokensPerSecond,
-											processingTime: elapsed,
-											streamingContent: responseText,
-											isStreaming: true,
-											bytesReceived: bytesReceived,
-										});
-
-										lastProgressUpdate = now;
-									}
-								}
-
-								if (data.done) {
-									const responseTime = Date.now() - startTime;
-
-									// Ollama provides actual token counts in the final response
-									const actualInputTokens = data.prompt_eval_count;
-									const actualOutputTokens = data.eval_count;
-
-									event.sender.send('ollama-progress', {
-										stage: 'complete',
-										progress: 100,
-										message: 'AI response complete',
-										timestamp: Date.now(),
-										responseTime,
-										tokens: actualOutputTokens || totalTokens,
-										tokensPerSecond:
-											(actualOutputTokens || totalTokens) /
-											(responseTime / 1000),
-										bytesReceived: bytesReceived,
-										streamingContent: responseText,
-										isStreaming: false,
-										actualInputTokens: actualInputTokens,
-										actualOutputTokens: actualOutputTokens,
-										totalActualTokens:
-											(actualInputTokens || 0) + (actualOutputTokens || 0),
-									});
-
-									resolve(responseText);
-								}
-							} catch {
-								// Ignore JSON parse errors for partial chunks
-							}
-						}
-					});
-				});
-
-				response.data.on('error', (error: Error) => {
-					event.sender.send('ollama-progress', {
-						stage: 'error',
-						progress: 0,
-						message: `Stream error: ${error.message}`,
-						timestamp: Date.now(),
-						error: error.message,
-					});
-					reject(error);
-				});
-
-				response.data.on('end', () => {
-					if (!responseText) {
-						reject(new Error('No response received from AI model'));
-					}
-				});
-			});
-		} catch (error) {
-			const err = error as AxiosError;
-			event.sender.send('ollama-progress', {
-				stage: 'error',
-				progress: 0,
-				message: `Error: ${err.message}`,
-				timestamp: Date.now(),
-				error: err.message,
-			});
-
-			let errorMessage = '';
-			if (err.response) {
-				errorMessage = `API Error: ${err.response.status} - ${err.response.statusText}`;
-
-				if (err.response.status === 404) {
-					errorMessage +=
-						'\n\nTroubleshooting steps:\n' +
-						`1. Install the model: ollama pull ${model}\n` +
-						'2. Check available models: ollama list\n' +
-						'3. Verify the model name is spelled correctly\n' +
-						'4. Ensure Ollama server is running: ollama serve';
-				} else if (err.response.status === 500) {
-					errorMessage +=
-						'\n\nTroubleshooting steps:\n' +
-						'1. Check Ollama server logs for detailed error\n' +
-						'2. Restart Ollama service\n' +
-						'3. Try a different model if this one is corrupted\n' +
-						'4. Check available system memory and disk space';
-				} else if (err.response.status === 503) {
-					errorMessage +=
-						'\n\nTroubleshooting steps:\n' +
-						'1. Ollama server may be overloaded, wait and retry\n' +
-						'2. Check system resources (CPU, memory)\n' +
-						'3. Restart Ollama service\n' +
-						'4. Try with a smaller prompt or different model';
-				}
-			} else if (err.request) {
-				errorMessage =
-					'Network Error: Could not connect to Ollama API\n\n' +
-					'Troubleshooting steps:\n' +
-					'1. Ensure Ollama is running: ollama serve\n' +
-					'2. Check the API URL (default: http://localhost:11434/api/generate)\n' +
-					'3. Verify firewall settings allow connections to port 11434\n' +
-					'4. Try accessing the API directly: curl http://localhost:11434/api/version\n' +
-					'5. Check if another process is using port 11434';
-			} else {
-				errorMessage =
-					`Request Error: ${err.message}\n\n` +
-					'Troubleshooting steps:\n' +
-					'1. Check network connectivity\n' +
-					'2. Verify Ollama server is accessible\n' +
-					'3. Review configuration settings\n' +
-					'4. Restart the application';
-			}
-
-			throw new Error(errorMessage);
-		}
+	async (event: IpcMainInvokeEvent, config: OllamaConfig): Promise<string> => {
+		return ollamaProvider.generate(event, config);
 	}
 );
 
 // IPC handlers for Azure AI API
-interface AzureAIConfig {
-	endpoint: string;
-	apiKey: string;
-	deploymentName: string;
-	prompt: string;
-}
-
 ipcMain.handle(
 	'call-azure-ai-api',
 	async (
 		event: IpcMainInvokeEvent,
-		{ endpoint, apiKey, deploymentName, prompt }: AzureAIConfig
+		config: AzureOpenAIConfig
 	): Promise<string> => {
-		try {
-			// Send initial progress
-			event.sender.send('azure-ai-progress', {
-				stage: 'connecting',
-				progress: 45,
-				message: 'Connecting to Azure AI service...',
-				timestamp: Date.now(),
-			});
-
-			const startTime = Date.now();
-			let totalTokens = 0;
-
-			// Send request started progress
-			event.sender.send('azure-ai-progress', {
-				stage: 'sending',
-				progress: 50,
-				message: 'Sending request to Azure AI model...',
-				timestamp: Date.now(),
-				modelSize: prompt.length,
-			});
-
-			// Create Azure OpenAI client using the stable OpenAI SDK
-			// Extract base URL from the full endpoint if it contains the full path
-			let baseURL = endpoint;
-			if (endpoint.includes('/openai/deployments/')) {
-				// Extract just the base URL (e.g., https://resource.cognitiveservices.azure.com)
-				baseURL = endpoint.split('/openai/deployments/')[0];
-			}
-
-			const client = new OpenAI({
-				apiKey: apiKey,
-				baseURL: `${baseURL}/openai/deployments/${deploymentName}`,
-				defaultQuery: { 'api-version': '2025-01-01-preview' },
-				defaultHeaders: {
-					'api-key': apiKey,
-				},
-			});
-
-			event.sender.send('azure-ai-progress', {
-				stage: 'processing',
-				progress: 60,
-				message: 'Azure AI model is processing...',
-				timestamp: Date.now(),
-			});
-
-			// Make the streaming request to Azure OpenAI
-			const stream = await client.chat.completions.create({
-				model: deploymentName,
-				messages: [
-					{
-						role: 'system',
-						content: 'You are an expert code reviewer.',
-					},
-					{
-						role: 'user',
-						content: prompt,
-					},
-				],
-				temperature: 0.1,
-				max_tokens: 2000,
-				stream: true,
-			});
-
-			let responseText = '';
-			let chunkCount = 0;
-			let usage = null;
-
-			// Process the stream
-			for await (const chunk of stream) {
-				const delta = chunk.choices[0]?.delta?.content || '';
-				if (delta) {
-					responseText += delta;
-					chunkCount++;
-
-					// Send streaming progress every few chunks
-					if (chunkCount % 3 === 0) {
-						const currentTime = Date.now();
-						const elapsed = (currentTime - startTime) / 1000;
-						const estimatedTokens = responseText.split(' ').length;
-						const tokensPerSecond = elapsed > 0 ? estimatedTokens / elapsed : 0;
-
-						event.sender.send('azure-ai-progress', {
-							stage: 'streaming',
-							progress: Math.min(60 + responseText.length / 50, 90),
-							message: `Receiving AI response... (${estimatedTokens} tokens, ${tokensPerSecond.toFixed(1)} t/s)`,
-							timestamp: currentTime,
-							streamingContent: responseText,
-							isStreaming: true,
-							tokens: estimatedTokens,
-							tokensPerSecond: tokensPerSecond,
-							processingTime: elapsed,
-						});
-					}
-				}
-
-				// Capture usage information when available
-				if (chunk.usage) {
-					usage = chunk.usage;
-				}
-			}
-
-			const responseTime = Date.now() - startTime;
-			totalTokens = usage?.completion_tokens || responseText.split(' ').length;
-
-			event.sender.send('azure-ai-progress', {
-				stage: 'complete',
-				progress: 100,
-				message: 'AI response complete',
-				timestamp: Date.now(),
-				responseTime,
-				tokens: totalTokens,
-				actualInputTokens: usage?.prompt_tokens,
-				actualOutputTokens: usage?.completion_tokens,
-				totalActualTokens: usage?.total_tokens,
-				streamingContent: responseText,
-				isStreaming: false,
-			});
-
-			return responseText;
-		} catch (error) {
-			const err = error as Error & { code?: string; status?: number };
-			event.sender.send('azure-ai-progress', {
-				stage: 'error',
-				progress: 0,
-				message: `Error: ${err.message}`,
-				timestamp: Date.now(),
-				error: err.message,
-			});
-
-			let errorMessage = '';
-			if (err.code === 'ENOTFOUND') {
-				errorMessage =
-					'Network Error: Could not connect to Azure AI service\n\n' +
-					'Troubleshooting steps:\n' +
-					'1. Check your internet connection\n' +
-					'2. Verify the Azure AI endpoint URL is correct\n' +
-					'3. Ensure firewall allows connections to Azure\n' +
-					'4. Check if Azure AI service is operational';
-			} else if (err.status === 401) {
-				errorMessage =
-					'Authentication Error: Invalid API key\n\n' +
-					'Troubleshooting steps:\n' +
-					'1. Verify your Azure AI API key is correct\n' +
-					'2. Check if the API key has expired\n' +
-					'3. Ensure the key has proper permissions\n' +
-					'4. Regenerate the API key if necessary';
-			} else if (err.status === 404) {
-				errorMessage =
-					'Model Error: Deployment not found\n\n' +
-					'Troubleshooting steps:\n' +
-					'1. Verify the deployment name is correct\n' +
-					'2. Check if the model deployment exists in Azure\n' +
-					'3. Ensure the deployment is active and running\n' +
-					'4. Check the endpoint URL matches your resource';
-			} else if (err.status === 429) {
-				errorMessage =
-					'Rate Limit Error: Too many requests\n\n' +
-					'Troubleshooting steps:\n' +
-					'1. Wait a moment and try again\n' +
-					'2. Check your Azure AI quota limits\n' +
-					'3. Consider upgrading your Azure AI tier\n' +
-					'4. Implement request throttling';
-			} else {
-				errorMessage =
-					`Azure AI Error: ${err.message}\n\n` +
-					'Troubleshooting steps:\n' +
-					'1. Check network connectivity to Azure\n' +
-					'2. Verify all configuration settings\n' +
-					'3. Review Azure AI service status\n' +
-					'4. Contact Azure support if issue persists';
-			}
-
-			throw new Error(errorMessage);
-		}
+		return azureProvider.generate(event, config);
 	}
 );
 
@@ -930,56 +525,14 @@ ipcMain.handle(
 	'test-azure-ai-connection',
 	async (
 		_event: IpcMainInvokeEvent,
-		{ endpoint, apiKey, deploymentName }: Omit<AzureAIConfig, 'prompt'>
+		config: Omit<AzureOpenAIConfig, 'prompt'>
 	): Promise<{
 		success: boolean;
 		error?: string;
 		deploymentName?: string;
 		modelResponse?: string;
 	}> => {
-		try {
-			// Create Azure OpenAI client using the stable OpenAI SDK
-			// Extract base URL from the full endpoint if it contains the full path
-			let baseURL = endpoint;
-			if (endpoint.includes('/openai/deployments/')) {
-				// Extract just the base URL (e.g., https://resource.cognitiveservices.azure.com)
-				baseURL = endpoint.split('/openai/deployments/')[0];
-			}
-
-			const client = new OpenAI({
-				apiKey: apiKey,
-				baseURL: `${baseURL}/openai/deployments/${deploymentName}`,
-				defaultQuery: { 'api-version': '2025-01-01-preview' },
-				defaultHeaders: {
-					'api-key': apiKey,
-				},
-			});
-
-			// Test with a simple request
-			const testResponse = await client.chat.completions.create({
-				model: deploymentName,
-				messages: [
-					{
-						role: 'user',
-						content:
-							'What is a function in programming? Please respond with one sentence.',
-					},
-				],
-				max_tokens: 100,
-				temperature: 0.1,
-			});
-
-			return {
-				success: true,
-				deploymentName: deploymentName,
-				modelResponse: testResponse.choices[0]?.message?.content || 'OK',
-			};
-		} catch (error) {
-			return {
-				success: false,
-				error: (error as Error).message,
-			};
-		}
+		return azureProvider.testConnection(config);
 	}
 );
 
@@ -987,41 +540,14 @@ ipcMain.handle(
 	'test-ollama-connection',
 	async (
 		_event: IpcMainInvokeEvent,
-		{ url, model }: Omit<OllamaConfig, 'prompt'>
+		config: Omit<OllamaConfig, 'prompt'>
 	): Promise<{
 		success: boolean;
 		error?: string;
 		version?: string;
 		modelResponse?: string;
 	}> => {
-		try {
-			// Test server connection
-			const versionUrl = url.replace('/api/generate', '/api/version');
-			const versionResponse = await axios.get(versionUrl, { timeout: 5000 });
-
-			// Test model availability with a simple coding question
-			const testResponse = await axios.post<{ response?: string }>(
-				url,
-				{
-					model: model,
-					prompt:
-						'What is a function in programming? Please respond with one sentence.',
-					stream: false,
-				},
-				{ timeout: 15000 }
-			);
-
-			return {
-				success: true,
-				version: versionResponse.data.version || 'Unknown',
-				modelResponse: testResponse.data.response || 'OK',
-			};
-		} catch (error) {
-			return {
-				success: false,
-				error: (error as Error).message,
-			};
-		}
+		return ollamaProvider.testConnection(config);
 	}
 );
 

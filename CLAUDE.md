@@ -9,6 +9,7 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 ## Development Commands
 
 ### Essential Commands
+
 - `npm start` - Start development server (Vite dev server on port 3002 with hot reload)
 - `npm run check` - Run linting, formatting, and TypeScript type checking (use before commits)
 - `npm test` - Run all Jest unit tests
@@ -18,10 +19,12 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 - `npm run test:e2e` - Run Playwright end-to-end tests
 
 ### Build Commands
+
 - `npm run package` - Package the app for current platform (creates in `out/` directory)
 - `npm run make` - Create distributable installers (Windows: Squirrel, macOS: DMG/ZIP, Linux: AppImage/DEB/RPM)
 
 ### Code Quality
+
 - `npm run lint` - Check for ESLint errors
 - `npm run lint:fix` - Auto-fix ESLint errors
 - `npm run format` - Check Prettier formatting
@@ -32,6 +35,7 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 ### Electron Process Structure
 
 **Three-Process Architecture:**
+
 1. **Main Process** (`src/main.ts`) - Node.js environment, handles:
    - Window management and app lifecycle
    - Git operations via `simple-git`
@@ -52,18 +56,21 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 ### State Management
 
 **Zustand Stores** (persistent state in localStorage):
+
 - `configStore.ts` - AI provider config, prompts, debug mode
 - `tokenStore.ts` - Token usage tracking (current session + lifetime totals)
 - `repositoryStore.ts` - Repository and branch selections
 - `reviewStore.ts` - Review session state
 
 **Local Component State:**
+
 - Used for UI interactions, temporary data, and non-persistent state
 - Main app state in `App.tsx` manages review progress and output
 
 ### Key Data Flows
 
 **Review Process:**
+
 1. User selects repository and branches in `RepositorySection`
 2. `App.tsx` calls `window.electronAPI.getGitDiff()` → main process
 3. Main process uses `simple-git` to generate diff
@@ -73,6 +80,7 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 7. Final output rendered in `OutputSection` with markdown formatting
 
 **Git Diff Logic:**
+
 - Diff compares: `targetBranch` (main) → `baseBranch` (feature)
 - Shows changes IN the feature branch relative to main
 - Prefers local branches, falls back to remote if local doesn't exist
@@ -81,11 +89,13 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 ### Build System
 
 **Vite Configuration:**
+
 - `vite.main.config.js` - Main process bundling
 - `vite.preload.config.js` - Preload script bundling
 - `vite.renderer.config.js` - React renderer bundling with Tailwind CSS
 
 **Electron Forge:**
+
 - Handles packaging and distribution
 - Entry points defined in `forge.config.js`
 - Outputs to `out/` directory
@@ -93,6 +103,7 @@ PReviewer is an Electron-based desktop application that provides AI-powered code
 ## TypeScript
 
 All Electron processes use TypeScript:
+
 - Main process: ES6 modules with Node.js types
 - Preload: ES6 modules with Electron types
 - Renderer: React with JSX transform
@@ -102,6 +113,7 @@ Type definitions in `src/types.ts` define the contract between processes, especi
 ## Styling
 
 **DaisyUI + Tailwind CSS:**
+
 - DaisyUI components for UI elements (buttons, cards, modals, progress bars)
 - Tailwind CSS for custom styling and layouts
 - Auto-compiled by Vite during development
@@ -110,17 +122,19 @@ Type definitions in `src/types.ts` define the contract between processes, especi
 ## IPC Communication
 
 **Pattern:**
+
 ```typescript
 // Renderer → Main (request/response)
 const result = await window.electronAPI.methodName(args);
 
 // Main → Renderer (events/streaming)
 window.electronAPI.onEventName((event, data) => {
-  // handle streaming data
+	// handle streaming data
 });
 ```
 
 **Key IPC Channels:**
+
 - `select-directory` - Open folder picker
 - `get-git-branches` - List repository branches
 - `get-git-diff` - Calculate diff between branches
@@ -132,17 +146,21 @@ window.electronAPI.onEventName((event, data) => {
 ## Important Conventions
 
 ### Branch Naming in UI
+
 - **From Branch (Source)**: The feature branch with changes to review
 - **To Branch (Target)**: The comparison branch (typically main/master)
 - Diff shows: changes FROM target TO source (what's new in feature branch)
 
 ### ESLint Configuration
+
 DOM types must be declared in `eslint.config.mjs` globals to avoid `no-undef` errors. Already includes: `HTMLDetailsElement`, `HTMLDivElement`, `MouseEvent`, `Node`.
 
 ### Progress Tracking
+
 `ProgressTracker` component uses 100ms interval timer for smooth time/speed updates during reviews, not just on chunk arrival. Shows average speed when review completes.
 
 ### Token Estimation
+
 - Estimated tokens calculated from diff size before review starts
 - Actual tokens received from AI provider during/after review
 - Both stored in Zustand `tokenStore` (session + lifetime)
@@ -150,18 +168,21 @@ DOM types must be declared in `eslint.config.mjs` globals to avoid `no-undef` er
 ## Testing
 
 **Jest Configuration:**
+
 - Config: `tests/jest.config.js`
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/`
 - Uses `@testing-library/react` for component tests
 
 **Playwright E2E:**
+
 - Config: `tests/playwright.config.js`
 - Tests full application workflows
 
 ## Git Workflow
 
 When making commits, the repository uses:
+
 - Prettier for code formatting (run via `npm run format:fix`)
 - ESLint for code quality (run via `npm run lint:fix`)
 - TypeScript for type checking (run via `npx tsc --noEmit`)
