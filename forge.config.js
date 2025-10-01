@@ -12,7 +12,18 @@ module.exports = {
 	},
 	rebuildConfig: {},
 	makers: [
-		{ name: '@electron-forge/maker-squirrel', config: {} },
+		{
+			name: '@electron-forge/maker-squirrel',
+			config: {
+				// Create shortcuts on desktop and start menu
+				setupIcon: './assets/icon.ico',
+				loadingGif: './assets/install-spinner.gif',
+				// Shortcuts configuration
+				shortcutFolderName: 'PReviewer',
+				createDesktopShortcut: true,
+				createStartMenuShortcut: true,
+			},
+		},
 		{ name: '@electron-forge/maker-deb', config: {} },
 		{ name: '@electron-forge/maker-rpm', config: {} },
 		{

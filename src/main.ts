@@ -16,6 +16,13 @@ import {
 	AzureOpenAIConfig,
 } from './providers/AzureOpenAIProvider';
 
+import electronSquirrelStartup from 'electron-squirrel-startup';
+
+// Handle Squirrel events on Windows
+if (electronSquirrelStartup) {
+	app.quit();
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 const createWindow = (): void => {
