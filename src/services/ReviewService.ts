@@ -1,6 +1,7 @@
 import { AIProviderConfig } from '../types';
 import { buildPrompt } from '../utils/prompts';
-import { estimateTokens } from '../utils/tokenEstimation';
+import { estimateTokens, countTokens } from '../utils/tokenEstimation';
+import { needsChunking, DEFAULT_CHUNK_CONFIG } from '../utils/diffChunker';
 
 export interface ReviewRequest {
 	repoPath: string;
@@ -10,6 +11,8 @@ export interface ReviewRequest {
 	userPrompt: string;
 	aiConfig: AIProviderConfig;
 	debugMode?: boolean;
+	maxTokensPerChunk?: number;
+	enableAutoChunking?: boolean;
 }
 
 export interface ReviewResult {
@@ -119,12 +122,42 @@ export class ReviewService {
 						prompt: fullPrompt,
 					});
 				} else {
-					response = await window.electronAPI.callAzureAI({
-						endpoint: request.aiConfig.azure.endpoint,
-						apiKey: request.aiConfig.azure.apiKey,
-						deploymentName: request.aiConfig.azure.deployment,
-						prompt: fullPrompt,
-					});
+					// Check if Azure diff needs chunking
+					const chunkConfig = {
+						...DEFAULT_CHUNK_CONFIG,
+						maxTokensPerChunk: request.maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
+					};
+					const diffTokens = countTokens(diff, 'cl100k_base');
+					const shouldChunk = (request.enableAutoChunking !== false) && needsChunking(diff, chunkConfig);
+
+					if (request.debugMode) {
+						console.log('Diff Token Analysis:', {
+							diffTokens,
+							shouldChunk,
+							maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+							autoChunkingEnabled: request.enableAutoChunking !== false,
+						});
+					}
+
+					if (shouldChunk) {
+						// Use chunked API for large diffs
+						response = await window.electronAPI.callAzureAIChunked({
+							endpoint: request.aiConfig.azure.endpoint,
+							apiKey: request.aiConfig.azure.apiKey,
+							deploymentName: request.aiConfig.azure.deployment,
+							prompt: buildPrompt('', request.basePrompt, request.userPrompt), // Base prompt without diff
+							diff: diff, // Pass raw diff for chunking
+							maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+						});
+					} else {
+						// Use normal API for small diffs
+						response = await window.electronAPI.callAzureAI({
+							endpoint: request.aiConfig.azure.endpoint,
+							apiKey: request.aiConfig.azure.apiKey,
+							deploymentName: request.aiConfig.azure.deployment,
+							prompt: fullPrompt,
+						});
+					}
 				}
 
 				if (request.debugMode) {

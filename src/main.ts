@@ -473,6 +473,12 @@ ipcMain.handle('call-azure-ai-api', async (event: IpcMainInvokeEvent, config: Az
 	return azureProvider.generate(event, config);
 });
 
+// IPC handler for Azure AI with automatic chunking
+ipcMain.handle('call-azure-ai-api-chunked', async (event: IpcMainInvokeEvent, config: AzureOpenAIConfig & { diff: string }): Promise<string> => {
+	const { diff, ...azureConfig } = config;
+	return azureProvider.generateWithChunking(event, azureConfig, diff);
+});
+
 ipcMain.handle(
 	'test-azure-ai-connection',
 	async (

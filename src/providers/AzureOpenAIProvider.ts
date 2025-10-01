@@ -1,6 +1,8 @@
 import { IpcMainInvokeEvent } from 'electron';
 import OpenAI from 'openai';
 import { IAIProvider, AIProviderConfig, ProgressData } from './IAIProvider';
+import { countTokens } from '../utils/tokenEstimation';
+import { chunkDiff, needsChunking, getChunkMetadata, DiffChunk, DEFAULT_CHUNK_CONFIG } from '../utils/diffChunker';
 
 /**
  * Azure OpenAI-specific configuration
@@ -9,6 +11,7 @@ export interface AzureOpenAIConfig extends AIProviderConfig {
 	endpoint: string;
 	apiKey: string;
 	deploymentName: string;
+	maxTokensPerChunk?: number; // Optional: override default chunk size
 }
 
 /**
@@ -88,7 +91,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 					if (chunkCount % 3 === 0) {
 						const currentTime = Date.now();
 						const elapsed = (currentTime - startTime) / 1000;
-						const estimatedTokens = responseText.split(' ').length;
+						const estimatedTokens = countTokens(responseText, 'cl100k_base');
 						const tokensPerSecond = elapsed > 0 ? estimatedTokens / elapsed : 0;
 
 						this.sendProgress(event, {
@@ -112,7 +115,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 			}
 
 			const responseTime = Date.now() - startTime;
-			totalTokens = usage?.completion_tokens || responseText.split(' ').length;
+			totalTokens = usage?.completion_tokens || countTokens(responseText, 'cl100k_base');
 
 			this.sendProgress(event, {
 				stage: 'complete',
@@ -141,6 +144,170 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 
 			throw new Error(this.formatError(err));
 		}
+	}
+
+	/**
+	 * Generate AI response with automatic chunking for large diffs
+	 * Splits prompts that exceed rate limits and combines results
+	 */
+	async generateWithChunking(event: IpcMainInvokeEvent, config: AzureOpenAIConfig, diff: string): Promise<string> {
+		const chunkConfig = {
+			...DEFAULT_CHUNK_CONFIG,
+			maxTokensPerChunk: config.maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
+		};
+
+		// Check if chunking is needed
+		if (!needsChunking(diff, chunkConfig)) {
+			// Use normal generation for small diffs
+			return this.generate(event, config);
+		}
+
+		// Get chunk metadata for progress reporting
+		const metadata = getChunkMetadata(diff, chunkConfig);
+		this.sendProgress(event, {
+			stage: 'analyzing',
+			progress: 5,
+			message: `Large diff detected (${metadata.totalTokens.toLocaleString()} tokens). Splitting into ${metadata.estimatedChunks} chunks...`,
+			timestamp: Date.now(),
+		});
+
+		// Chunk the diff
+		const chunks = chunkDiff(diff, chunkConfig);
+
+		this.sendProgress(event, {
+			stage: 'chunking',
+			progress: 10,
+			message: `Processing ${chunks.length} chunks (${chunks.reduce((sum, c) => sum + c.fileCount, 0)} files total)...`,
+			timestamp: Date.now(),
+		});
+
+		// Process each chunk
+		const results: string[] = [];
+		let totalProcessingTime = 0;
+
+		for (let i = 0; i < chunks.length; i++) {
+			const chunk = chunks[i];
+
+			// Update progress for this chunk
+			this.sendProgress(event, {
+				stage: 'processing-chunk',
+				progress: 10 + (i / chunks.length) * 80,
+				message: `Processing chunk ${i + 1}/${chunks.length} (${chunk.fileCount} files, ${chunk.tokenCount.toLocaleString()} tokens)...`,
+				timestamp: Date.now(),
+			});
+
+			try {
+				// Build prompt for this chunk with context
+				const chunkPrompt = this.buildChunkPrompt(config.prompt, chunk, i, chunks.length);
+
+				// Generate response for this chunk
+				const chunkConfig: AzureOpenAIConfig = {
+					...config,
+					prompt: chunkPrompt,
+				};
+
+				const startTime = Date.now();
+				const response = await this.generate(event, chunkConfig);
+				const duration = Date.now() - startTime;
+				totalProcessingTime += duration;
+
+				results.push(response);
+
+				// Add delay between chunks to respect rate limits
+				if (i < chunks.length - 1) {
+					const delayMs = 1000; // 1 second between chunks
+					this.sendProgress(event, {
+						stage: 'rate-limit-wait',
+						progress: 10 + ((i + 1) / chunks.length) * 80,
+						message: `Chunk ${i + 1}/${chunks.length} complete. Waiting before next chunk...`,
+						timestamp: Date.now(),
+					});
+					await this.delay(delayMs);
+				}
+			} catch (error) {
+				const err = error as Error & { status?: number };
+
+				// Handle rate limit errors with exponential backoff
+				if (err.status === 429) {
+					this.sendProgress(event, {
+						stage: 'rate-limit-retry',
+						progress: 10 + (i / chunks.length) * 80,
+						message: `Rate limit hit on chunk ${i + 1}. Waiting 60 seconds...`,
+						timestamp: Date.now(),
+					});
+
+					await this.delay(60000); // Wait 60 seconds
+					i--; // Retry this chunk
+					continue;
+				}
+
+				// Re-throw other errors
+				throw error;
+			}
+		}
+
+		// Combine results
+		this.sendProgress(event, {
+			stage: 'combining',
+			progress: 95,
+			message: 'Combining results from all chunks...',
+			timestamp: Date.now(),
+		});
+
+		const combinedResult = this.combineChunkResults(results, chunks);
+
+		this.sendProgress(event, {
+			stage: 'complete',
+			progress: 100,
+			message: `Review complete (${chunks.length} chunks processed in ${(totalProcessingTime / 1000).toFixed(1)}s)`,
+			timestamp: Date.now(),
+			responseTime: totalProcessingTime,
+		});
+
+		return combinedResult;
+	}
+
+	/**
+	 * Build a prompt for a specific chunk with context
+	 */
+	private buildChunkPrompt(basePrompt: string, chunk: DiffChunk, chunkIndex: number, totalChunks: number): string {
+		const chunkContext =
+			totalChunks > 1
+				? `\n\n## Chunk ${chunkIndex + 1} of ${totalChunks}\n` +
+					`This is part ${chunkIndex + 1} of a ${totalChunks}-part review. ` +
+					`This chunk contains ${chunk.fileCount} file(s): ${chunk.files.join(', ')}\n\n`
+				: '';
+
+		return `${basePrompt}${chunkContext}${chunk.content}`;
+	}
+
+	/**
+	 * Combine results from multiple chunks into a single review
+	 */
+	private combineChunkResults(results: string[], chunks: DiffChunk[]): string {
+		if (results.length === 1) {
+			return results[0];
+		}
+
+		let combined = '# Code Review (Multi-Part)\n\n';
+		combined += `This review was split into ${results.length} parts due to size. Below are the combined results:\n\n`;
+		combined += '---\n\n';
+
+		for (let i = 0; i < results.length; i++) {
+			combined += `## Part ${i + 1} of ${results.length}\n`;
+			combined += `**Files reviewed:** ${chunks[i].files.join(', ')}\n\n`;
+			combined += results[i];
+			combined += '\n\n---\n\n';
+		}
+
+		return combined;
+	}
+
+	/**
+	 * Delay helper for rate limiting
+	 */
+	private delay(ms: number): Promise<void> {
+		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
 	/**

@@ -80,6 +80,7 @@ declare global {
 				modelResponse?: string;
 			}>;
 			callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }) => Promise<string>;
+			callAzureAIChunked: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string; diff: string; maxTokensPerChunk?: number }) => Promise<string>;
 			testAzureAIConnection: (config: { endpoint: string; apiKey: string; deploymentName: string }) => Promise<{
 				success: boolean;
 				error?: string;

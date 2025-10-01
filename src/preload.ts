@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }): Promise<string> =>
 		ipcRenderer.invoke('call-azure-ai-api', config),
 
+	callAzureAIChunked: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string; diff: string; maxTokensPerChunk?: number }): Promise<string> =>
+		ipcRenderer.invoke('call-azure-ai-api-chunked', config),
+
 	testAzureAIConnection: (config: {
 		endpoint: string;
 		apiKey: string;

@@ -1,6 +1,7 @@
 import { IpcMainInvokeEvent } from 'electron';
 import axios, { AxiosError } from 'axios';
 import { IAIProvider, AIProviderConfig, ProgressData } from './IAIProvider';
+import { countTokens } from '../utils/tokenEstimation';
 
 /**
  * Ollama-specific configuration
@@ -98,7 +99,7 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 										const tokensPerSecond = totalTokens / elapsed;
 
 										// Dynamic progress calculation based on response length
-										const estimatedTotalTokens = Math.max(100, prompt.length / 4); // Rough estimate
+										const estimatedTotalTokens = Math.max(100, countTokens(prompt, 'cl100k_base'));
 										const tokenProgress = Math.min(25, (totalTokens / estimatedTotalTokens) * 25);
 										const progress = Math.min(95, 60 + tokenProgress);
 

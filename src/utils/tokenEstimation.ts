@@ -1,4 +1,60 @@
+import { Tiktoken, getEncoding } from 'js-tiktoken';
+
+// Cache encoder instances to avoid re-initialization
+let cl100kEncoder: Tiktoken | null = null;
+let o200kEncoder: Tiktoken | null = null;
+
+/**
+ * Get or create cl100k_base encoder (for GPT-4, GPT-3.5-turbo, Azure OpenAI)
+ */
+function getCl100kEncoder(): Tiktoken {
+	if (!cl100kEncoder) {
+		cl100kEncoder = getEncoding('cl100k_base');
+	}
+	return cl100kEncoder;
+}
+
+/**
+ * Get or create o200k_base encoder (for GPT-4o and newer models)
+ */
+function getO200kEncoder(): Tiktoken {
+	if (!o200kEncoder) {
+		o200kEncoder = getEncoding('o200k_base');
+	}
+	return o200kEncoder;
+}
+
+/**
+ * Count tokens accurately using tiktoken
+ * @param text - Text to count tokens for
+ * @param encoding - Encoding to use ('cl100k_base' for GPT-4/Azure, 'o200k_base' for GPT-4o)
+ * @returns Exact token count
+ */
+export function countTokens(text: string, encoding: 'cl100k_base' | 'o200k_base' = 'cl100k_base'): number {
+	try {
+		const encoder = encoding === 'o200k_base' ? getO200kEncoder() : getCl100kEncoder();
+		const tokens = encoder.encode(text);
+		return tokens.length;
+	} catch (error) {
+		// Fallback to estimation if tiktoken fails
+		console.warn('Token counting failed, using estimation:', error);
+		return estimateTokensFallback(text);
+	}
+}
+
+/**
+ * Estimate tokens using heuristic (fallback for errors)
+ * @deprecated Use countTokens() for accurate token counting
+ */
 export function estimateTokens(text: string): number {
+	// Use accurate token counting by default
+	return countTokens(text, 'cl100k_base');
+}
+
+/**
+ * Fallback estimation method (kept for backward compatibility and error cases)
+ */
+function estimateTokensFallback(text: string): number {
 	const characterCount = text.length;
 	const lines = text.split('\n');
 	const wordCount = text.split(/\s+/).filter((word) => word.length > 0).length;
@@ -36,10 +92,18 @@ export function estimateTokens(text: string): number {
 	}
 
 	const baseTokens = Math.ceil(characterCount / charsPerToken);
-
 	const wordBasedTokens = Math.ceil(wordCount * 1.33);
 
 	return Math.max(baseTokens, wordBasedTokens);
+}
+
+/**
+ * Clear encoder cache (call on app shutdown if needed)
+ * Note: js-tiktoken doesn't require manual cleanup like WASM version
+ */
+export function clearEncoderCache(): void {
+	cl100kEncoder = null;
+	o200kEncoder = null;
 }
 
 export function formatBytes(bytes: number): string {

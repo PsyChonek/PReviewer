@@ -18,8 +18,14 @@ interface ConfigState {
 	debugMode: boolean;
 	setDebugMode: (debug: boolean) => void;
 
+	// Chunking settings
+	maxTokensPerChunk: number;
+	setMaxTokensPerChunk: (tokens: number) => void;
+	enableAutoChunking: boolean;
+	setEnableAutoChunking: (enabled: boolean) => void;
+
 	// Bulk operations
-	updateConfig: (config: { aiConfig?: AIProviderConfig; basePrompt?: string; userPrompt?: string; debugMode?: boolean }) => void;
+	updateConfig: (config: { aiConfig?: AIProviderConfig; basePrompt?: string; userPrompt?: string; debugMode?: boolean; maxTokensPerChunk?: number; enableAutoChunking?: boolean }) => void;
 
 	resetPrompts: () => void;
 }
@@ -45,6 +51,8 @@ export const useConfigStore = create<ConfigState>()(
 			basePrompt: getDefaultPrompts().basePrompt,
 			userPrompt: getDefaultPrompts().userPrompt,
 			debugMode: false,
+			maxTokensPerChunk: 80000, // Default: 80k tokens per chunk
+			enableAutoChunking: true, // Auto-chunk by default for Azure
 
 			// AI Config actions
 			setAiConfig: (config) => set({ aiConfig: config }),
@@ -55,6 +63,10 @@ export const useConfigStore = create<ConfigState>()(
 
 			// Debug actions
 			setDebugMode: (debug) => set({ debugMode: debug }),
+
+			// Chunking actions
+			setMaxTokensPerChunk: (tokens) => set({ maxTokensPerChunk: tokens }),
+			setEnableAutoChunking: (enabled) => set({ enableAutoChunking: enabled }),
 
 			// Bulk update
 			updateConfig: (config) =>
@@ -79,6 +91,8 @@ export const useConfigStore = create<ConfigState>()(
 				basePrompt: state.basePrompt,
 				userPrompt: state.userPrompt,
 				debugMode: state.debugMode,
+				maxTokensPerChunk: state.maxTokensPerChunk,
+				enableAutoChunking: state.enableAutoChunking,
 			}),
 		}
 	)
