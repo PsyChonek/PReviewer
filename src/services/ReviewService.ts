@@ -48,14 +48,8 @@ export class ReviewService {
 				console.log('=== Review Service Debug Info ===');
 				console.log('Configuration:', {
 					provider: request.aiConfig.provider,
-					model:
-						request.aiConfig.provider === 'ollama'
-							? request.aiConfig.ollama.model
-							: request.aiConfig.azure.deployment,
-					endpoint:
-						request.aiConfig.provider === 'ollama'
-							? request.aiConfig.ollama.url
-							: request.aiConfig.azure.endpoint,
+					model: request.aiConfig.provider === 'ollama' ? request.aiConfig.ollama.model : request.aiConfig.azure.deployment,
+					endpoint: request.aiConfig.provider === 'ollama' ? request.aiConfig.ollama.url : request.aiConfig.azure.endpoint,
 				});
 				console.log('Repository:', {
 					path: request.repoPath,
@@ -69,32 +63,22 @@ export class ReviewService {
 			if (!request.repoPath || !request.fromBranch || !request.toBranch) {
 				return {
 					success: false,
-					error:
-						'Please select a repository and both branches before starting the review.',
+					error: 'Please select a repository and both branches before starting the review.',
 				};
 			}
 
 			// Get the diff
-			const diff = await window.electronAPI.getGitDiff(
-				request.repoPath,
-				request.fromBranch,
-				request.toBranch
-			);
+			const diff = await window.electronAPI.getGitDiff(request.repoPath, request.fromBranch, request.toBranch);
 
 			if (!diff || diff.trim() === '') {
 				return {
 					success: true,
-					content:
-						'## No Changes Found\n\nNo differences were found between the selected branches.',
+					content: '## No Changes Found\n\nNo differences were found between the selected branches.',
 				};
 			}
 
 			// Build the prompt
-			const fullPrompt = buildPrompt(
-				diff,
-				request.basePrompt,
-				request.userPrompt
-			);
+			const fullPrompt = buildPrompt(diff, request.basePrompt, request.userPrompt);
 
 			if (request.debugMode) {
 				const diffLines = diff.split('\n').length;
@@ -177,23 +161,13 @@ export class ReviewService {
 		}
 	}
 
-	async calculateInputTokens(
-		repoPath: string,
-		fromBranch: string,
-		toBranch: string,
-		basePrompt: string,
-		userPrompt: string
-	): Promise<number> {
+	async calculateInputTokens(repoPath: string, fromBranch: string, toBranch: string, basePrompt: string, userPrompt: string): Promise<number> {
 		if (!repoPath || !fromBranch || !toBranch || fromBranch === toBranch) {
 			return 0;
 		}
 
 		try {
-			const diff = await window.electronAPI.getGitDiff(
-				repoPath,
-				fromBranch,
-				toBranch
-			);
+			const diff = await window.electronAPI.getGitDiff(repoPath, fromBranch, toBranch);
 			if (!diff || diff.trim() === '') {
 				return 0;
 			}
@@ -206,9 +180,7 @@ export class ReviewService {
 		}
 	}
 
-	async testConnection(
-		aiConfig: AIProviderConfig
-	): Promise<{ success: boolean; message: string; provider: string }> {
+	async testConnection(aiConfig: AIProviderConfig): Promise<{ success: boolean; message: string; provider: string }> {
 		try {
 			let result: {
 				success: boolean;
@@ -235,10 +207,7 @@ export class ReviewService {
 			}
 
 			if (result.success) {
-				const modelInfo =
-					aiConfig.provider === 'ollama'
-						? result.version || result.modelResponse || 'OK'
-						: result.modelResponse || 'OK';
+				const modelInfo = aiConfig.provider === 'ollama' ? result.version || result.modelResponse || 'OK' : result.modelResponse || 'OK';
 
 				return {
 					success: true,

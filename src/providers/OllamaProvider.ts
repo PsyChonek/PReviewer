@@ -20,10 +20,7 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 	/**
 	 * Generate AI response using Ollama streaming API
 	 */
-	async generate(
-		event: IpcMainInvokeEvent,
-		config: OllamaConfig
-	): Promise<string> {
+	async generate(event: IpcMainInvokeEvent, config: OllamaConfig): Promise<string> {
 		const { url, model, prompt } = config;
 
 		try {
@@ -96,22 +93,13 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 
 									// Update progress every 100ms or every 10 tokens
 									const now = Date.now();
-									if (
-										now - lastProgressUpdate > 100 ||
-										totalTokens % 10 === 0
-									) {
+									if (now - lastProgressUpdate > 100 || totalTokens % 10 === 0) {
 										const elapsed = (now - startTime) / 1000;
 										const tokensPerSecond = totalTokens / elapsed;
 
 										// Dynamic progress calculation based on response length
-										const estimatedTotalTokens = Math.max(
-											100,
-											prompt.length / 4
-										); // Rough estimate
-										const tokenProgress = Math.min(
-											25,
-											(totalTokens / estimatedTotalTokens) * 25
-										);
+										const estimatedTotalTokens = Math.max(100, prompt.length / 4); // Rough estimate
+										const tokenProgress = Math.min(25, (totalTokens / estimatedTotalTokens) * 25);
 										const progress = Math.min(95, 60 + tokenProgress);
 
 										this.sendProgress(event, {
@@ -145,16 +133,13 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 										timestamp: Date.now(),
 										responseTime,
 										tokens: actualOutputTokens || totalTokens,
-										tokensPerSecond:
-											(actualOutputTokens || totalTokens) /
-											(responseTime / 1000),
+										tokensPerSecond: (actualOutputTokens || totalTokens) / (responseTime / 1000),
 										bytesReceived: bytesReceived,
 										streamingContent: responseText,
 										isStreaming: false,
 										actualInputTokens: actualInputTokens,
 										actualOutputTokens: actualOutputTokens,
-										totalActualTokens:
-											(actualInputTokens || 0) + (actualOutputTokens || 0),
+										totalActualTokens: (actualInputTokens || 0) + (actualOutputTokens || 0),
 									});
 
 									resolve(responseText);
@@ -218,8 +203,7 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 				url,
 				{
 					model: model,
-					prompt:
-						'What is a function in programming? Please respond with one sentence.',
+					prompt: 'What is a function in programming? Please respond with one sentence.',
 					stream: false,
 				},
 				{ timeout: 15000 }
@@ -231,9 +215,17 @@ export class OllamaProvider implements IAIProvider<OllamaConfig> {
 				modelResponse: testResponse.data.response || 'OK',
 			};
 		} catch (error) {
+			const err = error as AxiosError;
+			let errorMessage = (error as Error).message;
+
+			// Provide specific guidance for 404 errors
+			if (err.response?.status === 404) {
+				errorMessage = `Model "${model}" not found. Please install it first:\n\nRun: ollama pull ${model}\n\nOr check available models: ollama list`;
+			}
+
 			return {
 				success: false,
-				error: (error as Error).message,
+				error: errorMessage,
 			};
 		}
 	}

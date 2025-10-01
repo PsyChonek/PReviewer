@@ -15,11 +15,7 @@ interface StatsDisplayProps {
 	reviewInProgress: boolean;
 }
 
-const StatsDisplay: React.FC<StatsDisplayProps> = ({
-	reviewStats,
-	estimatedInputTokens = 0,
-	reviewInProgress,
-}) => {
+const StatsDisplay: React.FC<StatsDisplayProps> = ({ reviewStats, estimatedInputTokens = 0, reviewInProgress }) => {
 	if (!reviewInProgress && !reviewStats && estimatedInputTokens <= 0) {
 		return null;
 	}

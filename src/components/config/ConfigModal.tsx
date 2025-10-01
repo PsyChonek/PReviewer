@@ -18,13 +18,7 @@ interface ConfigModalProps {
 	} | null;
 }
 
-const ConfigModal: React.FC<ConfigModalProps> = ({
-	isOpen,
-	onClose,
-	onTestConnection,
-	testingConnection,
-	connectionTestResult,
-}) => {
+const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnection, testingConnection, connectionTestResult }) => {
 	const {
 		aiConfig: savedAiConfig,
 		setAiConfig,
@@ -38,8 +32,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 	const modalBoxRef = useRef<HTMLDivElement>(null);
 
 	// Local state for temporary changes
-	const [localAiConfig, setLocalAiConfig] =
-		useState<AIProviderConfig>(savedAiConfig);
+	const [localAiConfig, setLocalAiConfig] = useState<AIProviderConfig>(savedAiConfig);
 	const [localBasePrompt, setLocalBasePrompt] = useState(savedBasePrompt);
 	const [localUserPrompt, setLocalUserPrompt] = useState(savedUserPrompt);
 	const [localDebugMode, setLocalDebugMode] = useState(savedDebugMode);
@@ -75,10 +68,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 	// Close modal when clicking outside
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (
-				modalBoxRef.current &&
-				!modalBoxRef.current.contains(event.target as Node)
-			) {
+			if (modalBoxRef.current && !modalBoxRef.current.contains(event.target as Node)) {
 				onClose();
 			}
 		};
@@ -98,10 +88,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 		<dialog open className="modal">
 			<div ref={modalBoxRef} className="modal-box w-4/5 max-w-none">
 				<form method="dialog">
-					<button
-						className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-						onClick={onClose}
-					>
+					<button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>
 						<i className="fas fa-times"></i>
 					</button>
 				</form>
@@ -109,9 +96,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 
 				<div className="space-y-6">
 					<div>
-						<h4 className="text-md font-semibold mb-3">
-							AI Provider Selection
-						</h4>
+						<h4 className="text-md font-semibold mb-3">AI Provider Selection</h4>
 						<div className="form-control mb-4">
 							<label className="label">
 								<span className="label-text font-medium">AI Provider</span>
@@ -151,40 +136,22 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
 					)}
 
 					{connectionTestResult && (
-						<div
-							className={`alert ${connectionTestResult.success ? 'alert-success' : 'alert-error'} mt-4`}
-						>
+						<div className={`alert ${connectionTestResult.success ? 'alert-success' : 'alert-error'} mt-4`}>
 							<div>
-								<i
-									className={`fas ${connectionTestResult.success ? 'fa-check-circle' : 'fa-exclamation-triangle'}`}
-								></i>
-								<span className="font-medium">
-									{connectionTestResult.success ? 'Success' : 'Error'}
-								</span>
+								<i className={`fas ${connectionTestResult.success ? 'fa-check-circle' : 'fa-exclamation-triangle'}`}></i>
+								<span className="font-medium">{connectionTestResult.success ? 'Success' : 'Error'}</span>
 							</div>
 							<div className="text-sm">{connectionTestResult.message}</div>
 						</div>
 					)}
 
-					<PromptSection
-						basePrompt={localBasePrompt}
-						setBasePrompt={setLocalBasePrompt}
-						userPrompt={localUserPrompt}
-						setUserPrompt={setLocalUserPrompt}
-					/>
+					<PromptSection basePrompt={localBasePrompt} setBasePrompt={setLocalBasePrompt} userPrompt={localUserPrompt} setUserPrompt={setLocalUserPrompt} />
 
-					<DebugSection
-						debugMode={localDebugMode}
-						setDebugMode={setLocalDebugMode}
-					/>
+					<DebugSection debugMode={localDebugMode} setDebugMode={setLocalDebugMode} />
 				</div>
 
 				<div className="modal-action">
-					<button
-						type="button"
-						className="btn btn-primary"
-						onClick={handleSave}
-					>
+					<button type="button" className="btn btn-primary" onClick={handleSave}>
 						Save Settings
 					</button>
 					<button className="btn" onClick={handleCancel}>

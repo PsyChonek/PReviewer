@@ -19,11 +19,7 @@ function estimateTokens(text) {
 
 	lines.forEach((line) => {
 		const trimmed = line.trim();
-		if (
-			trimmed.startsWith('+') ||
-			trimmed.startsWith('-') ||
-			trimmed.startsWith('@@')
-		) {
+		if (trimmed.startsWith('+') || trimmed.startsWith('-') || trimmed.startsWith('@@')) {
 			diffRatio += line.length;
 		} else if (/^[a-zA-Z\s.,!?'"]+$/.test(trimmed)) {
 			naturalTextRatio += line.length;

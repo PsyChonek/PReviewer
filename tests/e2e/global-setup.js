@@ -42,10 +42,7 @@ async function globalSetup() {
 
 		// Create initial files and commit
 		writeFileSync(path.join(testRepoPath, 'README.md'), '# Test Repository');
-		writeFileSync(
-			path.join(testRepoPath, 'app.js'),
-			"console.log('Hello World');"
-		);
+		writeFileSync(path.join(testRepoPath, 'app.js'), "console.log('Hello World');");
 		execSync('git add .', { cwd: testRepoPath, stdio: 'inherit' });
 		execSync('git commit -m "Initial commit"', {
 			cwd: testRepoPath,
@@ -57,10 +54,7 @@ async function globalSetup() {
 			cwd: testRepoPath,
 			stdio: 'inherit',
 		});
-		writeFileSync(
-			path.join(testRepoPath, 'app.js'),
-			"console.log('Hello Test World');\nfunction testFunction() { return true; }"
-		);
+		writeFileSync(path.join(testRepoPath, 'app.js'), "console.log('Hello Test World');\nfunction testFunction() { return true; }");
 		execSync('git add app.js', { cwd: testRepoPath, stdio: 'inherit' });
 		execSync('git commit -m "Add test function"', {
 			cwd: testRepoPath,

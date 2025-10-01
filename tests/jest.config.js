@@ -12,15 +12,7 @@ module.exports = {
 	collectCoverage: false,
 	coverageDirectory: 'coverage',
 	coverageReporters: ['text', 'lcov', 'html'],
-	collectCoverageFrom: [
-		'../src/main.js',
-		'../src/renderer.js',
-		'../src/preload.js',
-		'!**/node_modules/**',
-		'!**/tests/**',
-		'!**/coverage/**',
-		'!**/dist/**',
-	],
+	collectCoverageFrom: ['../src/main.js', '../src/renderer.js', '../src/preload.js', '!**/node_modules/**', '!**/tests/**', '!**/coverage/**', '!**/dist/**'],
 
 	// Coverage thresholds - temporarily lowered during test fixes
 	coverageThreshold: {
@@ -72,17 +64,11 @@ module.exports = {
 				'^.+\\.(js|jsx|ts|tsx)$': [
 					'babel-jest',
 					{
-						presets: [
-							['@babel/preset-env', { targets: { node: 'current' } }],
-							['@babel/preset-react', { runtime: 'automatic' }],
-							'@babel/preset-typescript',
-						],
+						presets: [['@babel/preset-env', { targets: { node: 'current' } }], ['@babel/preset-react', { runtime: 'automatic' }], '@babel/preset-typescript'],
 					},
 				],
 			},
-			transformIgnorePatterns: [
-				'node_modules/(?!((@testing-library|@babel)/.*\\.js$))',
-			],
+			transformIgnorePatterns: ['node_modules/(?!((@testing-library|@babel)/.*\\.js$))'],
 		},
 	],
 

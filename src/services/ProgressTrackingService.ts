@@ -57,23 +57,15 @@ export class ProgressTrackingService {
 		}
 	}
 
-	private handleProgressUpdate(
-		data: Record<string, unknown> | ProgressData,
-		provider: string
-	): void {
+	private handleProgressUpdate(data: Record<string, unknown> | ProgressData, provider: string): void {
 		const progressData: ProgressData = {
 			tokens: (data.tokens as number) || 0,
-			inputTokens:
-				(data.actualInputTokens as number) || this.estimatedInputTokens,
-			outputTokens:
-				(data.actualOutputTokens as number) || (data.tokens as number) || 0,
+			inputTokens: (data.actualInputTokens as number) || this.estimatedInputTokens,
+			outputTokens: (data.actualOutputTokens as number) || (data.tokens as number) || 0,
 			tokensPerSecond: (data.tokensPerSecond as number) || 0,
 			processingTime: (data.processingTime as number) || 0,
 			responseTime: (data.responseTime as number) || 0,
-			stage:
-				(data.stage as string) ||
-				(data.message as string) ||
-				`Processing (${provider})`,
+			stage: (data.stage as string) || (data.message as string) || `Processing (${provider})`,
 			progress: (data.progress as number) || 0,
 			actualInputTokens: data.actualInputTokens as number | undefined,
 			actualOutputTokens: data.actualOutputTokens as number | undefined,
@@ -123,12 +115,9 @@ export class ProgressTrackingService {
 		}
 
 		const latest = this.progressHistory[this.progressHistory.length - 1];
-		const totalTime = Math.max(
-			...this.progressHistory.map((p) => p.responseTime || p.processingTime)
-		);
+		const totalTime = Math.max(...this.progressHistory.map((p) => p.responseTime || p.processingTime));
 		const totalOutputTokens = latest.outputTokens;
-		const averageSpeed =
-			totalTime > 0 ? totalOutputTokens / (totalTime / 1000) : 0;
+		const averageSpeed = totalTime > 0 ? totalOutputTokens / (totalTime / 1000) : 0;
 
 		return {
 			totalInputTokens: latest.inputTokens,
@@ -147,11 +136,7 @@ export class ProgressTrackingService {
 	}
 
 	isInProgress(): boolean {
-		return (
-			this.currentProgress !== null &&
-			this.currentProgress.progress < 100 &&
-			this.currentProgress.stage !== 'complete'
-		);
+		return this.currentProgress !== null && this.currentProgress.progress < 100 && this.currentProgress.stage !== 'complete';
 	}
 
 	getEstimatedTimeRemaining(): number | null {
@@ -180,26 +165,18 @@ export class ProgressTrackingService {
 			return null;
 		}
 
-		const speeds = this.progressHistory
-			.map((p) => p.tokensPerSecond)
-			.filter((speed) => speed > 0);
+		const speeds = this.progressHistory.map((p) => p.tokensPerSecond).filter((speed) => speed > 0);
 
 		if (speeds.length === 0) {
 			return null;
 		}
 
 		const peakTokensPerSecond = Math.max(...speeds);
-		const averageTokensPerSecond =
-			speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
-		const totalProcessingTime =
-			this.progressHistory[this.progressHistory.length - 1]?.processingTime ||
-			0;
+		const averageTokensPerSecond = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
+		const totalProcessingTime = this.progressHistory[this.progressHistory.length - 1]?.processingTime || 0;
 
 		// Efficiency: how close average is to peak performance
-		const efficiency =
-			peakTokensPerSecond > 0
-				? (averageTokensPerSecond / peakTokensPerSecond) * 100
-				: 0;
+		const efficiency = peakTokensPerSecond > 0 ? (averageTokensPerSecond / peakTokensPerSecond) * 100 : 0;
 
 		return {
 			peakTokensPerSecond,

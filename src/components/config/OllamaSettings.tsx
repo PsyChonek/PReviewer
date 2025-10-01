@@ -8,12 +8,7 @@ interface OllamaSettingsProps {
 	testingConnection: boolean;
 }
 
-const OllamaSettings: React.FC<OllamaSettingsProps> = ({
-	aiConfig,
-	setAiConfig,
-	onTestConnection,
-	testingConnection,
-}) => {
+const OllamaSettings: React.FC<OllamaSettingsProps> = ({ aiConfig, setAiConfig, onTestConnection, testingConnection }) => {
 	return (
 		<div>
 			<h4 className="text-md font-semibold mb-3">Ollama Settings</h4>

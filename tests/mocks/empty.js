@@ -6,10 +6,8 @@ module.exports = {
 	// Token estimation functions
 	estimateTokens,
 	formatTokenCount,
-	formatBytes: (bytes) =>
-		bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`,
-	formatDuration: (seconds) =>
-		seconds < 60 ? `${Math.round(seconds)}s` : `${Math.floor(seconds / 60)}m`,
+	formatBytes: (bytes) => (bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`),
+	formatDuration: (seconds) => (seconds < 60 ? `${Math.round(seconds)}s` : `${Math.floor(seconds / 60)}m`),
 
 	// Prompt functions
 	buildPrompt,

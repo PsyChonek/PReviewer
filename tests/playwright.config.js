@@ -24,11 +24,7 @@ module.exports = defineConfig({
 	workers: process.env.CI ? 1 : undefined,
 
 	// Reporter to use
-	reporter: [
-		['html'],
-		['list'],
-		['junit', { outputFile: 'test-results/junit.xml' }],
-	],
+	reporter: [['html'], ['list'], ['junit', { outputFile: 'test-results/junit.xml' }]],
 
 	// Global setup and teardown
 	globalSetup: require.resolve('./e2e/global-setup.js'),

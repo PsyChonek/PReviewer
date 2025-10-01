@@ -29,11 +29,7 @@ Brief overview of the changes reviewed.
 - Suggestion 1
 - Suggestion 2`;
 
-export function buildPrompt(
-	diff: string,
-	basePrompt: string | null = null,
-	userPrompt: string | null = null
-): string {
+export function buildPrompt(diff: string, basePrompt: string | null = null, userPrompt: string | null = null): string {
 	let prompt = basePrompt || DEFAULT_BASE_PROMPT;
 
 	if (userPrompt && userPrompt.trim()) {

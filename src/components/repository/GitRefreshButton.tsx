@@ -5,10 +5,7 @@ interface GitRefreshButtonProps {
 	onRefreshComplete: () => void;
 }
 
-const GitRefreshButton: React.FC<GitRefreshButtonProps> = ({
-	repoPath,
-	onRefreshComplete,
-}) => {
+const GitRefreshButton: React.FC<GitRefreshButtonProps> = ({ repoPath, onRefreshComplete }) => {
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [lastResult, setLastResult] = useState<{
 		success: boolean;
@@ -74,23 +71,13 @@ const GitRefreshButton: React.FC<GitRefreshButtonProps> = ({
 				title="Fetch and pull changes from remote"
 				aria-label="Fetch and pull changes from remote repository"
 			>
-				{isRefreshing ? (
-					<span className="loading loading-spinner loading-xs"></span>
-				) : (
-					<i className="fas fa-sync-alt"></i>
-				)}
+				{isRefreshing ? <span className="loading loading-spinner loading-xs"></span> : <i className="fas fa-sync-alt"></i>}
 				Refresh
 			</button>
 
 			{lastResult && (
-				<div
-					className={`toast toast-top toast-end z-50`}
-					role="alert"
-					aria-live="polite"
-				>
-					<div
-						className={`alert ${lastResult.success ? 'alert-success' : 'alert-error'}`}
-					>
+				<div className={`toast toast-top toast-end z-50`} role="alert" aria-live="polite">
+					<div className={`alert ${lastResult.success ? 'alert-success' : 'alert-error'}`}>
 						<span>{lastResult.message}</span>
 					</div>
 				</div>

@@ -6,10 +6,7 @@ interface TokenUsageDisplayProps {
 	outputTokens: number;
 }
 
-export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
-	inputTokens,
-	outputTokens,
-}) => {
+export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({ inputTokens, outputTokens }) => {
 	return (
 		<div className="flex gap-3 text-sm">
 			<div className="flex items-center gap-1">

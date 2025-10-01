@@ -168,8 +168,7 @@ export async function saveConfig(config: Partial<AppConfig>): Promise<void> {
 	try {
 		if (typeof window !== 'undefined' && window.electronAPI) {
 			// Extract only the AI provider config to save
-			const aiProviderConfig: Partial<AIProviderConfig> =
-				config.defaults?.aiProvider || {};
+			const aiProviderConfig: Partial<AIProviderConfig> = config.defaults?.aiProvider || {};
 			await window.electronAPI.saveConfig(aiProviderConfig);
 			// Update cache with merged config
 			configCache = { ...getDefaultConfig(), ...config };

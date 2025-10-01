@@ -10,12 +10,7 @@ interface OutputSectionProps {
 	onExportOutput: () => void;
 }
 
-const OutputSection: React.FC<OutputSectionProps> = ({
-	outputContent,
-	onClearOutput,
-	onCopyOutput,
-	onExportOutput,
-}) => {
+const OutputSection: React.FC<OutputSectionProps> = ({ outputContent, onClearOutput, onCopyOutput, onExportOutput }) => {
 	const [showRaw, setShowRaw] = useState(false);
 
 	const renderContent = (markdown: string) => {
@@ -24,27 +19,14 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 		}
 
 		if (showRaw) {
-			return (
-				<pre className="whitespace-pre-wrap font-mono text-sm bg-transparent text-base-content">
-					{markdown}
-				</pre>
-			);
+			return <pre className="whitespace-pre-wrap font-mono text-sm bg-transparent text-base-content">{markdown}</pre>;
 		}
 
-		return (
-			<div
-				className="prose prose-sm max-w-none dark:prose-invert"
-				dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }}
-			/>
-		);
+		return <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }} />;
 	};
 
 	return (
-		<section
-			className="card bg-base-100 shadow-xl"
-			aria-label="Output"
-			role="region"
-		>
+		<section className="card bg-base-100 shadow-xl" aria-label="Output" role="region">
 			<div className="card-body">
 				<div className="flex justify-between items-center mb-4">
 					<h2 className="card-title text-2xl">
@@ -60,11 +42,7 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 							<i className={`fas ${showRaw ? 'fa-eye' : 'fa-code'}`}></i>
 							{showRaw ? 'Show Rendered' : 'Show Raw'}
 						</button>
-						<ActionButtons
-							onClearOutput={onClearOutput}
-							onCopyOutput={onCopyOutput}
-							onExportOutput={onExportOutput}
-						/>
+						<ActionButtons onClearOutput={onClearOutput} onCopyOutput={onCopyOutput} onExportOutput={onExportOutput} />
 					</div>
 				</div>
 

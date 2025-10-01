@@ -10,14 +10,12 @@ expect.extend({
 
 		if (pass) {
 			return {
-				message: () =>
-					`Expected ${received} not to be within ${tolerance * 100}% of ${expected}`,
+				message: () => `Expected ${received} not to be within ${tolerance * 100}% of ${expected}`,
 				pass: true,
 			};
 		} else {
 			return {
-				message: () =>
-					`Expected ${received} to be within ${tolerance * 100}% of ${expected} (difference: ${diff})`,
+				message: () => `Expected ${received} to be within ${tolerance * 100}% of ${expected} (difference: ${diff})`,
 				pass: false,
 			};
 		}
@@ -28,14 +26,12 @@ expect.extend({
 
 		if (pass) {
 			return {
-				message: () =>
-					`Expected error message not to contain "${expectedMessage}"`,
+				message: () => `Expected error message not to contain "${expectedMessage}"`,
 				pass: true,
 			};
 		} else {
 			return {
-				message: () =>
-					`Expected error message to contain "${expectedMessage}", but got "${received.message}"`,
+				message: () => `Expected error message to contain "${expectedMessage}", but got "${received.message}"`,
 				pass: false,
 			};
 		}

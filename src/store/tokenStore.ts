@@ -52,14 +52,11 @@ export const useTokenStore = create<TokenState>()(
 					totalOutputTokens: state.totalOutputTokens + tokens,
 				})),
 
-			setCurrentSessionInputTokens: (tokens) =>
-				set({ currentSessionInputTokens: tokens }),
+			setCurrentSessionInputTokens: (tokens) => set({ currentSessionInputTokens: tokens }),
 
-			setCurrentSessionOutputTokens: (tokens) =>
-				set({ currentSessionOutputTokens: tokens }),
+			setCurrentSessionOutputTokens: (tokens) => set({ currentSessionOutputTokens: tokens }),
 
-			setEstimatedInputTokens: (tokens) =>
-				set({ estimatedInputTokens: tokens }),
+			setEstimatedInputTokens: (tokens) => set({ estimatedInputTokens: tokens }),
 
 			resetCurrentSession: () =>
 				set({

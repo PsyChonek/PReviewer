@@ -35,9 +35,7 @@ interface ReviewState {
 		provider?: string;
 	} | null;
 	setTestingConnection: (testing: boolean) => void;
-	setConnectionTestResult: (
-		result: { success: boolean; message: string; provider?: string } | null
-	) => void;
+	setConnectionTestResult: (result: { success: boolean; message: string; provider?: string } | null) => void;
 
 	// Actions
 	startReview: () => void;
@@ -60,8 +58,7 @@ export const useReviewStore = create<ReviewState>((set, _get) => ({
 	setReviewStartTime: (time) => set({ reviewStartTime: time }),
 
 	// Output actions
-	setCurrentOutputMarkdown: (content) =>
-		set({ currentOutputMarkdown: content }),
+	setCurrentOutputMarkdown: (content) => set({ currentOutputMarkdown: content }),
 	clearOutput: () => set({ currentOutputMarkdown: '' }),
 
 	// Stats actions

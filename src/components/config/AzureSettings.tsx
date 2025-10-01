@@ -8,12 +8,7 @@ interface AzureSettingsProps {
 	testingConnection: boolean;
 }
 
-const AzureSettings: React.FC<AzureSettingsProps> = ({
-	aiConfig,
-	setAiConfig,
-	onTestConnection,
-	testingConnection,
-}) => {
+const AzureSettings: React.FC<AzureSettingsProps> = ({ aiConfig, setAiConfig, onTestConnection, testingConnection }) => {
 	return (
 		<div>
 			<h4 className="text-md font-semibold mb-3">Azure AI Settings</h4>

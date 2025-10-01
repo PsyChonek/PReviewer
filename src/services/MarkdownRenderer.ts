@@ -26,9 +26,7 @@ export class MarkdownRenderer {
 		// Use marked library if available
 		if (typeof window !== 'undefined' && 'marked' in window) {
 			try {
-				const marked = (
-					window as { marked: { parse: (text: string) => string } }
-				).marked;
+				const marked = (window as { marked: { parse: (text: string) => string } }).marked;
 				const html = marked.parse(markdown);
 				return {
 					html,
@@ -66,10 +64,7 @@ export class MarkdownRenderer {
 				// Inline code
 				.replace(/`(.*?)`/gim, '<code>$1</code>')
 				// Links
-				.replace(
-					/\[([^\]]+)\]\(([^)]+)\)/gim,
-					'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-				)
+				.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 				// Unordered lists
 				.replace(/^\* (.*$)/gim, '<li>$1</li>')
 				.replace(/^- (.*$)/gim, '<li>$1</li>')
@@ -96,12 +91,7 @@ export class MarkdownRenderer {
 
 	sanitizeForDisplay(content: string): string {
 		// Basic HTML sanitization for security
-		return content
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#x27;');
+		return content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 	}
 
 	extractPlainText(markdown: string): string {

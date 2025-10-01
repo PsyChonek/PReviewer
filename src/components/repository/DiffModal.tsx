@@ -9,14 +9,7 @@ interface DiffModalProps {
 	isLoading: boolean;
 }
 
-const DiffModal: React.FC<DiffModalProps> = ({
-	isOpen,
-	onClose,
-	diffContent,
-	fromBranch,
-	toBranch,
-	isLoading,
-}) => {
+const DiffModal: React.FC<DiffModalProps> = ({ isOpen, onClose, diffContent, fromBranch, toBranch, isLoading }) => {
 	if (!isOpen) return null;
 
 	const handleCopyDiff = async () => {
@@ -47,9 +40,7 @@ const DiffModal: React.FC<DiffModalProps> = ({
 					</div>
 				) : diffContent ? (
 					<div className="bg-base-300 p-4 rounded-lg max-h-96 overflow-auto">
-						<pre className="text-xs whitespace-pre-wrap break-words">
-							{diffContent}
-						</pre>
+						<pre className="text-xs whitespace-pre-wrap break-words">{diffContent}</pre>
 					</div>
 				) : (
 					<div className="alert alert-info">
@@ -59,12 +50,7 @@ const DiffModal: React.FC<DiffModalProps> = ({
 				)}
 
 				<div className="modal-action">
-					<button
-						className="btn btn-outline btn-sm"
-						onClick={handleCopyDiff}
-						disabled={!diffContent || isLoading}
-						title="Copy diff to clipboard"
-					>
+					<button className="btn btn-outline btn-sm" onClick={handleCopyDiff} disabled={!diffContent || isLoading} title="Copy diff to clipboard">
 						<i className="fas fa-copy"></i>
 						Copy
 					</button>

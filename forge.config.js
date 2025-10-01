@@ -8,20 +8,23 @@ module.exports = {
 		asar: true,
 		icon: './assets/icon',
 		extraResource: ['.vite', 'assets'],
-		ignore: [],
+		// Let Vite plugin handle dependencies automatically
 	},
 	rebuildConfig: {},
 	makers: [
 		{
 			name: '@electron-forge/maker-squirrel',
 			config: {
-				// Create shortcuts on desktop and start menu
+				// Installer configuration
 				setupIcon: './assets/icon.ico',
-				loadingGif: './assets/install-spinner.gif',
-				// Shortcuts configuration
-				shortcutFolderName: 'PReviewer',
-				createDesktopShortcut: true,
-				createStartMenuShortcut: true,
+				// Setup executable name
+				name: 'PReviewer',
+				// Authors for metadata
+				authors: 'Daniel Vazač',
+				// Description
+				description: 'AI-powered code review for Git repositories',
+				// Explicitly set to not use installer (creates shortcuts by default)
+				noMsi: true,
 			},
 		},
 		{ name: '@electron-forge/maker-deb', config: {} },

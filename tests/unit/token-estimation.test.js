@@ -1,10 +1,7 @@
 // Unit tests for token estimation functionality
 
 // Import the utility functions from mocks
-const {
-	estimateTokens,
-	formatTokenCount,
-} = require('../mocks/tokenEstimation.js');
+const { estimateTokens, formatTokenCount } = require('../mocks/tokenEstimation.js');
 const { buildPrompt, DEFAULT_BASE_PROMPT } = require('../mocks/prompts.js');
 
 // Add createMockDiff function locally
@@ -123,15 +120,9 @@ session-based authentication, which improves security and scalability.`;
 		});
 
 		test('should provide different estimates for different content types', () => {
-			const codeResult = estimateTokens(
-				'const x = function() { return "code"; };'
-			);
-			const diffResult = estimateTokens(
-				'+ const x = function() { return "diff"; };'
-			);
-			const textResult = estimateTokens(
-				'This is natural language text content here.'
-			);
+			const codeResult = estimateTokens('const x = function() { return "code"; };');
+			const diffResult = estimateTokens('+ const x = function() { return "diff"; };');
+			const textResult = estimateTokens('This is natural language text content here.');
 
 			// Different content types should have different token densities
 			expect(codeResult).not.toBe(diffResult);
@@ -144,9 +135,7 @@ session-based authentication, which improves security and scalability.`;
 
 			estimateTokens('test content');
 
-			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Enhanced Token Estimation Debug')
-			);
+			expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Enhanced Token Estimation Debug'));
 		});
 
 		test('should not log debug info when window.DEBUG is false', () => {
@@ -272,16 +261,13 @@ session-based authentication, which improves security and scalability.`;
 			},
 		];
 
-		test.each(examples)(
-			'should provide reasonable estimate for $name',
-			({ content, expectedRange }) => {
-				const result = estimateTokens(content);
-				const [min, max] = expectedRange;
+		test.each(examples)('should provide reasonable estimate for $name', ({ content, expectedRange }) => {
+			const result = estimateTokens(content);
+			const [min, max] = expectedRange;
 
-				expect(result).toBeGreaterThanOrEqual(min);
-				expect(result).toBeLessThanOrEqual(max);
-			}
-		);
+			expect(result).toBeGreaterThanOrEqual(min);
+			expect(result).toBeLessThanOrEqual(max);
+		});
 	});
 
 	describe('Edge cases', () => {

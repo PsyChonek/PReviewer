@@ -56,10 +56,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 				// Auto-select target branch (main/master if available)
 				if (branchInfoList.length > 0 && !toBranch) {
 					const preferredTargets = ['main', 'master'];
-					const targetBranch =
-						preferredTargets.find((target) =>
-							branchInfoList.some((branch) => branch.name === target)
-						) || branchInfoList[0].name;
+					const targetBranch = preferredTargets.find((target) => branchInfoList.some((branch) => branch.name === target)) || branchInfoList[0].name;
 					setToBranch(targetBranch);
 				}
 
@@ -121,12 +118,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		}
 	};
 
-	const canStartReview =
-		repoPath &&
-		fromBranch &&
-		toBranch &&
-		fromBranch !== toBranch &&
-		!reviewInProgress;
+	const canStartReview = repoPath && fromBranch && toBranch && fromBranch !== toBranch && !reviewInProgress;
 
 	const handleShowDiff = async () => {
 		if (!repoPath || !fromBranch || !toBranch) {
@@ -138,11 +130,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		setDiffContent('');
 
 		try {
-			const diff = await window.electronAPI.getGitDiff(
-				repoPath,
-				fromBranch,
-				toBranch
-			);
+			const diff = await window.electronAPI.getGitDiff(repoPath, fromBranch, toBranch);
 			setDiffContent(diff || 'No differences found.');
 		} catch (error) {
 			console.error('Failed to load diff:', error);
@@ -157,39 +145,18 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 			<div className="card-body">
 				<div className="flex justify-between items-center mb-4">
 					<h2 className="card-title text-2xl">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="h-6 w-6"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth="2"
-								d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
-							/>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth="2"
-								d="m8 1 4 4 4-4"
-							/>
+						<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m8 1 4 4 4-4" />
 						</svg>
 						Repository & Branches
 					</h2>
 					<div className="flex gap-2">
-						<GitRefreshButton
-							repoPath={repoPath}
-							onRefreshComplete={handleRefreshComplete}
-						/>
+						<GitRefreshButton repoPath={repoPath} onRefreshComplete={handleRefreshComplete} />
 						<button
 							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
 							onClick={handleShowDiff}
-							disabled={
-								!repoPath || !fromBranch || !toBranch || fromBranch === toBranch
-							}
+							disabled={!repoPath || !fromBranch || !toBranch || fromBranch === toBranch}
 							title="Show git diff"
 							aria-label="Show git diff between selected branches"
 						>
@@ -199,21 +166,14 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 						<button
 							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
 							onClick={onRefreshDiff}
-							disabled={
-								!repoPath || !fromBranch || !toBranch || fromBranch === toBranch
-							}
+							disabled={!repoPath || !fromBranch || !toBranch || fromBranch === toBranch}
 							title="Recalculate diff and token estimation"
 							aria-label="Recalculate diff and token estimation"
 						>
 							<i className="fas fa-calculator"></i>
 							Recalculate
 						</button>
-						<button
-							className="btn btn-outline btn-sm"
-							onClick={onOpenConfig}
-							title="Open Configuration"
-							aria-label="Open configuration settings"
-						>
+						<button className="btn btn-outline btn-sm" onClick={onOpenConfig} title="Open Configuration" aria-label="Open configuration settings">
 							<i className="fas fa-cog"></i>
 							Settings
 						</button>
@@ -235,19 +195,11 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 								readOnly
 								aria-describedby="repo-path-help"
 							/>
-							<button
-								className="btn btn-outline btn-primary"
-								onClick={selectRepository}
-								aria-label="Browse for repository folder"
-							>
+							<button className="btn btn-outline btn-primary" onClick={selectRepository} aria-label="Browse for repository folder">
 								<i className="fas fa-folder-open"></i> Browse
 							</button>
 						</div>
-						<div
-							id="repo-path-help"
-							className="label-text-alt text-sm text-gray-500 mt-1"
-							aria-live="polite"
-						>
+						<div id="repo-path-help" className="label-text-alt text-sm text-gray-500 mt-1" aria-live="polite">
 							Choose a folder containing a Git repository
 						</div>
 					</div>
@@ -281,11 +233,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 					</div>
 				</div>
 
-				<EstimatedTokensDisplay
-					estimatedInputTokens={estimatedInputTokens}
-					canStartReview={canStartReview}
-					formatTokenCount={formatTokenCount}
-				/>
+				<EstimatedTokensDisplay estimatedInputTokens={estimatedInputTokens} canStartReview={canStartReview} formatTokenCount={formatTokenCount} />
 
 				<div className="card-actions justify-center mt-6">
 					{!reviewInProgress ? (
@@ -298,11 +246,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 							<i className="fas fa-rocket"></i> Start AI Review
 						</button>
 					) : (
-						<button
-							className="btn btn-warning btn-lg"
-							onClick={onStopReview}
-							aria-label="Stop the current review process"
-						>
+						<button className="btn btn-warning btn-lg" onClick={onStopReview} aria-label="Stop the current review process">
 							<i className="fas fa-stop"></i> Stop Review
 						</button>
 					)}

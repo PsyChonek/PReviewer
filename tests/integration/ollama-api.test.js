@@ -85,21 +85,12 @@ describe('Ollama API Integration', () => {
 											totalTokens++;
 
 											const now = Date.now();
-											if (
-												now - lastProgressUpdate > 100 ||
-												totalTokens % 10 === 0
-											) {
+											if (now - lastProgressUpdate > 100 || totalTokens % 10 === 0) {
 												const elapsed = (now - startTime) / 1000;
 												const tokensPerSecond = totalTokens / elapsed;
 
-												const estimatedTotalTokens = Math.max(
-													100,
-													prompt.length / 4
-												);
-												const tokenProgress = Math.min(
-													25,
-													(totalTokens / estimatedTotalTokens) * 25
-												);
+												const estimatedTotalTokens = Math.max(100, prompt.length / 4);
+												const tokenProgress = Math.min(25, (totalTokens / estimatedTotalTokens) * 25);
 												const progress = Math.min(95, 60 + tokenProgress);
 
 												event.sender.send('ollama-progress', {
@@ -110,8 +101,7 @@ describe('Ollama API Integration', () => {
 													tokens: totalTokens,
 													tokensPerSecond: tokensPerSecond,
 													processingTime: elapsed,
-													responsePreview:
-														responseText.substring(0, 50) + '...',
+													responsePreview: responseText.substring(0, 50) + '...',
 													bytesReceived: bytesReceived,
 												});
 
@@ -230,8 +220,7 @@ describe('Ollama API Integration', () => {
 						url,
 						{
 							model: model,
-							prompt:
-								'What is a function in programming? Please respond with one sentence.',
+							prompt: 'What is a function in programming? Please respond with one sentence.',
 							stream: false,
 						},
 						{ timeout: 15000 }
@@ -282,11 +271,7 @@ describe('Ollama API Integration', () => {
 					if (event === 'data') {
 						// Simulate streaming chunks immediately
 						setImmediate(() => {
-							callback(
-								Buffer.from(
-									'{"response": "This code looks good", "done": false}\n'
-								)
-							);
+							callback(Buffer.from('{"response": "This code looks good", "done": false}\n'));
 							callback(Buffer.from('{"response": ".", "done": false}\n'));
 							callback(Buffer.from('{"done": true}\n'));
 						});
@@ -300,20 +285,11 @@ describe('Ollama API Integration', () => {
 				data: mockStream,
 			});
 
-			const result = await ollamaHandlers.callOllamaAPI(
-				mockEvent,
-				defaultParams
-			);
+			const result = await ollamaHandlers.callOllamaAPI(mockEvent, defaultParams);
 
 			expect(result).toBe('This code looks good.');
-			expect(mockEvent.sender.send).toHaveBeenCalledWith(
-				'ollama-progress',
-				expect.objectContaining({ stage: 'connecting' })
-			);
-			expect(mockEvent.sender.send).toHaveBeenCalledWith(
-				'ollama-progress',
-				expect.objectContaining({ stage: 'complete' })
-			);
+			expect(mockEvent.sender.send).toHaveBeenCalledWith('ollama-progress', expect.objectContaining({ stage: 'connecting' }));
+			expect(mockEvent.sender.send).toHaveBeenCalledWith('ollama-progress', expect.objectContaining({ stage: 'complete' }));
 		});
 
 		test('should handle 404 error with model installation guidance', async () => {
@@ -322,14 +298,9 @@ describe('Ollama API Integration', () => {
 
 			mockedAxios.post.mockRejectedValueOnce(error404);
 
-			await expect(
-				ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)
-			).rejects.toHaveErrorMessage('ollama pull codellama');
+			await expect(ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)).rejects.toHaveErrorMessage('ollama pull codellama');
 
-			expect(mockEvent.sender.send).toHaveBeenCalledWith(
-				'ollama-progress',
-				expect.objectContaining({ stage: 'error' })
-			);
+			expect(mockEvent.sender.send).toHaveBeenCalledWith('ollama-progress', expect.objectContaining({ stage: 'error' }));
 		});
 
 		test('should handle 500 error with server troubleshooting', async () => {
@@ -341,9 +312,7 @@ describe('Ollama API Integration', () => {
 
 			mockedAxios.post.mockRejectedValueOnce(error500);
 
-			await expect(
-				ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)
-			).rejects.toHaveErrorMessage('Check Ollama server logs');
+			await expect(ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)).rejects.toHaveErrorMessage('Check Ollama server logs');
 		});
 
 		test('should handle 503 error with resource management guidance', async () => {
@@ -355,9 +324,7 @@ describe('Ollama API Integration', () => {
 
 			mockedAxios.post.mockRejectedValueOnce(error503);
 
-			await expect(
-				ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)
-			).rejects.toHaveErrorMessage('server may be overloaded');
+			await expect(ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)).rejects.toHaveErrorMessage('server may be overloaded');
 		});
 
 		test('should handle network connection errors', async () => {
@@ -366,9 +333,7 @@ describe('Ollama API Integration', () => {
 
 			mockedAxios.post.mockRejectedValueOnce(networkError);
 
-			await expect(
-				ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)
-			).rejects.toHaveErrorMessage('Ensure Ollama is running');
+			await expect(ollamaHandlers.callOllamaAPI(mockEvent, defaultParams)).rejects.toHaveErrorMessage('Ensure Ollama is running');
 		});
 
 		test('should handle malformed streaming response', async () => {
@@ -408,9 +373,7 @@ describe('Ollama API Integration', () => {
 						setTimeout(() => {
 							// Multiple chunks to trigger progress updates
 							for (let i = 0; i < 15; i++) {
-								callback(
-									Buffer.from(`{"response": "token${i} ", "done": false}\n`)
-								);
+								callback(Buffer.from(`{"response": "token${i} ", "done": false}\n`));
 							}
 							callback(Buffer.from('{"done": true}\n'));
 						}, 10);
@@ -427,9 +390,7 @@ describe('Ollama API Integration', () => {
 			await ollamaHandlers.callOllamaAPI(mockEvent, defaultParams);
 
 			// Verify progress tracking calls
-			const progressCalls = mockEvent.sender.send.mock.calls.filter(
-				(call) => call[0] === 'ollama-progress' && call[1].stage === 'streaming'
-			);
+			const progressCalls = mockEvent.sender.send.mock.calls.filter((call) => call[0] === 'ollama-progress' && call[1].stage === 'streaming');
 
 			expect(progressCalls.length).toBeGreaterThan(0);
 			expect(progressCalls[0][1]).toHaveProperty('tokens');
@@ -447,11 +408,7 @@ describe('Ollama API Integration', () => {
 				on: jest.fn((event, callback) => {
 					if (event === 'data') {
 						setTimeout(() => {
-							callback(
-								Buffer.from(
-									'{"response": "Large code review complete", "done": true}\n'
-								)
-							);
+							callback(Buffer.from('{"response": "Large code review complete", "done": true}\n'));
 						}, 10);
 					} else if (event === 'end') {
 						setTimeout(callback, 50);
@@ -466,9 +423,7 @@ describe('Ollama API Integration', () => {
 			await ollamaHandlers.callOllamaAPI(mockEvent, paramsWithLargePrompt);
 
 			// Verify size tracking for large prompt
-			const sendingCall = mockEvent.sender.send.mock.calls.find(
-				(call) => call[0] === 'ollama-progress' && call[1].stage === 'sending'
-			);
+			const sendingCall = mockEvent.sender.send.mock.calls.find((call) => call[0] === 'ollama-progress' && call[1].stage === 'sending');
 
 			expect(sendingCall[1].modelSize).toBe(largePrompt.length);
 			expect(sendingCall[1].bytesUploaded).toBeGreaterThan(10000);
@@ -492,10 +447,7 @@ describe('Ollama API Integration', () => {
 				data: { response: 'A function is a reusable block of code.' },
 			});
 
-			const result = await ollamaHandlers.testOllamaConnection(
-				mockEvent,
-				testParams
-			);
+			const result = await ollamaHandlers.testOllamaConnection(mockEvent, testParams);
 
 			expect(result.success).toBe(true);
 			expect(result.version).toBe('0.1.7');
@@ -505,10 +457,7 @@ describe('Ollama API Integration', () => {
 		test('should handle connection failure gracefully', async () => {
 			mockedAxios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
-			const result = await ollamaHandlers.testOllamaConnection(
-				mockEvent,
-				testParams
-			);
+			const result = await ollamaHandlers.testOllamaConnection(mockEvent, testParams);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('ECONNREFUSED');
@@ -523,10 +472,7 @@ describe('Ollama API Integration', () => {
 			// Model test fails
 			mockedAxios.post.mockRejectedValueOnce(new Error('Model not available'));
 
-			const result = await ollamaHandlers.testOllamaConnection(
-				mockEvent,
-				testParams
-			);
+			const result = await ollamaHandlers.testOllamaConnection(mockEvent, testParams);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('Model not available');
@@ -538,10 +484,7 @@ describe('Ollama API Integration', () => {
 				data: { response: 'Test response' },
 			});
 
-			const result = await ollamaHandlers.testOllamaConnection(
-				mockEvent,
-				testParams
-			);
+			const result = await ollamaHandlers.testOllamaConnection(mockEvent, testParams);
 
 			expect(result.success).toBe(true);
 			expect(result.version).toBe('Unknown');
@@ -553,10 +496,7 @@ describe('Ollama API Integration', () => {
 			});
 			mockedAxios.post.mockResolvedValueOnce({ data: {} });
 
-			const result = await ollamaHandlers.testOllamaConnection(
-				mockEvent,
-				testParams
-			);
+			const result = await ollamaHandlers.testOllamaConnection(mockEvent, testParams);
 
 			expect(result.success).toBe(true);
 			expect(result.modelResponse).toBe('OK');
@@ -580,21 +520,9 @@ describe('Ollama API Integration', () => {
 				on: jest.fn((event, callback) => {
 					if (event === 'data') {
 						setTimeout(() => {
-							callback(
-								Buffer.from(
-									'{"response": "Password validation looks good", "done": false}\n'
-								)
-							);
-							callback(
-								Buffer.from(
-									'{"response": " but consider checking complexity", "done": false}\n'
-								)
-							);
-							callback(
-								Buffer.from(
-									'{"response": " and using bcrypt for hashing.", "done": false}\n'
-								)
-							);
+							callback(Buffer.from('{"response": "Password validation looks good", "done": false}\n'));
+							callback(Buffer.from('{"response": " but consider checking complexity", "done": false}\n'));
+							callback(Buffer.from('{"response": " and using bcrypt for hashing.", "done": false}\n'));
 							callback(Buffer.from('{"done": true}\n'));
 						}, 10);
 					} else if (event === 'end') {

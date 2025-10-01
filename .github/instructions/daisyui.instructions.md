@@ -24,11 +24,7 @@ daisyUI 5 provides class names for common UI components
 4. daisyUI is suggested to be installed as a dependency but if you really want to use it from CDN, you can use Tailwind CSS and daisyUI CDN files:
 
 ```html
-<link
-	href="https://cdn.jsdelivr.net/npm/daisyui@5"
-	rel="stylesheet"
-	type="text/css"
-/>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 ```
 
@@ -764,12 +760,7 @@ Using popover API
 
 ```html
 <button popovertarget="{id}" style="anchor-name:--{anchor}">{button}</button>
-<ul
-	class="dropdown-content"
-	popover
-	id="{id}"
-	style="position-anchor:--{anchor}"
->
+<ul class="dropdown-content" popover id="{id}" style="position-anchor:--{anchor}">
 	{CONTENT}
 </ul>
 ```
@@ -818,9 +809,7 @@ A FAB that opens a 3 other buttons in the corner of page vertically
 
 ```html
 <div class="fab">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
 	<button class="btn btn-lg btn-circle">{Icon1}</button>
 	<button class="btn btn-lg btn-circle">{Icon2}</button>
 	<button class="btn btn-lg btn-circle">{Icon3}</button>
@@ -831,9 +820,7 @@ A FAB that opens a 3 other buttons in the corner of page vertically and they hav
 
 ```html
 <div class="fab">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
 	<div>{Label1}<button class="btn btn-lg btn-circle">{Icon1}</button></div>
 	<div>{Label2}<button class="btn btn-lg btn-circle">{Icon2}</button></div>
 	<div>{Label3}<button class="btn btn-lg btn-circle">{Icon3}</button></div>
@@ -844,9 +831,7 @@ FAB with rectangle buttons. These are not circular buttons so they can have more
 
 ```html
 <div class="fab">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
 	<button class="btn btn-lg">{Label1}</button>
 	<button class="btn btn-lg">{Label2}</button>
 	<button class="btn btn-lg">{Label3}</button>
@@ -857,12 +842,8 @@ FAB with close button. When FAB is open, the original button is replaced with a 
 
 ```html
 <div class="fab">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
-	<div class="fab-close">
-		Close <span class="btn btn-circle btn-lg btn-error">✕</span>
-	</div>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
+	<div class="fab-close">Close <span class="btn btn-circle btn-lg btn-error">✕</span></div>
 	<div>{Label1}<button class="btn btn-lg btn-circle">{Icon1}</button></div>
 	<div>{Label2}<button class="btn btn-lg btn-circle">{Icon2}</button></div>
 	<div>{Label3}<button class="btn btn-lg btn-circle">{Icon3}</button></div>
@@ -873,14 +854,8 @@ FAB with Main Action button. When FAB is open, the original button is replaced w
 
 ```html
 <div class="fab">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
-	<div class="fab-main-action">
-		{LabelMainAction}<button class="btn btn-circle btn-secondary btn-lg">
-			{IconMainAction}
-		</button>
-	</div>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
+	<div class="fab-main-action">{LabelMainAction}<button class="btn btn-circle btn-secondary btn-lg">{IconMainAction}</button></div>
 	<div>{Label1}<button class="btn btn-lg btn-circle">{Icon1}</button></div>
 	<div>{Label2}<button class="btn btn-lg btn-circle">{Icon2}</button></div>
 	<div>{Label3}<button class="btn btn-lg btn-circle">{Icon3}</button></div>
@@ -891,12 +866,8 @@ FAB Flower. It opens the buttons in a flower shape (quarter circle) arrangement 
 
 ```html
 <div class="fab fab-flower">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
-	<button class="fab-main-action btn btn-circle btn-lg">
-		{IconMainAction}
-	</button>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
+	<button class="fab-main-action btn btn-circle btn-lg">{IconMainAction}</button>
 	<button class="btn btn-lg btn-circle">{Icon1}</button>
 	<button class="btn btn-lg btn-circle">{Icon2}</button>
 	<button class="btn btn-lg btn-circle">{Icon3}</button>
@@ -907,12 +878,8 @@ FAB Flower with tooltips. There's no space for a text label in a quarter circle,
 
 ```html
 <div class="fab fab-flower">
-	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">
-		{IconOriginal}
-	</div>
-	<button class="fab-main-action btn btn-circle btn-lg">
-		{IconMainAction}
-	</button>
+	<div tabindex="0" role="button" class="btn btn-lg btn-circle btn-primary">{IconOriginal}</div>
+	<button class="fab-main-action btn btn-circle btn-lg">{IconMainAction}</button>
 	<div class="tooltip tooltip-left" data-tip="{Label1}">
 		<button class="btn btn-lg btn-circle">{Icon1}</button>
 	</div>
@@ -1588,14 +1555,7 @@ Radial progress can be used to show the progress of a task or to show the passin
 #### Syntax
 
 ```html
-<div
-	class="radial-progress"
-	style="--value:70;"
-	aria-valuenow="70"
-	role="progressbar"
->
-	70%
-</div>
+<div class="radial-progress" style="--value:70;" aria-valuenow="70" role="progressbar">70%</div>
 ```
 
 #### Rules

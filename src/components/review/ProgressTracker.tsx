@@ -15,11 +15,7 @@ interface ProgressTrackerProps {
 	reviewInProgress: boolean;
 }
 
-const ProgressTracker: React.FC<ProgressTrackerProps> = ({
-	reviewStats,
-	estimatedInputTokens,
-	reviewInProgress,
-}) => {
+const ProgressTracker: React.FC<ProgressTrackerProps> = ({ reviewStats, estimatedInputTokens, reviewInProgress }) => {
 	const [smoothTime, setSmoothTime] = useState(0);
 	const [smoothSpeed, setSmoothSpeed] = useState(0);
 	const startTimeRef = useRef<number | null>(null);
@@ -57,10 +53,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 	}, [reviewInProgress, reviewStats?.outputTokens]);
 
 	// Calculate average speed when completed
-	const avgSpeed =
-		reviewStats && !reviewInProgress
-			? reviewStats.outputTokens / (reviewStats.responseTime / 1000)
-			: smoothSpeed;
+	const avgSpeed = reviewStats && !reviewInProgress ? reviewStats.outputTokens / (reviewStats.responseTime / 1000) : smoothSpeed;
 
 	if (!reviewInProgress && !reviewStats) {
 		return null;
@@ -78,9 +71,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 					<div className="space-y-3">
 						<div className="flex items-center gap-2">
 							<span className="loading loading-spinner loading-sm text-primary"></span>
-							<span className="text-sm">
-								{reviewStats?.stage || 'Processing...'}
-							</span>
+							<span className="text-sm">{reviewStats?.stage || 'Processing...'}</span>
 						</div>
 
 						{reviewStats?.progress !== undefined && (
@@ -89,26 +80,18 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 									<span>Progress</span>
 									<span>{Math.round(reviewStats.progress)}%</span>
 								</div>
-								<progress
-									className="progress progress-primary w-full"
-									value={reviewStats.progress}
-									max="100"
-								></progress>
+								<progress className="progress progress-primary w-full" value={reviewStats.progress} max="100"></progress>
 							</div>
 						)}
 
 						<div className="grid grid-cols-2 gap-4 text-xs">
 							<div>
 								<span className="text-base-content/70">Input Tokens:</span>
-								<div className="font-mono">
-									{reviewStats?.inputTokens || estimatedInputTokens}
-								</div>
+								<div className="font-mono">{reviewStats?.inputTokens || estimatedInputTokens}</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Output Tokens:</span>
-								<div className="font-mono">
-									{reviewStats?.outputTokens || 0}
-								</div>
+								<div className="font-mono">{reviewStats?.outputTokens || 0}</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Speed:</span>
@@ -144,9 +127,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 							</div>
 							<div>
 								<span className="text-base-content/70">Total Time:</span>
-								<div className="font-mono">
-									{(reviewStats.responseTime / 1000).toFixed(1)}s
-								</div>
+								<div className="font-mono">{(reviewStats.responseTime / 1000).toFixed(1)}s</div>
 							</div>
 						</div>
 					</div>

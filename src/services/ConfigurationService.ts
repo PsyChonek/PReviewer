@@ -53,17 +53,13 @@ export class ConfigurationService {
 			}
 
 			// Load base prompt
-			const savedBasePrompt = localStorage.getItem(
-				this.STORAGE_KEYS.BASE_PROMPT
-			);
+			const savedBasePrompt = localStorage.getItem(this.STORAGE_KEYS.BASE_PROMPT);
 			if (savedBasePrompt) {
 				defaultConfig.basePrompt = savedBasePrompt;
 			}
 
 			// Load user prompt
-			const savedUserPrompt = localStorage.getItem(
-				this.STORAGE_KEYS.USER_PROMPT
-			);
+			const savedUserPrompt = localStorage.getItem(this.STORAGE_KEYS.USER_PROMPT);
 			if (savedUserPrompt) {
 				defaultConfig.userPrompt = savedUserPrompt;
 			}
@@ -83,16 +79,10 @@ export class ConfigurationService {
 
 	saveConfiguration(config: AppConfiguration): void {
 		try {
-			localStorage.setItem(
-				this.STORAGE_KEYS.AI_CONFIG,
-				JSON.stringify(config.aiConfig)
-			);
+			localStorage.setItem(this.STORAGE_KEYS.AI_CONFIG, JSON.stringify(config.aiConfig));
 			localStorage.setItem(this.STORAGE_KEYS.BASE_PROMPT, config.basePrompt);
 			localStorage.setItem(this.STORAGE_KEYS.USER_PROMPT, config.userPrompt);
-			localStorage.setItem(
-				this.STORAGE_KEYS.DEBUG_MODE,
-				config.debugMode.toString()
-			);
+			localStorage.setItem(this.STORAGE_KEYS.DEBUG_MODE, config.debugMode.toString());
 		} catch (error) {
 			console.error('Failed to save configuration:', error);
 		}
@@ -100,10 +90,7 @@ export class ConfigurationService {
 
 	saveAiConfig(aiConfig: AIProviderConfig): void {
 		try {
-			localStorage.setItem(
-				this.STORAGE_KEYS.AI_CONFIG,
-				JSON.stringify(aiConfig)
-			);
+			localStorage.setItem(this.STORAGE_KEYS.AI_CONFIG, JSON.stringify(aiConfig));
 		} catch (error) {
 			console.error('Failed to save AI config:', error);
 		}

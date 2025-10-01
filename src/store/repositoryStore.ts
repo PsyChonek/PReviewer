@@ -49,12 +49,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
 	// Computed properties
 	canStartReview: () => {
 		const state = get();
-		return !!(
-			state.currentRepoPath &&
-			state.fromBranch &&
-			state.toBranch &&
-			state.fromBranch !== state.toBranch
-		);
+		return !!(state.currentRepoPath && state.fromBranch && state.toBranch && state.fromBranch !== state.toBranch);
 	},
 
 	// Clear all repository state

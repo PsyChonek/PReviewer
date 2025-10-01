@@ -61,10 +61,7 @@ export default [
 			'react/react-in-jsx-scope': 'off',
 			'react/prop-types': 'off',
 			'react/no-unescaped-entities': 'off',
-			'@typescript-eslint/no-unused-vars': [
-				'warn',
-				{ argsIgnorePattern: '^_' },
-			],
+			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/no-empty-object-type': 'warn',
 			'no-console': 'off',
@@ -84,14 +81,6 @@ export default [
 		},
 	},
 	{
-		ignores: [
-			'node_modules/**',
-			'dist/**',
-			'out/**',
-			'.vite/**',
-			'tests/**',
-			'*.config.js',
-			'*.config.ts',
-		],
+		ignores: ['node_modules/**', 'dist/**', 'out/**', '.vite/**', 'tests/**', '*.config.js', '*.config.ts'],
 	},
 ];

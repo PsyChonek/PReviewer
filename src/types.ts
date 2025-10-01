@@ -71,51 +71,25 @@ declare global {
 			getGitBranches: (repoPath: string) => Promise<string[]>;
 			gitFetch: (repoPath: string) => Promise<GitOperationResult>;
 			gitPull: (repoPath: string) => Promise<GitOperationResult>;
-			getGitDiff: (
-				repoPath: string,
-				fromBranch: string,
-				toBranch: string
-			) => Promise<string>;
-			callOllamaAPI: (config: {
-				url: string;
-				model: string;
-				prompt: string;
-			}) => Promise<string>;
-			testOllamaConnection: (config: {
-				url: string;
-				model: string;
-			}) => Promise<{
+			getGitDiff: (repoPath: string, fromBranch: string, toBranch: string) => Promise<string>;
+			callOllamaAPI: (config: { url: string; model: string; prompt: string }) => Promise<string>;
+			testOllamaConnection: (config: { url: string; model: string }) => Promise<{
 				success: boolean;
 				error?: string;
 				version?: string;
 				modelResponse?: string;
 			}>;
-			callAzureAI: (config: {
-				endpoint: string;
-				apiKey: string;
-				deploymentName: string;
-				prompt: string;
-			}) => Promise<string>;
-			testAzureAIConnection: (config: {
-				endpoint: string;
-				apiKey: string;
-				deploymentName: string;
-			}) => Promise<{
+			callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }) => Promise<string>;
+			testAzureAIConnection: (config: { endpoint: string; apiKey: string; deploymentName: string }) => Promise<{
 				success: boolean;
 				error?: string;
 				deploymentName?: string;
 				modelResponse?: string;
 			}>;
 			loadConfig: () => Promise<AIProviderConfig>;
-			saveConfig: (
-				config: Partial<AIProviderConfig>
-			) => Promise<{ success: boolean; error?: string }>;
-			onOllamaProgress: (
-				callback: (event: unknown, data: ProgressData) => void
-			) => () => void;
-			onAzureAIProgress: (
-				callback: (event: unknown, data: ProgressData) => void
-			) => () => void;
+			saveConfig: (config: Partial<AIProviderConfig>) => Promise<{ success: boolean; error?: string }>;
+			onOllamaProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
+			onAzureAIProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
 		};
 	}
 }

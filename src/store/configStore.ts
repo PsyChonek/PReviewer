@@ -19,12 +19,7 @@ interface ConfigState {
 	setDebugMode: (debug: boolean) => void;
 
 	// Bulk operations
-	updateConfig: (config: {
-		aiConfig?: AIProviderConfig;
-		basePrompt?: string;
-		userPrompt?: string;
-		debugMode?: boolean;
-	}) => void;
+	updateConfig: (config: { aiConfig?: AIProviderConfig; basePrompt?: string; userPrompt?: string; debugMode?: boolean }) => void;
 
 	resetPrompts: () => void;
 }

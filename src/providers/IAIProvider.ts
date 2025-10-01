@@ -32,9 +32,7 @@ export interface AIProviderConfig {
 /**
  * Interface for AI provider implementations
  */
-export interface IAIProvider<
-	TConfig extends AIProviderConfig = AIProviderConfig,
-> {
+export interface IAIProvider<TConfig extends AIProviderConfig = AIProviderConfig> {
 	/**
 	 * Name of the provider (e.g., 'ollama', 'azure')
 	 */

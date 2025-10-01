@@ -27,9 +27,7 @@
  */
 
 import './index.css';
-console.log(
-	'👋 This message is being logged by "renderer.js", included via webpack'
-);
+console.log('👋 This message is being logged by "renderer.js", included via webpack');
 
 // Import and mount React app
 import React from 'react';

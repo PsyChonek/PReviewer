@@ -21,10 +21,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 	/**
 	 * Generate AI response using Azure OpenAI streaming API
 	 */
-	async generate(
-		event: IpcMainInvokeEvent,
-		config: AzureOpenAIConfig
-	): Promise<string> {
+	async generate(event: IpcMainInvokeEvent, config: AzureOpenAIConfig): Promise<string> {
 		const { endpoint, apiKey, deploymentName, prompt } = config;
 
 		try {
@@ -167,8 +164,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 				messages: [
 					{
 						role: 'user',
-						content:
-							'What is a function in programming? Please respond with one sentence.',
+						content: 'What is a function in programming? Please respond with one sentence.',
 					},
 				],
 				max_tokens: 100,
@@ -191,11 +187,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 	/**
 	 * Create OpenAI client configured for Azure
 	 */
-	private createClient(
-		endpoint: string,
-		apiKey: string,
-		deploymentName: string
-	): OpenAI {
+	private createClient(endpoint: string, apiKey: string, deploymentName: string): OpenAI {
 		// Extract base URL from the full endpoint if it contains the full path
 		let baseURL = endpoint;
 		if (endpoint.includes('/openai/deployments/')) {

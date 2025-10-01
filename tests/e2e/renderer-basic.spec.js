@@ -33,9 +33,7 @@ test.describe('Basic Renderer Tests', () => {
 		await expect(page.locator('link[href*="font-awesome"]')).toBeAttached();
 	});
 
-	test('should have accessibility-friendly HTML structure', async ({
-		page,
-	}) => {
+	test('should have accessibility-friendly HTML structure', async ({ page }) => {
 		const htmlPath = path.join(__dirname, '../../src/index.html');
 		await page.goto(`file://${htmlPath}`);
 

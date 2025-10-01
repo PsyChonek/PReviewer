@@ -146,12 +146,7 @@ test.describe('Application Workflow', () => {
 
 	test('error handling workflow', async () => {
 		// Test error scenarios
-		const errorScenarios = [
-			'Invalid repository path',
-			'Ollama connection failed',
-			'No diff found',
-			'Git operation failed',
-		];
+		const errorScenarios = ['Invalid repository path', 'Ollama connection failed', 'No diff found', 'Git operation failed'];
 
 		for (const scenario of errorScenarios) {
 			console.log(`Testing error scenario: ${scenario}`);
@@ -174,35 +169,18 @@ test.describe('Integration with External Services', () => {
 
 			// Initialize git repo
 			await runGitCommand(testRepoPath, ['init']);
-			await runGitCommand(testRepoPath, [
-				'config',
-				'user.email',
-				'test@example.com',
-			]);
+			await runGitCommand(testRepoPath, ['config', 'user.email', 'test@example.com']);
 			await runGitCommand(testRepoPath, ['config', 'user.name', 'Test User']);
 
 			// Create initial commit
-			await fs.writeFile(
-				path.join(testRepoPath, 'README.md'),
-				'# Test Repository'
-			);
-			await fs.writeFile(
-				path.join(testRepoPath, 'app.js'),
-				"console.log('Hello World');"
-			);
+			await fs.writeFile(path.join(testRepoPath, 'README.md'), '# Test Repository');
+			await fs.writeFile(path.join(testRepoPath, 'app.js'), "console.log('Hello World');");
 			await runGitCommand(testRepoPath, ['add', '.']);
 			await runGitCommand(testRepoPath, ['commit', '-m', 'Initial commit']);
 
 			// Create feature branch
-			await runGitCommand(testRepoPath, [
-				'checkout',
-				'-b',
-				'feature/test-changes',
-			]);
-			await fs.writeFile(
-				path.join(testRepoPath, 'app.js'),
-				"console.log('Hello Test World');\nfunction testFunction() { return true; }"
-			);
+			await runGitCommand(testRepoPath, ['checkout', '-b', 'feature/test-changes']);
+			await fs.writeFile(path.join(testRepoPath, 'app.js'), "console.log('Hello Test World');\nfunction testFunction() { return true; }");
 			await runGitCommand(testRepoPath, ['add', 'app.js']);
 			await runGitCommand(testRepoPath, ['commit', '-m', 'Add test function']);
 			await runGitCommand(testRepoPath, ['checkout', 'master']);
@@ -220,17 +198,12 @@ test.describe('Integration with External Services', () => {
 		// Test git branch listing
 		const branchResult = await runGitCommand(testRepoPath, ['branch']);
 		// Git might create "master" or "main" depending on version - accept either
-		const hasMainBranch =
-			branchResult.includes('main') || branchResult.includes('master');
+		const hasMainBranch = branchResult.includes('main') || branchResult.includes('master');
 		expect(hasMainBranch).toBe(true);
 		expect(branchResult).toContain('feature/test-changes');
 
 		// Test git diff (use master since that's the default branch name in the test)
-		const diffResult = await runGitCommand(testRepoPath, [
-			'diff',
-			'master',
-			'feature/test-changes',
-		]);
+		const diffResult = await runGitCommand(testRepoPath, ['diff', 'master', 'feature/test-changes']);
 		expect(diffResult).toContain('testFunction');
 		expect(diffResult).toContain('Hello Test World');
 	});
@@ -240,8 +213,7 @@ test.describe('Integration with External Services', () => {
 		// we'll test the API integration logic
 
 		const mockApiResponse = {
-			response:
-				'This code looks good. The function is well-structured and follows best practices.',
+			response: 'This code looks good. The function is well-structured and follows best practices.',
 			done: true,
 		};
 
@@ -278,12 +250,7 @@ test.describe('Performance and Reliability', () => {
 
 	test('memory usage simulation', async () => {
 		// Simulate memory-intensive operations
-		const operations = [
-			'Load large diff',
-			'Process token estimation',
-			'Stream AI response',
-			'Update UI with results',
-		];
+		const operations = ['Load large diff', 'Process token estimation', 'Stream AI response', 'Update UI with results'];
 
 		for (const operation of operations) {
 			console.log(`Simulating: ${operation}`);
@@ -347,9 +314,7 @@ test.describe('User Interface Validation', () => {
 		];
 
 		for (const viewport of viewports) {
-			console.log(
-				`Testing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`
-			);
+			console.log(`Testing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
 
 			// Simulate viewport testing
 			const isResponsive = await simulateViewportTest(viewport);

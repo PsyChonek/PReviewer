@@ -72,9 +72,7 @@ describe('React Components', () => {
 			render(<RepositorySection {...defaultProps} />);
 
 			expect(screen.getByText('Repository Path')).toBeInTheDocument();
-			expect(
-				screen.getByRole('button', { name: /browse/i })
-			).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
 		});
 
 		test('should call selectDirectory when browse button is clicked', async () => {
@@ -100,12 +98,7 @@ describe('React Components', () => {
 			window.electronAPI.selectDirectory.mockResolvedValue('/test/repo/path');
 			window.electronAPI.getGitBranches.mockResolvedValue(branches);
 
-			render(
-				<RepositorySection
-					{...defaultProps}
-					onRepoPathChange={mockOnRepoPathChange}
-				/>
-			);
+			render(<RepositorySection {...defaultProps} onRepoPathChange={mockOnRepoPathChange} />);
 
 			const browseButton = screen.getByRole('button', {
 				name: /browse/i,
@@ -163,14 +156,10 @@ describe('React Components', () => {
 		});
 
 		test('should show loading state when isLoading is true', () => {
-			render(
-				<BranchSelector {...defaultProps} isLoading={true} disabled={false} />
-			);
+			render(<BranchSelector {...defaultProps} isLoading={true} disabled={false} />);
 
 			// The summary element acts as the dropdown button
-			const dropdownButton = screen
-				.getByText('Select branch')
-				.closest('summary');
+			const dropdownButton = screen.getByText('Select branch').closest('summary');
 			fireEvent.click(dropdownButton);
 
 			expect(screen.getByText('Loading...')).toBeInTheDocument();
@@ -186,13 +175,7 @@ describe('React Components', () => {
 			const user = userEvent.setup();
 			const mockOnBranchSelect = jest.fn();
 
-			render(
-				<BranchSelector
-					{...defaultProps}
-					onBranchSelect={mockOnBranchSelect}
-					disabled={false}
-				/>
-			);
+			render(<BranchSelector {...defaultProps} onBranchSelect={mockOnBranchSelect} disabled={false} />);
 
 			// Open dropdown by clicking the summary element
 			const dropdown = screen.getByText('Select branch').closest('summary');
@@ -220,22 +203,16 @@ describe('React Components', () => {
 		test('should render output section controls', () => {
 			render(<OutputSection {...defaultProps} />);
 
-			expect(
-				screen.getByRole('button', { name: /clear/i })
-			).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
 			expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
-			expect(
-				screen.getByRole('button', { name: /export/i })
-			).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
 		});
 
 		test('should call onClearOutput when clear button is clicked', async () => {
 			const user = userEvent.setup();
 			const mockOnClearOutput = jest.fn();
 
-			render(
-				<OutputSection {...defaultProps} onClearOutput={mockOnClearOutput} />
-			);
+			render(<OutputSection {...defaultProps} onClearOutput={mockOnClearOutput} />);
 
 			const clearButton = screen.getByRole('button', { name: /clear/i });
 			await user.click(clearButton);
@@ -247,9 +224,7 @@ describe('React Components', () => {
 			const user = userEvent.setup();
 			const mockOnCopyOutput = jest.fn();
 
-			render(
-				<OutputSection {...defaultProps} onCopyOutput={mockOnCopyOutput} />
-			);
+			render(<OutputSection {...defaultProps} onCopyOutput={mockOnCopyOutput} />);
 
 			const copyButton = screen.getByRole('button', { name: /copy/i });
 			await user.click(copyButton);
@@ -261,9 +236,7 @@ describe('React Components', () => {
 			const user = userEvent.setup();
 			const mockOnExportOutput = jest.fn();
 
-			render(
-				<OutputSection {...defaultProps} onExportOutput={mockOnExportOutput} />
-			);
+			render(<OutputSection {...defaultProps} onExportOutput={mockOnExportOutput} />);
 
 			const exportButton = screen.getByRole('button', {
 				name: /export/i,
@@ -278,9 +251,7 @@ describe('React Components', () => {
 
 			// Mock the marked library that's used for markdown rendering
 			global.window.marked = {
-				parse: jest.fn(
-					(content) => `<h1>Test Output</h1><p>This is test content.</p>`
-				),
+				parse: jest.fn((content) => `<h1>Test Output</h1><p>This is test content.</p>`),
 			};
 
 			render(<OutputSection {...defaultProps} outputContent={outputContent} />);
@@ -314,9 +285,7 @@ describe('React Components', () => {
 			const user = userEvent.setup();
 			const mockOnClose = jest.fn();
 
-			render(
-				<ConfigModal {...defaultProps} isOpen={true} onClose={mockOnClose} />
-			);
+			render(<ConfigModal {...defaultProps} isOpen={true} onClose={mockOnClose} />);
 
 			const closeButton = screen.getByRole('button', { name: /close/i });
 			await user.click(closeButton);
@@ -325,9 +294,7 @@ describe('React Components', () => {
 		});
 
 		test('should show testing state when testingConnection is true', () => {
-			render(
-				<ConfigModal {...defaultProps} isOpen={true} testingConnection={true} />
-			);
+			render(<ConfigModal {...defaultProps} isOpen={true} testingConnection={true} />);
 
 			expect(screen.getByText(/testing/i)).toBeInTheDocument();
 		});
@@ -339,13 +306,7 @@ describe('React Components', () => {
 				provider: 'Ollama',
 			};
 
-			render(
-				<ConfigModal
-					{...defaultProps}
-					isOpen={true}
-					connectionTestResult={testResult}
-				/>
-			);
+			render(<ConfigModal {...defaultProps} isOpen={true} connectionTestResult={testResult} />);
 
 			expect(screen.getByText('Connection successful!')).toBeInTheDocument();
 		});
@@ -357,9 +318,7 @@ describe('React Components', () => {
 
 			// Check for main sections
 			expect(screen.getByText('Repository Path')).toBeInTheDocument();
-			expect(
-				screen.getByRole('button', { name: /browse/i })
-			).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
 		});
 
 		test('should handle repository selection flow', async () => {
@@ -399,13 +358,9 @@ describe('React Components', () => {
 	describe('Error Handling', () => {
 		test('should handle repository selection error gracefully', async () => {
 			const user = userEvent.setup();
-			const consoleSpy = jest
-				.spyOn(console, 'error')
-				.mockImplementation(() => {});
+			const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-			window.electronAPI.selectDirectory.mockRejectedValue(
-				new Error('Permission denied')
-			);
+			window.electronAPI.selectDirectory.mockRejectedValue(new Error('Permission denied'));
 
 			render(
 				<RepositorySection
@@ -433,14 +388,10 @@ describe('React Components', () => {
 		});
 
 		test('should handle branch loading error gracefully', async () => {
-			const consoleSpy = jest
-				.spyOn(console, 'error')
-				.mockImplementation(() => {});
+			const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
 			window.electronAPI.selectDirectory.mockResolvedValue('/test/repo');
-			window.electronAPI.getGitBranches.mockRejectedValue(
-				new Error('Git error')
-			);
+			window.electronAPI.getGitBranches.mockRejectedValue(new Error('Git error'));
 
 			const onRepoPathChange = jest.fn();
 
@@ -479,9 +430,7 @@ describe('React Components', () => {
 			expect(screen.getByRole('main')).toBeInTheDocument();
 
 			// Check for form controls
-			expect(
-				screen.getByRole('button', { name: /browse/i })
-			).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
 		});
 
 		test('should have proper form labels', () => {

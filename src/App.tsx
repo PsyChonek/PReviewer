@@ -53,125 +53,95 @@ const App: React.FC = () => {
 
 	// Set up progress listeners with access to current estimatedInputTokens
 	useEffect(() => {
-		const ollamaProgressCleanup = window.electronAPI.onOllamaProgress(
-			(event, data) => {
-				setReviewStats((_prevStats) => ({
-					tokens: data.tokens || 0,
-					inputTokens: data.actualInputTokens || estimatedInputTokens,
-					outputTokens: data.actualOutputTokens || data.tokens || 0,
-					tokensPerSecond: data.tokensPerSecond || 0,
-					processingTime: data.processingTime || 0,
-					responseTime: data.responseTime || 0,
-					stage: data.stage || data.message || '',
-					progress: data.progress || 0,
-				}));
+		const ollamaProgressCleanup = window.electronAPI.onOllamaProgress((event, data) => {
+			setReviewStats((_prevStats) => ({
+				tokens: data.tokens || 0,
+				inputTokens: data.actualInputTokens || estimatedInputTokens,
+				outputTokens: data.actualOutputTokens || data.tokens || 0,
+				tokensPerSecond: data.tokensPerSecond || 0,
+				processingTime: data.processingTime || 0,
+				responseTime: data.responseTime || 0,
+				stage: data.stage || data.message || '',
+				progress: data.progress || 0,
+			}));
 
-				// Update current session tokens live during review
-				setCurrentSessionInputTokens(
-					data.actualInputTokens || storeEstimatedTokens
-				);
-				setCurrentSessionOutputTokens(
-					data.actualOutputTokens || data.tokens || 0
-				);
+			// Update current session tokens live during review
+			setCurrentSessionInputTokens(data.actualInputTokens || storeEstimatedTokens);
+			setCurrentSessionOutputTokens(data.actualOutputTokens || data.tokens || 0);
 
-				// Update total tokens when review completes (try multiple completion indicators)
-				if (
-					(data.stage === 'complete' || data.progress === 100) &&
-					(data.actualInputTokens || data.actualOutputTokens)
-				) {
-					const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
-					const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
+			// Update total tokens when review completes (try multiple completion indicators)
+			if ((data.stage === 'complete' || data.progress === 100) && (data.actualInputTokens || data.actualOutputTokens)) {
+				const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
+				const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
 
-					console.log('Updating total tokens from progress listener:', {
-						stage: data.stage,
-						progress: data.progress,
-						inputTokens: newInputTokens,
-						outputTokens: newOutputTokens,
-					});
+				console.log('Updating total tokens from progress listener:', {
+					stage: data.stage,
+					progress: data.progress,
+					inputTokens: newInputTokens,
+					outputTokens: newOutputTokens,
+				});
 
-					if (newInputTokens > 0) {
-						addToTotalInputTokens(newInputTokens);
-						console.log('Added input tokens to total:', newInputTokens);
-					}
+				if (newInputTokens > 0) {
+					addToTotalInputTokens(newInputTokens);
+					console.log('Added input tokens to total:', newInputTokens);
+				}
 
-					if (newOutputTokens > 0) {
-						addToTotalOutputTokens(newOutputTokens);
-						console.log('Added output tokens to total:', newOutputTokens);
-					}
+				if (newOutputTokens > 0) {
+					addToTotalOutputTokens(newOutputTokens);
+					console.log('Added output tokens to total:', newOutputTokens);
 				}
 			}
-		);
+		});
 
-		const azureProgressCleanup = window.electronAPI.onAzureAIProgress(
-			(event, data) => {
-				setReviewStats((_prevStats) => ({
-					tokens: data.tokens || 0,
-					inputTokens: data.actualInputTokens || estimatedInputTokens,
-					outputTokens: data.actualOutputTokens || data.tokens || 0,
-					tokensPerSecond: data.tokensPerSecond || 0,
-					processingTime: data.processingTime || 0,
-					responseTime: data.responseTime || 0,
-					stage: data.stage || data.message || '',
-					progress: data.progress || 0,
-				}));
+		const azureProgressCleanup = window.electronAPI.onAzureAIProgress((event, data) => {
+			setReviewStats((_prevStats) => ({
+				tokens: data.tokens || 0,
+				inputTokens: data.actualInputTokens || estimatedInputTokens,
+				outputTokens: data.actualOutputTokens || data.tokens || 0,
+				tokensPerSecond: data.tokensPerSecond || 0,
+				processingTime: data.processingTime || 0,
+				responseTime: data.responseTime || 0,
+				stage: data.stage || data.message || '',
+				progress: data.progress || 0,
+			}));
 
-				// Update current session tokens live during review
-				setCurrentSessionInputTokens(
-					data.actualInputTokens || storeEstimatedTokens
-				);
-				setCurrentSessionOutputTokens(
-					data.actualOutputTokens || data.tokens || 0
-				);
+			// Update current session tokens live during review
+			setCurrentSessionInputTokens(data.actualInputTokens || storeEstimatedTokens);
+			setCurrentSessionOutputTokens(data.actualOutputTokens || data.tokens || 0);
 
-				// Update total tokens when review completes (try multiple completion indicators)
-				if (
-					(data.stage === 'complete' || data.progress === 100) &&
-					(data.actualInputTokens || data.actualOutputTokens)
-				) {
-					const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
-					const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
+			// Update total tokens when review completes (try multiple completion indicators)
+			if ((data.stage === 'complete' || data.progress === 100) && (data.actualInputTokens || data.actualOutputTokens)) {
+				const newInputTokens = data.actualInputTokens || storeEstimatedTokens;
+				const newOutputTokens = data.actualOutputTokens || data.tokens || 0;
 
-					console.log('Updating total tokens from progress listener:', {
-						stage: data.stage,
-						progress: data.progress,
-						inputTokens: newInputTokens,
-						outputTokens: newOutputTokens,
-					});
+				console.log('Updating total tokens from progress listener:', {
+					stage: data.stage,
+					progress: data.progress,
+					inputTokens: newInputTokens,
+					outputTokens: newOutputTokens,
+				});
 
-					if (newInputTokens > 0) {
-						addToTotalInputTokens(newInputTokens);
-						console.log('Added input tokens to total:', newInputTokens);
-					}
+				if (newInputTokens > 0) {
+					addToTotalInputTokens(newInputTokens);
+					console.log('Added input tokens to total:', newInputTokens);
+				}
 
-					if (newOutputTokens > 0) {
-						addToTotalOutputTokens(newOutputTokens);
-						console.log('Added output tokens to total:', newOutputTokens);
-					}
+				if (newOutputTokens > 0) {
+					addToTotalOutputTokens(newOutputTokens);
+					console.log('Added output tokens to total:', newOutputTokens);
 				}
 			}
-		);
+		});
 
 		// Cleanup listeners on unmount
 		return () => {
 			ollamaProgressCleanup();
 			azureProgressCleanup();
 		};
-	}, [
-		estimatedInputTokens,
-		storeEstimatedTokens,
-		setCurrentSessionInputTokens,
-		setCurrentSessionOutputTokens,
-		addToTotalInputTokens,
-		addToTotalOutputTokens,
-	]);
+	}, [estimatedInputTokens, storeEstimatedTokens, setCurrentSessionInputTokens, setCurrentSessionOutputTokens, addToTotalInputTokens, addToTotalOutputTokens]);
 
 	const calculateTokens = useCallback(async () => {
-		if (
-			!appState.currentRepoPath ||
-			!fromBranch ||
-			!toBranch ||
-			fromBranch === toBranch
-		) {
+		if (!appState.currentRepoPath || !fromBranch || !toBranch || fromBranch === toBranch) {
 			console.log('calculateInputTokens: Missing requirements', {
 				repoPath: appState.currentRepoPath,
 				fromBranch,
@@ -184,11 +154,7 @@ const App: React.FC = () => {
 
 		try {
 			console.log('calculateInputTokens: Getting diff...');
-			const diff = await window.electronAPI.getGitDiff(
-				appState.currentRepoPath,
-				fromBranch,
-				toBranch
-			);
+			const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
 			if (!diff || diff.trim() === '') {
 				console.log('calculateInputTokens: No diff found');
 				setEstimatedInputTokens(0);
@@ -209,14 +175,7 @@ const App: React.FC = () => {
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
 		}
-	}, [
-		appState.currentRepoPath,
-		fromBranch,
-		toBranch,
-		basePrompt,
-		userPrompt,
-		setStoreEstimatedTokens,
-	]);
+	}, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt, setStoreEstimatedTokens]);
 
 	// Calculate input tokens when branches, repo, or prompts change
 	useEffect(() => {
@@ -229,9 +188,7 @@ const App: React.FC = () => {
 
 	const handleStartReview = async () => {
 		if (!appState.currentRepoPath || !fromBranch || !toBranch) {
-			alert(
-				'Please select a repository and both branches before starting the review.'
-			);
+			alert('Please select a repository and both branches before starting the review.');
 			return;
 		}
 
@@ -251,14 +208,8 @@ const App: React.FC = () => {
 				console.log('=== Review Debug Info ===');
 				console.log('Configuration:', {
 					provider: aiConfig.provider,
-					model:
-						aiConfig.provider === 'ollama'
-							? aiConfig.ollama.model
-							: aiConfig.azure.deployment,
-					endpoint:
-						aiConfig.provider === 'ollama'
-							? aiConfig.ollama.url
-							: aiConfig.azure.endpoint,
+					model: aiConfig.provider === 'ollama' ? aiConfig.ollama.model : aiConfig.azure.deployment,
+					endpoint: aiConfig.provider === 'ollama' ? aiConfig.ollama.url : aiConfig.azure.endpoint,
 				});
 				console.log('Repository:', {
 					path: appState.currentRepoPath,
@@ -269,17 +220,12 @@ const App: React.FC = () => {
 			}
 
 			// Get the diff
-			const diff = await window.electronAPI.getGitDiff(
-				appState.currentRepoPath,
-				fromBranch,
-				toBranch
-			);
+			const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
 
 			if (!diff || diff.trim() === '') {
 				setAppState((prev) => ({
 					...prev,
-					currentOutputMarkdown:
-						'## No Changes Found\n\nNo differences were found between the selected branches.',
+					currentOutputMarkdown: '## No Changes Found\n\nNo differences were found between the selected branches.',
 					reviewInProgress: false,
 				}));
 				return;
@@ -374,13 +320,7 @@ const App: React.FC = () => {
 
 				if (debugMode && currentStats) {
 					const totalDuration = Date.now() - appState.reviewStartTime!;
-					const estimationAccuracy =
-						currentStats.inputTokens > 0
-							? (
-									(currentStats.inputTokens / storeEstimatedTokens) *
-									100
-								).toFixed(1)
-							: 'N/A';
+					const estimationAccuracy = currentStats.inputTokens > 0 ? ((currentStats.inputTokens / storeEstimatedTokens) * 100).toFixed(1) : 'N/A';
 
 					console.log('=== Review Completed ===');
 					console.log('Performance Metrics:', {
@@ -399,10 +339,8 @@ const App: React.FC = () => {
 				}
 
 				if (currentStats) {
-					const inputTokensToAdd =
-						currentStats.inputTokens || storeEstimatedTokens;
-					const outputTokensToAdd =
-						currentStats.outputTokens || currentStats.tokens;
+					const inputTokensToAdd = currentStats.inputTokens || storeEstimatedTokens;
+					const outputTokensToAdd = currentStats.outputTokens || currentStats.tokens;
 
 					console.log('Adding tokens:', {
 						inputTokensToAdd,
@@ -411,31 +349,19 @@ const App: React.FC = () => {
 
 					if (inputTokensToAdd > 0) {
 						addToTotalInputTokens(inputTokensToAdd);
-						console.log(
-							'Updated total input tokens (from completion):',
-							inputTokensToAdd
-						);
+						console.log('Updated total input tokens (from completion):', inputTokensToAdd);
 					}
 
 					if (outputTokensToAdd > 0) {
 						addToTotalOutputTokens(outputTokensToAdd);
-						console.log(
-							'Updated total output tokens (from completion):',
-							outputTokensToAdd
-						);
+						console.log('Updated total output tokens (from completion):', outputTokensToAdd);
 					}
 				} else {
 					// Fallback: use estimated input tokens at minimum
-					console.log(
-						'No current stats, using estimated input tokens:',
-						storeEstimatedTokens
-					);
+					console.log('No current stats, using estimated input tokens:', storeEstimatedTokens);
 					if (storeEstimatedTokens > 0) {
 						addToTotalInputTokens(storeEstimatedTokens);
-						console.log(
-							'Updated total input tokens (fallback):',
-							storeEstimatedTokens
-						);
+						console.log('Updated total input tokens (fallback):', storeEstimatedTokens);
 					}
 				}
 			} else {
@@ -522,11 +448,7 @@ const App: React.FC = () => {
 
 			if (result.success) {
 				const modelInfo =
-					configToTest.provider === 'ollama'
-						? ('version' in result ? result.version : '') ||
-							result.modelResponse ||
-							'OK'
-						: result.modelResponse || 'OK';
+					configToTest.provider === 'ollama' ? ('version' in result ? result.version : '') || result.modelResponse || 'OK' : result.modelResponse || 'OK';
 
 				setConnectionTestResult({
 					success: true,
@@ -575,11 +497,7 @@ const App: React.FC = () => {
 					onRefreshDiff={calculateTokens}
 				/>
 
-				<ProgressTracker
-					reviewStats={reviewStats}
-					estimatedInputTokens={storeEstimatedTokens}
-					reviewInProgress={appState.reviewInProgress}
-				/>
+				<ProgressTracker reviewStats={reviewStats} estimatedInputTokens={storeEstimatedTokens} reviewInProgress={appState.reviewInProgress} />
 
 				<OutputSection
 					outputContent={appState.currentOutputMarkdown}
