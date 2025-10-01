@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/layout/Navbar';
 import RepositorySection from './components/repository/RepositorySection';
 import OutputSection from './components/review/OutputSection';
@@ -165,7 +165,7 @@ const App: React.FC = () => {
 		addToTotalOutputTokens,
 	]);
 
-	const calculateTokens = async () => {
+	const calculateTokens = useCallback(async () => {
 		if (
 			!appState.currentRepoPath ||
 			!fromBranch ||
@@ -209,15 +209,6 @@ const App: React.FC = () => {
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
 		}
-	};
-
-	// Calculate input tokens when branches, repo, or prompts change
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			calculateTokens();
-		}, 500); // Debounce to avoid too many calculations
-
-		return () => clearTimeout(timer);
 	}, [
 		appState.currentRepoPath,
 		fromBranch,
@@ -226,6 +217,15 @@ const App: React.FC = () => {
 		userPrompt,
 		setStoreEstimatedTokens,
 	]);
+
+	// Calculate input tokens when branches, repo, or prompts change
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			calculateTokens();
+		}, 500); // Debounce to avoid too many calculations
+
+		return () => clearTimeout(timer);
+	}, [calculateTokens]);
 
 	const handleStartReview = async () => {
 		if (!appState.currentRepoPath || !fromBranch || !toBranch) {
@@ -586,9 +586,6 @@ const App: React.FC = () => {
 					onClearOutput={handleClearOutput}
 					onCopyOutput={handleCopyOutput}
 					onExportOutput={handleExportOutput}
-					reviewInProgress={appState.reviewInProgress}
-					reviewStats={reviewStats}
-					estimatedInputTokens={storeEstimatedTokens}
 				/>
 			</main>
 

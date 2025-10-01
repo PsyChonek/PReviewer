@@ -23,8 +23,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 	const [smoothTime, setSmoothTime] = useState(0);
 	const [smoothSpeed, setSmoothSpeed] = useState(0);
 	const startTimeRef = useRef<number | null>(null);
-	const lastTokensRef = useRef(0);
-	const lastUpdateRef = useRef(Date.now());
 
 	// Start timer when review begins
 	useEffect(() => {

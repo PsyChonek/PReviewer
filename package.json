@@ -8,7 +8,7 @@
 		"make": "electron-forge make",
 		"publish": "electron-forge publish",
 		"lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-		"lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix --quiet",
+		"lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
 		"test": "jest --config tests/jest.config.js",
 		"test:watch": "jest --config tests/jest.config.js --watch",
 		"test:coverage": "jest --config tests/jest.config.js --coverage",
@@ -16,7 +16,7 @@
 		"test:unit": "jest --config tests/jest.config.js --testPathPattern=tests/unit",
 		"test:integration": "jest --config tests/jest.config.js --testPathPattern=tests/integration",
 		"format": "prettier --check .",
-		"format:fix": "prettier --write --log-level=warn .",
+		"format:fix": "prettier --write .",
 		"check": "npm run lint:fix && npm run format:fix && npx tsc --noEmit"
 	},
 	"author": "Daniel Vazač",

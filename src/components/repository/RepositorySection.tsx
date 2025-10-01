@@ -4,6 +4,7 @@ import { formatTokenCount } from '../../utils/tokenEstimation';
 import BranchSelector from './BranchSelector';
 import GitRefreshButton from './GitRefreshButton';
 import EstimatedTokensDisplay from './EstimatedTokensDisplay';
+import DiffModal from './DiffModal';
 
 interface RepositorySectionProps {
 	onRepoPathChange: (path: string | null) => void;
@@ -31,6 +32,9 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 	const [toBranch, setToBranch] = useState<string>('');
 	const [branches, setBranches] = useState<BranchInfo[]>([]);
 	const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+	const [showDiffModal, setShowDiffModal] = useState(false);
+	const [diffContent, setDiffContent] = useState<string>('');
+	const [isLoadingDiff, setIsLoadingDiff] = useState(false);
 
 	useEffect(() => {
 		const loadBranches = async () => {
@@ -124,6 +128,30 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		fromBranch !== toBranch &&
 		!reviewInProgress;
 
+	const handleShowDiff = async () => {
+		if (!repoPath || !fromBranch || !toBranch) {
+			return;
+		}
+
+		setShowDiffModal(true);
+		setIsLoadingDiff(true);
+		setDiffContent('');
+
+		try {
+			const diff = await window.electronAPI.getGitDiff(
+				repoPath,
+				fromBranch,
+				toBranch
+			);
+			setDiffContent(diff || 'No differences found.');
+		} catch (error) {
+			console.error('Failed to load diff:', error);
+			setDiffContent(`Error loading diff: ${error}`);
+		} finally {
+			setIsLoadingDiff(false);
+		}
+	};
+
 	return (
 		<div className="card bg-base-200 shadow-xl mb-6">
 			<div className="card-body">
@@ -156,6 +184,18 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 							repoPath={repoPath}
 							onRefreshComplete={handleRefreshComplete}
 						/>
+						<button
+							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
+							onClick={handleShowDiff}
+							disabled={
+								!repoPath || !fromBranch || !toBranch || fromBranch === toBranch
+							}
+							title="Show git diff"
+							aria-label="Show git diff between selected branches"
+						>
+							<i className="fas fa-code-compare"></i>
+							Show Diff
+						</button>
 						<button
 							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
 							onClick={onRefreshDiff}
@@ -268,6 +308,15 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 					)}
 				</div>
 			</div>
+
+			<DiffModal
+				isOpen={showDiffModal}
+				onClose={() => setShowDiffModal(false)}
+				diffContent={diffContent}
+				fromBranch={fromBranch}
+				toBranch={toBranch}
+				isLoading={isLoadingDiff}
+			/>
 		</div>
 	);
 };

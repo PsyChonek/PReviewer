@@ -445,12 +445,7 @@ ipcMain.handle(
 				: targetBranch;
 
 			// Get merge base between the two branches
-			const mergeBase = await git.raw([
-				'merge-base',
-				resolvedTargetBranch,
-				resolvedBaseBranch,
-			]);
-			const mergeBaseCommit = mergeBase.trim();
+			await git.raw(['merge-base', resolvedTargetBranch, resolvedBaseBranch]);
 
 			// Get diff from target (main) to base (feature) - shows what changes are in feature branch
 			// This is equivalent to: git diff target...base

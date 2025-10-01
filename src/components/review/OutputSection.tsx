@@ -2,25 +2,12 @@ import React, { useState } from 'react';
 import { marked } from 'marked';
 import WelcomeMessage from '../layout/WelcomeMessage';
 import ActionButtons from './ActionButtons';
-import StatsDisplay from '../stats/StatsDisplay';
 
 interface OutputSectionProps {
 	outputContent: string;
 	onClearOutput: () => void;
 	onCopyOutput: () => void;
 	onExportOutput: () => void;
-	reviewInProgress: boolean;
-	reviewStats: {
-		tokens: number;
-		inputTokens: number;
-		outputTokens: number;
-		tokensPerSecond: number;
-		processingTime: number;
-		responseTime: number;
-		stage: string;
-		progress: number;
-	} | null;
-	estimatedInputTokens?: number;
 }
 
 const OutputSection: React.FC<OutputSectionProps> = ({
@@ -28,15 +15,20 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 	onClearOutput,
 	onCopyOutput,
 	onExportOutput,
-	reviewInProgress,
-	reviewStats,
-	estimatedInputTokens = 0,
 }) => {
 	const [showRaw, setShowRaw] = useState(false);
 
-	const renderMarkdown = (markdown: string) => {
+	const renderContent = (markdown: string) => {
 		if (!markdown.trim()) {
 			return <WelcomeMessage />;
+		}
+
+		if (showRaw) {
+			return (
+				<pre className="whitespace-pre-wrap font-mono text-sm bg-transparent text-base-content">
+					{markdown}
+				</pre>
+			);
 		}
 
 		return (
@@ -76,19 +68,13 @@ const OutputSection: React.FC<OutputSectionProps> = ({
 					</div>
 				</div>
 
-				<StatsDisplay
-					reviewStats={reviewStats}
-					estimatedInputTokens={estimatedInputTokens}
-					reviewInProgress={reviewInProgress}
-				/>
-
 				<div
 					className="bg-base-200 border border-base-300 rounded-lg output-text overflow-auto"
 					role="log"
 					aria-live="polite"
 					aria-label="Review output display"
 				>
-					<div className="px-6 py-4">{renderMarkdown(outputContent)}</div>
+					<div className="px-6 py-4">{renderContent(outputContent)}</div>
 				</div>
 			</div>
 		</section>

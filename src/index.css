@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @plugin "daisyui";
+@plugin "@tailwindcss/typography";
 
 /* Custom styles for the PR Reviewer app */
 .code-diff {
