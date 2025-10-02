@@ -11,7 +11,7 @@ export interface AzureOpenAIConfig extends AIProviderConfig {
 	endpoint: string;
 	apiKey: string;
 	deploymentName: string;
-	maxTokensPerChunk?: number; // Optional: override default chunk size
+	azureRateLimitTokensPerMinute?: number; // Optional: override default rate limit (default: 95k tokens/min)
 }
 
 /**
@@ -24,39 +24,43 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 	/**
 	 * Generate AI response using Azure OpenAI streaming API
 	 */
-	async generate(event: IpcMainInvokeEvent, config: AzureOpenAIConfig): Promise<string> {
+	async generate(event: IpcMainInvokeEvent, config: AzureOpenAIConfig, suppressProgress = false): Promise<string> {
 		const { endpoint, apiKey, deploymentName, prompt } = config;
 
 		try {
-			// Send initial progress
-			this.sendProgress(event, {
-				stage: 'connecting',
-				progress: 45,
-				message: 'Connecting to Azure AI service...',
-				timestamp: Date.now(),
-			});
-
 			const startTime = Date.now();
 			let totalTokens = 0;
 
-			// Send request started progress
-			this.sendProgress(event, {
-				stage: 'sending',
-				progress: 50,
-				message: 'Sending request to Azure AI model...',
-				timestamp: Date.now(),
-				modelSize: prompt.length,
-			});
+			// Send initial progress (unless suppressed for chunking)
+			if (!suppressProgress) {
+				this.sendProgress(event, {
+					stage: 'connecting',
+					progress: 45,
+					message: 'Connecting to Azure AI service...',
+					timestamp: Date.now(),
+				});
+
+				// Send request started progress
+				this.sendProgress(event, {
+					stage: 'sending',
+					progress: 50,
+					message: 'Sending request to Azure AI model...',
+					timestamp: Date.now(),
+					modelSize: prompt.length,
+				});
+			}
 
 			// Create Azure OpenAI client
 			const client = this.createClient(endpoint, apiKey, deploymentName);
 
-			this.sendProgress(event, {
-				stage: 'processing',
-				progress: 60,
-				message: 'Azure AI model is processing...',
-				timestamp: Date.now(),
-			});
+			if (!suppressProgress) {
+				this.sendProgress(event, {
+					stage: 'processing',
+					progress: 60,
+					message: 'Azure AI model is processing...',
+					timestamp: Date.now(),
+				});
+			}
 
 			// Make the streaming request to Azure OpenAI
 			const stream = await client.chat.completions.create({
@@ -87,8 +91,8 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 					responseText += delta;
 					chunkCount++;
 
-					// Send streaming progress every few chunks
-					if (chunkCount % 3 === 0) {
+					// Send streaming progress every few chunks (unless suppressed)
+					if (!suppressProgress && chunkCount % 3 === 0) {
 						const currentTime = Date.now();
 						const elapsed = (currentTime - startTime) / 1000;
 						const estimatedTokens = countTokens(responseText, 'cl100k_base');
@@ -117,19 +121,21 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 			const responseTime = Date.now() - startTime;
 			totalTokens = usage?.completion_tokens || countTokens(responseText, 'cl100k_base');
 
-			this.sendProgress(event, {
-				stage: 'complete',
-				progress: 100,
-				message: 'AI response complete',
-				timestamp: Date.now(),
-				responseTime,
-				tokens: totalTokens,
-				actualInputTokens: usage?.prompt_tokens,
-				actualOutputTokens: usage?.completion_tokens,
-				totalActualTokens: usage?.total_tokens,
-				streamingContent: responseText,
-				isStreaming: false,
-			});
+			if (!suppressProgress) {
+				this.sendProgress(event, {
+					stage: 'complete',
+					progress: 100,
+					message: 'AI response complete',
+					timestamp: Date.now(),
+					responseTime,
+					tokens: totalTokens,
+					actualInputTokens: usage?.prompt_tokens,
+					actualOutputTokens: usage?.completion_tokens,
+					totalActualTokens: usage?.total_tokens,
+					streamingContent: responseText,
+					isStreaming: false,
+				});
+			}
 
 			return responseText;
 		} catch (error) {
@@ -148,12 +154,25 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 
 	/**
 	 * Generate AI response with automatic chunking for large diffs
-	 * Splits prompts that exceed rate limits and combines results
+	 * Processes chunks sequentially with rate limiting (100k tokens/minute)
 	 */
 	async generateWithChunking(event: IpcMainInvokeEvent, config: AzureOpenAIConfig, diff: string): Promise<string> {
+		// Calculate base prompt tokens once (shared across all chunks)
+		const basePromptTokens = countTokens(config.prompt, 'cl100k_base');
+
+		// Calculate chunk context overhead (the "Part X of Y" text added to each chunk)
+		const estimatedChunkContextTokens = 100; // Conservative estimate for chunk header text
+
+		// Configure chunking: each chunk should be AT the rate limit
+		// Rate limit = base prompt + diff content + chunk context overhead
+		// So: diff content per chunk = rate limit - base prompt - overhead
+		const rateLimitTokens = config.azureRateLimitTokensPerMinute || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk;
+		const maxDiffTokensPerChunk = rateLimitTokens - basePromptTokens - estimatedChunkContextTokens;
+
 		const chunkConfig = {
 			...DEFAULT_CHUNK_CONFIG,
-			maxTokensPerChunk: config.maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
+			maxTokensPerChunk: maxDiffTokensPerChunk,
+			systemPromptTokens: 0, // Already accounted for above
 		};
 
 		// Check if chunking is needed
@@ -177,27 +196,57 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 		this.sendProgress(event, {
 			stage: 'chunking',
 			progress: 10,
-			message: `Processing ${chunks.length} chunks (${chunks.reduce((sum, c) => sum + c.fileCount, 0)} files total)...`,
+			message: `Processing ${chunks.length} chunks sequentially (${chunks.reduce((sum, c) => sum + c.fileCount, 0)} files total, rate limit: ${(config.azureRateLimitTokensPerMinute || 95000).toLocaleString()} tokens/min)...`,
 			timestamp: Date.now(),
 		});
 
-		// Process each chunk
+		// Track rate limiting
+		const RATE_LIMIT_TOKENS = config.azureRateLimitTokensPerMinute || 95000; // Default: 95k to leave 5k margin from Azure's 100k limit
+		const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+		let tokensInCurrentWindow = 0;
+		let windowStartTime = Date.now();
+
+		// Process chunks sequentially with rate limiting
 		const results: string[] = [];
 		let totalProcessingTime = 0;
+		let cumulativeInputTokens = 0;
 
 		for (let i = 0; i < chunks.length; i++) {
 			const chunk = chunks[i];
+
+			// Calculate total tokens for this request (base prompt + chunk content)
+			const chunkTotalTokens = basePromptTokens + chunk.tokenCount;
+
+			// Check if we need to wait for rate limit window
+			const elapsedSinceWindowStart = Date.now() - windowStartTime;
+			if (tokensInCurrentWindow + chunkTotalTokens > RATE_LIMIT_TOKENS && elapsedSinceWindowStart < RATE_LIMIT_WINDOW_MS) {
+				const waitTime = RATE_LIMIT_WINDOW_MS - elapsedSinceWindowStart;
+				this.sendProgress(event, {
+					stage: 'rate-limit-wait',
+					progress: 10 + (i / chunks.length) * 80,
+					message: `Rate limit: waiting ${(waitTime / 1000).toFixed(0)}s before chunk ${i + 1}/${chunks.length} (${tokensInCurrentWindow.toLocaleString()}/${RATE_LIMIT_TOKENS.toLocaleString()} tokens used)...`,
+					timestamp: Date.now(),
+					actualInputTokens: cumulativeInputTokens,
+				});
+
+				await this.delay(waitTime);
+
+				// Reset window
+				windowStartTime = Date.now();
+				tokensInCurrentWindow = 0;
+			}
 
 			// Update progress for this chunk
 			this.sendProgress(event, {
 				stage: 'processing-chunk',
 				progress: 10 + (i / chunks.length) * 80,
-				message: `Processing chunk ${i + 1}/${chunks.length} (${chunk.fileCount} files, ${chunk.tokenCount.toLocaleString()} tokens)...`,
+				message: `Processing chunk ${i + 1}/${chunks.length} (${chunk.fileCount} files, ${chunkTotalTokens.toLocaleString()} tokens)...`,
 				timestamp: Date.now(),
+				actualInputTokens: cumulativeInputTokens,
 			});
 
 			try {
-				// Build prompt for this chunk with context
+				// Build prompt for this chunk
 				const chunkPrompt = this.buildChunkPrompt(config.prompt, chunk, i, chunks.length);
 
 				// Generate response for this chunk
@@ -207,22 +256,19 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 				};
 
 				const startTime = Date.now();
-				const response = await this.generate(event, chunkConfig);
+				const response = await this.generate(event, chunkConfig, true); // Suppress individual chunk progress
 				const duration = Date.now() - startTime;
 				totalProcessingTime += duration;
 
 				results.push(response);
 
-				// Add delay between chunks to respect rate limits
-				if (i < chunks.length - 1) {
-					const delayMs = 1000; // 1 second between chunks
-					this.sendProgress(event, {
-						stage: 'rate-limit-wait',
-						progress: 10 + ((i + 1) / chunks.length) * 80,
-						message: `Chunk ${i + 1}/${chunks.length} complete. Waiting before next chunk...`,
-						timestamp: Date.now(),
-					});
-					await this.delay(delayMs);
+				// Update rate limit tracking with full token count
+				tokensInCurrentWindow += chunkTotalTokens;
+				cumulativeInputTokens += chunkTotalTokens;
+
+				// Small delay between chunks within same window
+				if (i < chunks.length - 1 && tokensInCurrentWindow < RATE_LIMIT_TOKENS) {
+					await this.delay(1000);
 				}
 			} catch (error) {
 				const err = error as Error & { status?: number };
@@ -234,9 +280,14 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 						progress: 10 + (i / chunks.length) * 80,
 						message: `Rate limit hit on chunk ${i + 1}. Waiting 60 seconds...`,
 						timestamp: Date.now(),
+						actualInputTokens: cumulativeInputTokens,
 					});
 
 					await this.delay(60000); // Wait 60 seconds
+
+					// Reset window and retry
+					windowStartTime = Date.now();
+					tokensInCurrentWindow = 0;
 					i--; // Retry this chunk
 					continue;
 				}
@@ -262,6 +313,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 			message: `Review complete (${chunks.length} chunks processed in ${(totalProcessingTime / 1000).toFixed(1)}s)`,
 			timestamp: Date.now(),
 			responseTime: totalProcessingTime,
+			actualInputTokens: cumulativeInputTokens,
 		});
 
 		return combinedResult;
@@ -307,7 +359,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 	 * Delay helper for rate limiting
 	 */
 	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/**

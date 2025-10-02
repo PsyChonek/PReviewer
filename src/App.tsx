@@ -6,8 +6,6 @@ import ConfigModal from './components/config/ConfigModal';
 import ProgressTracker from './components/review/ProgressTracker';
 import { AppState, AIProviderConfig } from './types';
 import { buildPrompt } from './utils/prompts';
-import { estimateTokens, countTokens } from './utils/tokenEstimation';
-import { needsChunking, DEFAULT_CHUNK_CONFIG } from './utils/diffChunker';
 import { useTokenStore } from './store/tokenStore';
 import { useConfigStore } from './store/configStore';
 
@@ -22,7 +20,7 @@ const App: React.FC = () => {
 		estimatedInputTokens: storeEstimatedTokens,
 	} = useTokenStore();
 
-	const { aiConfig, basePrompt, userPrompt, debugMode, maxTokensPerChunk, enableAutoChunking } = useConfigStore();
+	const { aiConfig, basePrompt, userPrompt, debugMode, azureRateLimitTokensPerMinute, enableAutoChunking } = useConfigStore();
 	const [appState, setAppState] = useState<AppState>({
 		currentRepoPath: null,
 		reviewInProgress: false,
@@ -51,6 +49,11 @@ const App: React.FC = () => {
 	} | null>(null);
 
 	const [estimatedInputTokens, setEstimatedInputTokens] = useState<number>(0);
+	const [chunkingInfo, setChunkingInfo] = useState<{
+		willChunk: boolean;
+		chunkCount: number;
+	}>({ willChunk: false, chunkCount: 0 });
+	const [isCalculatingTokens, setIsCalculatingTokens] = useState<boolean>(false);
 
 	// Set up progress listeners with access to current estimatedInputTokens
 	useEffect(() => {
@@ -150,8 +153,12 @@ const App: React.FC = () => {
 			});
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
+			setChunkingInfo({ willChunk: false, chunkCount: 0 });
+			setIsCalculatingTokens(false);
 			return;
 		}
+
+		setIsCalculatingTokens(true);
 
 		try {
 			console.log('calculateInputTokens: Getting diff...');
@@ -160,23 +167,31 @@ const App: React.FC = () => {
 				console.log('calculateInputTokens: No diff found');
 				setEstimatedInputTokens(0);
 				setStoreEstimatedTokens(0);
+				setChunkingInfo({ willChunk: false, chunkCount: 0 });
 				return;
 			}
 
-			console.log('calculateInputTokens: Building prompt...');
-			const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+			console.log('calculateInputTokens: Calculating tokens in main process...');
+			const result = await window.electronAPI.calculateTokensWithChunking(diff, basePrompt, userPrompt, aiConfig.provider, {
+				maxTokensPerChunk: azureRateLimitTokensPerMinute,
+			});
 
-			console.log('calculateInputTokens: Estimating tokens...');
-			const tokens = estimateTokens(fullPrompt);
-			console.log('calculateInputTokens: Estimated tokens:', tokens);
-			setEstimatedInputTokens(tokens);
-			setStoreEstimatedTokens(tokens);
+			console.log('calculateInputTokens: Result:', result);
+			setEstimatedInputTokens(result.estimatedTokens);
+			setStoreEstimatedTokens(result.estimatedTokens);
+			setChunkingInfo({
+				willChunk: result.willChunk,
+				chunkCount: result.chunkCount,
+			});
 		} catch (error) {
 			console.error('Error calculating input tokens:', error);
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
+			setChunkingInfo({ willChunk: false, chunkCount: 0 });
+		} finally {
+			setIsCalculatingTokens(false);
 		}
-	}, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt, setStoreEstimatedTokens]);
+	}, [appState.currentRepoPath, fromBranch, toBranch, basePrompt, userPrompt, aiConfig.provider, azureRateLimitTokensPerMinute, setStoreEstimatedTokens]);
 
 	// Calculate input tokens when branches, repo, or prompts change
 	useEffect(() => {
@@ -238,7 +253,6 @@ const App: React.FC = () => {
 			if (debugMode) {
 				const diffLines = diff.split('\n').length;
 				const diffSize = new TextEncoder().encode(diff).length;
-				const estimatedTokens = estimateTokens(fullPrompt);
 
 				console.log('Diff Metadata:', {
 					sizeBytes: diffSize,
@@ -247,7 +261,7 @@ const App: React.FC = () => {
 					characters: diff.length,
 				});
 				console.log('Token Estimation:', {
-					estimated: estimatedTokens,
+					estimated: storeEstimatedTokens,
 					promptLength: fullPrompt.length,
 					basePromptLength: basePrompt.length,
 					userPromptLength: userPrompt.length,
@@ -275,19 +289,15 @@ const App: React.FC = () => {
 					});
 					result = { success: true, content: response };
 				} else {
-					// Check if Azure diff needs chunking
-					const chunkConfig = {
-						...DEFAULT_CHUNK_CONFIG,
-						maxTokensPerChunk: maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
-					};
-					const diffTokens = countTokens(diff, 'cl100k_base');
-					const shouldChunk = (enableAutoChunking !== false) && needsChunking(diff, chunkConfig);
+					// Use chunking info from already-calculated state
+					const shouldChunk = chunkingInfo.willChunk;
 
 					if (debugMode) {
 						console.log('Diff Token Analysis:', {
-							diffTokens,
+							estimatedTokens: storeEstimatedTokens,
 							shouldChunk,
-							maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+							chunkCount: chunkingInfo.chunkCount,
+							azureRateLimitTokensPerMinute: azureRateLimitTokensPerMinute,
 							autoChunkingEnabled: enableAutoChunking !== false,
 						});
 					}
@@ -300,7 +310,7 @@ const App: React.FC = () => {
 							deploymentName: aiConfig.azure.deployment,
 							prompt: buildPrompt('', basePrompt, userPrompt), // Base prompt without diff
 							diff: diff, // Pass raw diff for chunking
-							maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+							azureRateLimitTokensPerMinute: azureRateLimitTokensPerMinute,
 						});
 						result = { success: true, content: response };
 					} else {
@@ -527,9 +537,12 @@ const App: React.FC = () => {
 					onOpenConfig={handleOpenConfig}
 					estimatedInputTokens={storeEstimatedTokens}
 					onRefreshDiff={calculateTokens}
+					chunkingInfo={chunkingInfo}
+					isCalculatingTokens={isCalculatingTokens}
+					rateLimitPerMinute={azureRateLimitTokensPerMinute}
 				/>
 
-				<ProgressTracker reviewStats={reviewStats} estimatedInputTokens={storeEstimatedTokens} reviewInProgress={appState.reviewInProgress} />
+				<ProgressTracker reviewStats={reviewStats} reviewInProgress={appState.reviewInProgress} chunkingInfo={chunkingInfo} />
 
 				<OutputSection
 					outputContent={appState.currentOutputMarkdown}

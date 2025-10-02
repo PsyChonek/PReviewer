@@ -28,6 +28,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 		setUserPrompt,
 		debugMode: savedDebugMode,
 		setDebugMode,
+		azureRateLimitTokensPerMinute: savedAzureRateLimitTokensPerMinute,
+		setAzureRateLimitTokensPerMinute,
+		enableAutoChunking: savedEnableAutoChunking,
+		setEnableAutoChunking,
 	} = useConfigStore();
 	const modalBoxRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +40,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 	const [localBasePrompt, setLocalBasePrompt] = useState(savedBasePrompt);
 	const [localUserPrompt, setLocalUserPrompt] = useState(savedUserPrompt);
 	const [localDebugMode, setLocalDebugMode] = useState(savedDebugMode);
+	const [localAzureRateLimitTokensPerMinute, setLocalAzureRateLimitTokensPerMinute] = useState(savedAzureRateLimitTokensPerMinute);
+	const [localEnableAutoChunking, setLocalEnableAutoChunking] = useState(savedEnableAutoChunking);
 
 	// Reset local state when modal opens
 	useEffect(() => {
@@ -44,8 +50,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 			setLocalBasePrompt(savedBasePrompt);
 			setLocalUserPrompt(savedUserPrompt);
 			setLocalDebugMode(savedDebugMode);
+			setLocalAzureRateLimitTokensPerMinute(savedAzureRateLimitTokensPerMinute);
+			setLocalEnableAutoChunking(savedEnableAutoChunking);
 		}
-	}, [isOpen, savedAiConfig, savedBasePrompt, savedUserPrompt, savedDebugMode]);
+	}, [isOpen, savedAiConfig, savedBasePrompt, savedUserPrompt, savedDebugMode, savedAzureRateLimitTokensPerMinute, savedEnableAutoChunking]);
 
 	const handleSave = () => {
 		// Save all changes to Zustand store
@@ -53,6 +61,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 		setBasePrompt(localBasePrompt);
 		setUserPrompt(localUserPrompt);
 		setDebugMode(localDebugMode);
+		setAzureRateLimitTokensPerMinute(localAzureRateLimitTokensPerMinute);
+		setEnableAutoChunking(localEnableAutoChunking);
 		onClose();
 	};
 
@@ -132,6 +142,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 							setAiConfig={setLocalAiConfig}
 							onTestConnection={handleTestConnection}
 							testingConnection={testingConnection}
+							azureRateLimitTokensPerMinute={localAzureRateLimitTokensPerMinute}
+							setAzureRateLimitTokensPerMinute={setLocalAzureRateLimitTokensPerMinute}
+							enableAutoChunking={localEnableAutoChunking}
+							setEnableAutoChunking={setLocalEnableAutoChunking}
 						/>
 					)}
 

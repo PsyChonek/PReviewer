@@ -6,9 +6,22 @@ interface AzureSettingsProps {
 	setAiConfig: (config: AIProviderConfig) => void;
 	onTestConnection: () => void;
 	testingConnection: boolean;
+	azureRateLimitTokensPerMinute: number;
+	setAzureRateLimitTokensPerMinute: (tokens: number) => void;
+	enableAutoChunking: boolean;
+	setEnableAutoChunking: (enabled: boolean) => void;
 }
 
-const AzureSettings: React.FC<AzureSettingsProps> = ({ aiConfig, setAiConfig, onTestConnection, testingConnection }) => {
+const AzureSettings: React.FC<AzureSettingsProps> = ({
+	aiConfig,
+	setAiConfig,
+	onTestConnection,
+	testingConnection,
+	azureRateLimitTokensPerMinute,
+	setAzureRateLimitTokensPerMinute,
+	enableAutoChunking,
+	setEnableAutoChunking,
+}) => {
 	return (
 		<div>
 			<h4 className="text-md font-semibold mb-3">Azure AI Settings</h4>
@@ -69,6 +82,40 @@ const AzureSettings: React.FC<AzureSettingsProps> = ({ aiConfig, setAiConfig, on
 							})
 						}
 					/>
+				</div>
+			</div>
+
+			<div className="divider mt-6 mb-4">Rate Limit & Chunking</div>
+
+			<div className="grid grid-cols-1 gap-4">
+				<div className="form-control">
+					<label className="label cursor-pointer justify-start gap-3">
+						<input type="checkbox" className="toggle toggle-primary" checked={enableAutoChunking} onChange={(e) => setEnableAutoChunking(e.target.checked)} />
+						<div>
+							<span className="label-text font-medium">Enable Auto-Chunking</span>
+							<p className="text-xs text-base-content/70 mt-1">Automatically split large diffs into chunks to avoid Azure rate limits (100k tokens/min)</p>
+						</div>
+					</label>
+				</div>
+
+				<div className="form-control">
+					<label className="label">
+						<span className="label-text font-medium">Rate Limit (Tokens/Minute)</span>
+					</label>
+					<input
+						type="number"
+						className="input input-bordered w-full"
+						value={azureRateLimitTokensPerMinute}
+						onChange={(e) => setAzureRateLimitTokensPerMinute(Number(e.target.value))}
+						min={10000}
+						max={100000}
+						step={5000}
+					/>
+					<label className="label">
+						<span className="label-text-alt text-base-content/70">
+							Recommended: 95,000 tokens/min (leaves 5k margin from Azure's 100k limit). Lower if you have a restricted tier.
+						</span>
+					</label>
 				</div>
 			</div>
 

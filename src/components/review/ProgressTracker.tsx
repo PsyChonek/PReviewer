@@ -11,11 +11,14 @@ interface ProgressTrackerProps {
 		stage: string;
 		progress: number;
 	} | null;
-	estimatedInputTokens: number;
 	reviewInProgress: boolean;
+	chunkingInfo?: {
+		willChunk: boolean;
+		chunkCount: number;
+	};
 }
 
-const ProgressTracker: React.FC<ProgressTrackerProps> = ({ reviewStats, estimatedInputTokens, reviewInProgress }) => {
+const ProgressTracker: React.FC<ProgressTrackerProps> = ({ reviewStats, reviewInProgress, chunkingInfo }) => {
 	const [smoothTime, setSmoothTime] = useState(0);
 	const [smoothSpeed, setSmoothSpeed] = useState(0);
 	const startTimeRef = useRef<number | null>(null);
@@ -84,14 +87,21 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ reviewStats, estimate
 							</div>
 						)}
 
+						{chunkingInfo?.willChunk && (
+							<div className="alert alert-info py-2 text-xs">
+								<i className="fas fa-layer-group"></i>
+								<span>Processing in {chunkingInfo.chunkCount} chunks</span>
+							</div>
+						)}
+
 						<div className="grid grid-cols-2 gap-4 text-xs">
 							<div>
-								<span className="text-base-content/70">Input Tokens:</span>
-								<div className="font-mono">{reviewStats?.inputTokens || estimatedInputTokens}</div>
+								<span className="text-base-content/70">Tokens Sent:</span>
+								<div className="font-mono">{(reviewStats?.inputTokens || 0).toLocaleString()}</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Output Tokens:</span>
-								<div className="font-mono">{reviewStats?.outputTokens || 0}</div>
+								<div className="font-mono">{(reviewStats?.outputTokens || 0).toLocaleString()}</div>
 							</div>
 							<div>
 								<span className="text-base-content/70">Speed:</span>

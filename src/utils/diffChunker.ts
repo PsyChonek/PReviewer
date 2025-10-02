@@ -110,20 +110,27 @@ function groupFilesIntoChunks(files: DiffFile[], config: ChunkConfig): DiffChunk
 	let currentChunkTokens = 0;
 
 	for (const file of files) {
-		// If adding this file would exceed the limit, create a new chunk
-		if (currentChunkFiles.length > 0 && currentChunkTokens + file.tokenCount > effectiveMaxTokens) {
-			// Save current chunk
-			chunks.push(createChunk(currentChunkFiles, currentChunkTokens, chunks.length, 0));
+		// Check if file itself exceeds the limit - must split it
+		if (file.tokenCount > effectiveMaxTokens) {
+			// Save current chunk if it has files
+			if (currentChunkFiles.length > 0) {
+				chunks.push(createChunk(currentChunkFiles, currentChunkTokens, chunks.length, 0));
+				currentChunkFiles = [];
+				currentChunkTokens = 0;
+			}
 
-			// Start new chunk
-			currentChunkFiles = [file];
-			currentChunkTokens = file.tokenCount;
-		} else if (file.tokenCount > effectiveMaxTokens) {
 			// Single file exceeds limit - split it
 			const fileChunks = splitLargeFile(file, effectiveMaxTokens, config.encoding);
 			for (const fileChunk of fileChunks) {
 				chunks.push(createChunk([fileChunk], fileChunk.tokenCount, chunks.length, 0));
 			}
+		} else if (currentChunkFiles.length > 0 && currentChunkTokens + file.tokenCount > effectiveMaxTokens) {
+			// Adding this file would exceed the limit - save current chunk and start new one
+			chunks.push(createChunk(currentChunkFiles, currentChunkTokens, chunks.length, 0));
+
+			// Start new chunk with this file
+			currentChunkFiles = [file];
+			currentChunkTokens = file.tokenCount;
 		} else {
 			// Add file to current chunk
 			currentChunkFiles.push(file);
@@ -149,8 +156,8 @@ function groupFilesIntoChunks(files: DiffFile[], config: ChunkConfig): DiffChunk
  * Create a chunk from a group of files
  */
 function createChunk(files: DiffFile[], tokenCount: number, chunkIndex: number, totalChunks: number): DiffChunk {
-	const content = files.map(f => f.content).join('\n\n');
-	const fileNames = files.map(f => f.fileName);
+	const content = files.map((f) => f.content).join('\n\n');
+	const fileNames = files.map((f) => f.fileName);
 
 	return {
 		content,
@@ -226,14 +233,16 @@ export function chunkDiff(diff: string, config: ChunkConfig = DEFAULT_CHUNK_CONF
 	const files = parseDiffIntoFiles(diff);
 
 	if (files.length === 0) {
-		return [{
-			content: diff,
-			tokenCount: countTokens(diff, config.encoding),
-			fileCount: 0,
-			chunkIndex: 0,
-			totalChunks: 1,
-			files: [],
-		}];
+		return [
+			{
+				content: diff,
+				tokenCount: countTokens(diff, config.encoding),
+				fileCount: 0,
+				chunkIndex: 0,
+				totalChunks: 1,
+				files: [],
+			},
+		];
 	}
 
 	// Calculate token count for each file
@@ -248,7 +257,10 @@ export function chunkDiff(diff: string, config: ChunkConfig = DEFAULT_CHUNK_CONF
 /**
  * Get chunk metadata without creating full chunks (for preview)
  */
-export function getChunkMetadata(diff: string, config: ChunkConfig = DEFAULT_CHUNK_CONFIG): {
+export function getChunkMetadata(
+	diff: string,
+	config: ChunkConfig = DEFAULT_CHUNK_CONFIG
+): {
 	needsChunking: boolean;
 	totalTokens: number;
 	estimatedChunks: number;

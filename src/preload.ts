@@ -31,8 +31,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	callAzureAI: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string }): Promise<string> =>
 		ipcRenderer.invoke('call-azure-ai-api', config),
 
-	callAzureAIChunked: (config: { endpoint: string; apiKey: string; deploymentName: string; prompt: string; diff: string; maxTokensPerChunk?: number }): Promise<string> =>
-		ipcRenderer.invoke('call-azure-ai-api-chunked', config),
+	callAzureAIChunked: (config: {
+		endpoint: string;
+		apiKey: string;
+		deploymentName: string;
+		prompt: string;
+		diff: string;
+		azureRateLimitTokensPerMinute?: number;
+	}): Promise<string> => ipcRenderer.invoke('call-azure-ai-api-chunked', config),
+
+	calculateTokensWithChunking: (
+		diff: string,
+		basePrompt: string,
+		userPrompt: string,
+		provider: 'ollama' | 'azure',
+		chunkConfig?: { maxTokensPerChunk?: number; encoding?: 'cl100k_base' | 'o200k_base'; systemPromptTokens?: number }
+	): Promise<{
+		estimatedTokens: number;
+		willChunk: boolean;
+		chunkCount: number;
+	}> => ipcRenderer.invoke('calculate-tokens-with-chunking', diff, basePrompt, userPrompt, provider, chunkConfig),
 
 	testAzureAIConnection: (config: {
 		endpoint: string;

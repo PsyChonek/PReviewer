@@ -15,6 +15,12 @@ interface RepositorySectionProps {
 	onOpenConfig: () => void;
 	estimatedInputTokens: number;
 	onRefreshDiff: () => void;
+	chunkingInfo?: {
+		willChunk: boolean;
+		chunkCount: number;
+	};
+	isCalculatingTokens?: boolean;
+	rateLimitPerMinute?: number;
 }
 
 const RepositorySection: React.FC<RepositorySectionProps> = ({
@@ -26,6 +32,9 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 	onOpenConfig,
 	estimatedInputTokens,
 	onRefreshDiff,
+	chunkingInfo,
+	isCalculatingTokens = false,
+	rateLimitPerMinute,
 }) => {
 	const [repoPath, setRepoPath] = useState<string | null>(null);
 	const [fromBranch, setFromBranch] = useState<string>('');
@@ -118,7 +127,19 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		}
 	};
 
-	const canStartReview = repoPath && fromBranch && toBranch && fromBranch !== toBranch && !reviewInProgress;
+	const canStartReview = repoPath && fromBranch && toBranch && fromBranch !== toBranch && !reviewInProgress && estimatedInputTokens > 0 && !isCalculatingTokens;
+
+	// Debug logging
+	useEffect(() => {
+		console.log('RepositorySection state:', {
+			repoPath,
+			fromBranch,
+			toBranch,
+			estimatedInputTokens,
+			isCalculatingTokens,
+			canStartReview,
+		});
+	}, [repoPath, fromBranch, toBranch, estimatedInputTokens, isCalculatingTokens, canStartReview]);
 
 	const handleShowDiff = async () => {
 		if (!repoPath || !fromBranch || !toBranch) {
@@ -164,14 +185,23 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 							Show Diff
 						</button>
 						<button
-							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch ? 'btn-disabled' : ''}`}
+							className={`btn btn-outline btn-sm ${!repoPath || !fromBranch || !toBranch || fromBranch === toBranch || isCalculatingTokens ? 'btn-disabled' : ''}`}
 							onClick={onRefreshDiff}
-							disabled={!repoPath || !fromBranch || !toBranch || fromBranch === toBranch}
+							disabled={!repoPath || !fromBranch || !toBranch || fromBranch === toBranch || isCalculatingTokens}
 							title="Recalculate diff and token estimation"
 							aria-label="Recalculate diff and token estimation"
 						>
-							<i className="fas fa-calculator"></i>
-							Recalculate
+							{isCalculatingTokens ? (
+								<>
+									<span className="loading loading-spinner loading-sm"></span>
+									Calculating...
+								</>
+							) : (
+								<>
+									<i className="fas fa-calculator"></i>
+									Recalculate
+								</>
+							)}
 						</button>
 						<button className="btn btn-outline btn-sm" onClick={onOpenConfig} title="Open Configuration" aria-label="Open configuration settings">
 							<i className="fas fa-cog"></i>
@@ -233,7 +263,39 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 					</div>
 				</div>
 
-				<EstimatedTokensDisplay estimatedInputTokens={estimatedInputTokens} canStartReview={canStartReview} formatTokenCount={formatTokenCount} />
+				{isCalculatingTokens ? (
+					<div className="alert alert-info mt-4">
+						<span className="loading loading-spinner loading-md"></span>
+						<div>
+							<h3 className="font-bold text-lg">Calculating Tokens...</h3>
+							<div className="text-sm">Analyzing diff and estimating token count</div>
+						</div>
+					</div>
+				) : repoPath && fromBranch && toBranch && fromBranch !== toBranch && estimatedInputTokens === 0 && !reviewInProgress ? (
+					<div className="alert alert-warning mt-4">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth="2"
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+							/>
+						</svg>
+						<div>
+							<h3 className="font-bold text-lg">No Differences Found</h3>
+							<div className="text-sm">The selected branches have no differences, or the diff could not be calculated.</div>
+						</div>
+					</div>
+				) : (
+					<EstimatedTokensDisplay
+						estimatedInputTokens={estimatedInputTokens}
+						canStartReview={canStartReview}
+						formatTokenCount={formatTokenCount}
+						willChunk={chunkingInfo?.willChunk}
+						chunkCount={chunkingInfo?.chunkCount}
+						rateLimitPerMinute={rateLimitPerMinute}
+					/>
+				)}
 
 				<div className="card-actions justify-center mt-6">
 					{!reviewInProgress ? (

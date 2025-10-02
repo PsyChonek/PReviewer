@@ -54,7 +54,7 @@ const DiffModal: React.FC<DiffModalProps> = ({ isOpen, onClose, diffContent, fro
 						<i className="fas fa-copy"></i>
 						Copy
 					</button>
-					<button className="btn btn-primary" onClick={onClose}>
+					<button className="btn btn-primary btn-sm" onClick={onClose}>
 						Close
 					</button>
 				</div>

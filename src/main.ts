@@ -463,6 +463,85 @@ ipcMain.handle('get-git-diff', async (_event: IpcMainInvokeEvent, repoPath: stri
 const ollamaProvider = new OllamaProvider();
 const azureProvider = new AzureOpenAIProvider();
 
+// Import token utilities
+import { buildPrompt } from './utils/prompts';
+import { countTokens } from './utils/tokenEstimation';
+import { needsChunking, DEFAULT_CHUNK_CONFIG, ChunkConfig } from './utils/diffChunker';
+
+// IPC handler for calculating tokens with chunking info
+ipcMain.handle(
+	'calculate-tokens-with-chunking',
+	async (
+		_event: IpcMainInvokeEvent,
+		diff: string,
+		basePrompt: string,
+		userPrompt: string,
+		provider: 'ollama' | 'azure',
+		chunkConfig?: Partial<ChunkConfig>
+	): Promise<{
+		estimatedTokens: number;
+		willChunk: boolean;
+		chunkCount: number;
+	}> => {
+		const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+		const estimatedTokens = countTokens(fullPrompt, 'cl100k_base');
+
+		// Only calculate chunking for Azure
+		if (provider === 'azure') {
+			// Calculate base prompt tokens (same logic as generateWithChunking)
+			const basePromptOnly = buildPrompt('', basePrompt, userPrompt);
+			const basePromptTokens = countTokens(basePromptOnly, 'cl100k_base');
+
+			// Calculate chunk context overhead
+			const estimatedChunkContextTokens = 100;
+
+			// Configure chunking the same way as the actual generation
+			// Each chunk should be AT the rate limit
+			const rateLimitTokens = chunkConfig?.maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk;
+			const maxDiffTokensPerChunk = rateLimitTokens - basePromptTokens - estimatedChunkContextTokens;
+
+			console.log('[Chunking Calculation]', {
+				rateLimitTokens,
+				basePromptTokens,
+				estimatedChunkContextTokens,
+				maxDiffTokensPerChunk,
+				diffTokens: countTokens(diff, 'cl100k_base'),
+			});
+
+			const config: ChunkConfig = {
+				...DEFAULT_CHUNK_CONFIG,
+				maxTokensPerChunk: maxDiffTokensPerChunk,
+				systemPromptTokens: 0, // Already accounted for in maxDiffTokensPerChunk calculation
+			};
+
+			const willChunk = needsChunking(diff, config);
+
+			if (willChunk) {
+				// Simple calculation: total tokens / rate limit = number of chunks
+				const chunkCount = Math.ceil(estimatedTokens / rateLimitTokens);
+
+				console.log('[Chunking Result]', {
+					estimatedTokens,
+					rateLimitTokens,
+					chunkCount,
+				});
+
+				return {
+					estimatedTokens,
+					willChunk: true,
+					chunkCount,
+				};
+			}
+		}
+
+		return {
+			estimatedTokens,
+			willChunk: false,
+			chunkCount: 0,
+		};
+	}
+);
+
 // IPC handlers for Ollama API
 ipcMain.handle('call-ollama-api', async (event: IpcMainInvokeEvent, config: OllamaConfig): Promise<string> => {
 	return ollamaProvider.generate(event, config);

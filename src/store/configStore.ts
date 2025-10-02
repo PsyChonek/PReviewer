@@ -18,14 +18,21 @@ interface ConfigState {
 	debugMode: boolean;
 	setDebugMode: (debug: boolean) => void;
 
-	// Chunking settings
-	maxTokensPerChunk: number;
-	setMaxTokensPerChunk: (tokens: number) => void;
+	// Azure rate limiting settings
+	azureRateLimitTokensPerMinute: number;
+	setAzureRateLimitTokensPerMinute: (tokens: number) => void;
 	enableAutoChunking: boolean;
 	setEnableAutoChunking: (enabled: boolean) => void;
 
 	// Bulk operations
-	updateConfig: (config: { aiConfig?: AIProviderConfig; basePrompt?: string; userPrompt?: string; debugMode?: boolean; maxTokensPerChunk?: number; enableAutoChunking?: boolean }) => void;
+	updateConfig: (config: {
+		aiConfig?: AIProviderConfig;
+		basePrompt?: string;
+		userPrompt?: string;
+		debugMode?: boolean;
+		azureRateLimitTokensPerMinute?: number;
+		enableAutoChunking?: boolean;
+	}) => void;
 
 	resetPrompts: () => void;
 }
@@ -51,7 +58,7 @@ export const useConfigStore = create<ConfigState>()(
 			basePrompt: getDefaultPrompts().basePrompt,
 			userPrompt: getDefaultPrompts().userPrompt,
 			debugMode: false,
-			maxTokensPerChunk: 80000, // Default: 80k tokens per chunk
+			azureRateLimitTokensPerMinute: 95000, // Default: 95k tokens/minute (Azure limit is 100k)
 			enableAutoChunking: true, // Auto-chunk by default for Azure
 
 			// AI Config actions
@@ -64,8 +71,8 @@ export const useConfigStore = create<ConfigState>()(
 			// Debug actions
 			setDebugMode: (debug) => set({ debugMode: debug }),
 
-			// Chunking actions
-			setMaxTokensPerChunk: (tokens) => set({ maxTokensPerChunk: tokens }),
+			// Azure rate limiting actions
+			setAzureRateLimitTokensPerMinute: (tokens) => set({ azureRateLimitTokensPerMinute: tokens }),
 			setEnableAutoChunking: (enabled) => set({ enableAutoChunking: enabled }),
 
 			// Bulk update
@@ -91,7 +98,7 @@ export const useConfigStore = create<ConfigState>()(
 				basePrompt: state.basePrompt,
 				userPrompt: state.userPrompt,
 				debugMode: state.debugMode,
-				maxTokensPerChunk: state.maxTokensPerChunk,
+				azureRateLimitTokensPerMinute: state.azureRateLimitTokensPerMinute,
 				enableAutoChunking: state.enableAutoChunking,
 			}),
 		}

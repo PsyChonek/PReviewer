@@ -11,7 +11,7 @@ export interface ReviewRequest {
 	userPrompt: string;
 	aiConfig: AIProviderConfig;
 	debugMode?: boolean;
-	maxTokensPerChunk?: number;
+	azureRateLimitTokensPerMinute?: number;
 	enableAutoChunking?: boolean;
 }
 
@@ -125,10 +125,10 @@ export class ReviewService {
 					// Check if Azure diff needs chunking
 					const chunkConfig = {
 						...DEFAULT_CHUNK_CONFIG,
-						maxTokensPerChunk: request.maxTokensPerChunk || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
+						maxTokensPerChunk: request.azureRateLimitTokensPerMinute || DEFAULT_CHUNK_CONFIG.maxTokensPerChunk,
 					};
 					const diffTokens = countTokens(diff, 'cl100k_base');
-					const shouldChunk = (request.enableAutoChunking !== false) && needsChunking(diff, chunkConfig);
+					const shouldChunk = request.enableAutoChunking !== false && needsChunking(diff, chunkConfig);
 
 					if (request.debugMode) {
 						console.log('Diff Token Analysis:', {
@@ -147,7 +147,7 @@ export class ReviewService {
 							deploymentName: request.aiConfig.azure.deployment,
 							prompt: buildPrompt('', request.basePrompt, request.userPrompt), // Base prompt without diff
 							diff: diff, // Pass raw diff for chunking
-							maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+							azureRateLimitTokensPerMinute: request.azureRateLimitTokensPerMinute,
 						});
 					} else {
 						// Use normal API for small diffs
