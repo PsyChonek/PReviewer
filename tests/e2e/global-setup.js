@@ -40,7 +40,8 @@ async function globalSetup() {
 			stdio: 'inherit',
 		});
 
-		// Create initial files and commit
+		// Create initial files and commit on main branch
+		execSync('git checkout -b main', { cwd: testRepoPath, stdio: 'inherit' });
 		writeFileSync(path.join(testRepoPath, 'README.md'), '# Test Repository');
 		writeFileSync(path.join(testRepoPath, 'app.js'), "console.log('Hello World');");
 		execSync('git add .', { cwd: testRepoPath, stdio: 'inherit' });
@@ -61,8 +62,8 @@ async function globalSetup() {
 			stdio: 'inherit',
 		});
 
-		// Switch back to master (default branch)
-		execSync('git checkout master', {
+		// Switch back to main branch
+		execSync('git checkout main', {
 			cwd: testRepoPath,
 			stdio: 'inherit',
 		});

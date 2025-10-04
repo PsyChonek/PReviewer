@@ -83,7 +83,8 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		};
 
 		loadBranches();
-	}, [repoPath, fromBranch, toBranch]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [repoPath]);
 
 	// Notify parent when branches change
 	useEffect(() => {
@@ -129,18 +130,6 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 	};
 
 	const canStartReview = repoPath && fromBranch && toBranch && fromBranch !== toBranch && !reviewInProgress && estimatedInputTokens > 0 && !isCalculatingTokens;
-
-	// Debug logging
-	useEffect(() => {
-		console.log('RepositorySection state:', {
-			repoPath,
-			fromBranch,
-			toBranch,
-			estimatedInputTokens,
-			isCalculatingTokens,
-			canStartReview,
-		});
-	}, [repoPath, fromBranch, toBranch, estimatedInputTokens, isCalculatingTokens, canStartReview]);
 
 	const handleShowDiff = async () => {
 		if (!repoPath || !fromBranch || !toBranch) {

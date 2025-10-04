@@ -172,7 +172,8 @@ test.describe('Integration with External Services', () => {
 			await runGitCommand(testRepoPath, ['config', 'user.email', 'test@example.com']);
 			await runGitCommand(testRepoPath, ['config', 'user.name', 'Test User']);
 
-			// Create initial commit
+			// Create main branch with initial commit
+			await runGitCommand(testRepoPath, ['checkout', '-b', 'main']);
 			await fs.writeFile(path.join(testRepoPath, 'README.md'), '# Test Repository');
 			await fs.writeFile(path.join(testRepoPath, 'app.js'), "console.log('Hello World');");
 			await runGitCommand(testRepoPath, ['add', '.']);
@@ -183,7 +184,7 @@ test.describe('Integration with External Services', () => {
 			await fs.writeFile(path.join(testRepoPath, 'app.js'), "console.log('Hello Test World');\nfunction testFunction() { return true; }");
 			await runGitCommand(testRepoPath, ['add', 'app.js']);
 			await runGitCommand(testRepoPath, ['commit', '-m', 'Add test function']);
-			await runGitCommand(testRepoPath, ['checkout', 'master']);
+			await runGitCommand(testRepoPath, ['checkout', 'main']);
 		}
 
 		// Verify test repository exists
@@ -202,8 +203,8 @@ test.describe('Integration with External Services', () => {
 		expect(hasMainBranch).toBe(true);
 		expect(branchResult).toContain('feature/test-changes');
 
-		// Test git diff (use master since that's the default branch name in the test)
-		const diffResult = await runGitCommand(testRepoPath, ['diff', 'master', 'feature/test-changes']);
+		// Test git diff (use main as the default branch name in the test)
+		const diffResult = await runGitCommand(testRepoPath, ['diff', 'main', 'feature/test-changes']);
 		expect(diffResult).toContain('testFunction');
 		expect(diffResult).toContain('Hello Test World');
 	});

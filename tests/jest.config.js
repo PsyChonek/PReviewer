@@ -68,7 +68,7 @@ module.exports = {
 					},
 				],
 			},
-			transformIgnorePatterns: ['node_modules/(?!((@testing-library|@babel)/.*\\.js$))'],
+			transformIgnorePatterns: ['node_modules/(?!(marked|@testing-library|@babel)/.*\\.js$)'],
 		},
 	],
 
