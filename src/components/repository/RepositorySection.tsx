@@ -47,6 +47,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 	const [fromBranch, setFromBranch] = useState<string>('');
 	const [toBranch, setToBranch] = useState<string>('');
 	const [branches, setBranches] = useState<BranchInfo[]>([]);
+	const [currentBranch, setCurrentBranch] = useState<string>('');
 	const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 	const [showDiffModal, setShowDiffModal] = useState(false);
 	const [diffContent, setDiffContent] = useState<string>('');
@@ -57,18 +58,24 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 		const loadBranches = async () => {
 			if (!repoPath) {
 				setBranches([]);
+				setCurrentBranch('');
 				return;
 			}
 
 			setIsLoadingBranches(true);
 			try {
-				const branchList = await window.electronAPI.getGitBranches(repoPath);
+				const [branchList, current] = await Promise.all([
+					window.electronAPI.getGitBranches(repoPath),
+					window.electronAPI.getCurrentBranch(repoPath)
+				]);
+
 				// Convert string array to BranchInfo array
 				const branchInfoList: BranchInfo[] = branchList.map((branchName) => ({
 					name: branchName,
 					type: branchName.startsWith('remotes/') ? 'remote' : 'local',
 				}));
 				setBranches(branchInfoList);
+				setCurrentBranch(current);
 
 				// Auto-select target branch (main/master if available)
 				if (branchInfoList.length > 0 && !toBranch) {
@@ -84,6 +91,7 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 			} catch (error) {
 				console.error('Failed to load branches:', error);
 				setBranches([]);
+				setCurrentBranch('');
 			} finally {
 				setIsLoadingBranches(false);
 			}
@@ -319,14 +327,16 @@ const RepositorySection: React.FC<RepositorySectionProps> = ({
 								>
 									<i className="fas fa-rocket"></i> Review Branch Changes
 								</button>
-								<button
-									className={`btn btn-primary btn-lg ${!repoPath ? 'btn-disabled' : ''}`}
-									onClick={() => onStartReview(true)}
-									disabled={!repoPath}
-									title="Review uncommitted changes in working directory"
-								>
-									<i className="fas fa-file-code"></i> Review Uncommitted
-								</button>
+								{fromBranch === currentBranch && (
+									<button
+										className={`btn btn-primary btn-lg ${!repoPath ? 'btn-disabled' : ''}`}
+										onClick={() => onStartReview(true)}
+										disabled={!repoPath}
+										title="Review uncommitted changes in working directory"
+									>
+										<i className="fas fa-file-code"></i> Review Uncommitted
+									</button>
+								)}
 							</>
 						) : (
 							<button className="btn btn-warning btn-lg" onClick={onStopReview} aria-label="Stop the current review process">

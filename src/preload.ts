@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	getGitBranches: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('get-git-branches', repoPath),
 
+	getCurrentBranch: (repoPath: string): Promise<string> => ipcRenderer.invoke('get-current-branch', repoPath),
+
 	gitFetch: (repoPath: string): Promise<GitOperationResult> => ipcRenderer.invoke('git-fetch', repoPath),
 
 	gitPull: (repoPath: string): Promise<GitOperationResult> => ipcRenderer.invoke('git-pull', repoPath),

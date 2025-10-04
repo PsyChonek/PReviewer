@@ -92,6 +92,7 @@ declare global {
 		electronAPI: {
 			selectDirectory: () => Promise<string | null>;
 			getGitBranches: (repoPath: string) => Promise<string[]>;
+			getCurrentBranch: (repoPath: string) => Promise<string>;
 			gitFetch: (repoPath: string) => Promise<GitOperationResult>;
 			gitPull: (repoPath: string) => Promise<GitOperationResult>;
 			getGitDiff: (repoPath: string, fromBranch: string, toBranch: string) => Promise<string>;

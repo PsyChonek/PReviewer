@@ -353,6 +353,17 @@ ipcMain.handle('git-pull', async (_event: IpcMainInvokeEvent, repoPath: string):
 	}
 });
 
+ipcMain.handle('get-current-branch', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<string> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+		const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+		return currentBranch.trim();
+	} catch (error) {
+		const err = error as Error;
+		throw new Error(`Failed to get current branch: ${err.message}`);
+	}
+});
+
 ipcMain.handle('get-git-branches', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<string[]> => {
 	try {
 		const git: SimpleGit = simpleGit(repoPath);
@@ -605,8 +616,19 @@ ipcMain.handle('create-worktree', async (_event: IpcMainInvokeEvent, repoPath: s
 
 		console.log('Creating worktree:', { repoPath, branch, worktreePath });
 
-		// Create the worktree
-		await git.raw(['worktree', 'add', worktreePath, branch]);
+		// Check if the requested branch is the current branch
+		const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+		const normalizedBranch = branch.replace(/^remotes\/origin\//, '');
+
+		if (currentBranch.trim() === normalizedBranch) {
+			// Branch is currently checked out, use commit SHA instead
+			console.log('Branch is current branch, creating worktree from commit SHA:', { branch });
+			const commitSha = await git.revparse([branch]);
+			await git.raw(['worktree', 'add', worktreePath, commitSha.trim()]);
+		} else {
+			// Create the worktree normally
+			await git.raw(['worktree', 'add', worktreePath, branch]);
+		}
 
 		// Track this worktree for cleanup
 		activeWorktrees.add(worktreePath);
