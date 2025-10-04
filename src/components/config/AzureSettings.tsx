@@ -111,11 +111,6 @@ const AzureSettings: React.FC<AzureSettingsProps> = ({
 						max={100000}
 						step={5000}
 					/>
-					<label className="label">
-						<span className="label-text-alt text-base-content/70">
-							Recommended: 95,000 tokens/min (leaves 5k margin from Azure's 100k limit). Lower if you have a restricted tier.
-						</span>
-					</label>
 				</div>
 			</div>
 

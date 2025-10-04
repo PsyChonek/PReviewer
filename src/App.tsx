@@ -46,13 +46,15 @@ const App: React.FC = () => {
 		responseTime: number;
 		stage: string;
 		progress: number;
+		message?: string;
 	} | null>(null);
 
 	const [estimatedInputTokens, setEstimatedInputTokens] = useState<number>(0);
 	const [chunkingInfo, setChunkingInfo] = useState<{
 		willChunk: boolean;
 		chunkCount: number;
-	}>({ willChunk: false, chunkCount: 0 });
+		currentChunk: number;
+	}>({ willChunk: false, chunkCount: 0, currentChunk: 0 });
 	const [isCalculatingTokens, setIsCalculatingTokens] = useState<boolean>(false);
 
 	// Set up progress listeners with access to current estimatedInputTokens
@@ -60,13 +62,14 @@ const App: React.FC = () => {
 		const ollamaProgressCleanup = window.electronAPI.onOllamaProgress((event, data) => {
 			setReviewStats((_prevStats) => ({
 				tokens: data.tokens || 0,
-				inputTokens: data.actualInputTokens || estimatedInputTokens,
+				inputTokens: data.actualInputTokens ?? (data.stage === 'complete' ? 0 : estimatedInputTokens),
 				outputTokens: data.actualOutputTokens || data.tokens || 0,
 				tokensPerSecond: data.tokensPerSecond || 0,
 				processingTime: data.processingTime || 0,
 				responseTime: data.responseTime || 0,
 				stage: data.stage || data.message || '',
 				progress: data.progress || 0,
+				message: data.message,
 			}));
 
 			// Update current session tokens live during review
@@ -100,14 +103,29 @@ const App: React.FC = () => {
 		const azureProgressCleanup = window.electronAPI.onAzureAIProgress((event, data) => {
 			setReviewStats((_prevStats) => ({
 				tokens: data.tokens || 0,
-				inputTokens: data.actualInputTokens || estimatedInputTokens,
+				inputTokens: data.actualInputTokens ?? (data.stage === 'complete' ? 0 : estimatedInputTokens),
 				outputTokens: data.actualOutputTokens || data.tokens || 0,
 				tokensPerSecond: data.tokensPerSecond || 0,
 				processingTime: data.processingTime || 0,
 				responseTime: data.responseTime || 0,
 				stage: data.stage || data.message || '',
 				progress: data.progress || 0,
+				message: data.message,
 			}));
+
+			// Update chunk progress only when actually processing a chunk (not when waiting)
+			if (data.stage === 'processing-chunk' && data.message) {
+				const chunkMatch = data.message.match(/chunk (\d+)\/(\d+)/i);
+				if (chunkMatch) {
+					const currentChunk = parseInt(chunkMatch[1], 10);
+					const totalChunks = parseInt(chunkMatch[2], 10);
+					setChunkingInfo((prev) => ({
+						...prev,
+						currentChunk,
+						chunkCount: totalChunks,
+					}));
+				}
+			}
 
 			// Update current session tokens live during review
 			setCurrentSessionInputTokens(data.actualInputTokens || storeEstimatedTokens);
@@ -153,7 +171,7 @@ const App: React.FC = () => {
 			});
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
-			setChunkingInfo({ willChunk: false, chunkCount: 0 });
+			setChunkingInfo({ willChunk: false, chunkCount: 0, currentChunk: 0 });
 			setIsCalculatingTokens(false);
 			return;
 		}
@@ -167,7 +185,7 @@ const App: React.FC = () => {
 				console.log('calculateInputTokens: No diff found');
 				setEstimatedInputTokens(0);
 				setStoreEstimatedTokens(0);
-				setChunkingInfo({ willChunk: false, chunkCount: 0 });
+				setChunkingInfo({ willChunk: false, chunkCount: 0, currentChunk: 0 });
 				return;
 			}
 
@@ -182,12 +200,13 @@ const App: React.FC = () => {
 			setChunkingInfo({
 				willChunk: result.willChunk,
 				chunkCount: result.chunkCount,
+				currentChunk: 0,
 			});
 		} catch (error) {
 			console.error('Error calculating input tokens:', error);
 			setEstimatedInputTokens(0);
 			setStoreEstimatedTokens(0);
-			setChunkingInfo({ willChunk: false, chunkCount: 0 });
+			setChunkingInfo({ willChunk: false, chunkCount: 0, currentChunk: 0 });
 		} finally {
 			setIsCalculatingTokens(false);
 		}

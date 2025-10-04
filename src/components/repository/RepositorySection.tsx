@@ -18,6 +18,7 @@ interface RepositorySectionProps {
 	chunkingInfo?: {
 		willChunk: boolean;
 		chunkCount: number;
+		currentChunk: number;
 	};
 	isCalculatingTokens?: boolean;
 	rateLimitPerMinute?: number;
