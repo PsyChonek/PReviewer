@@ -154,14 +154,15 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 
 	/**
 	 * Generate AI response with automatic chunking for large diffs
-	 * Processes chunks sequentially with rate limiting (100k tokens/minute)
+	 * Uses thread-based chunking where all chunks are sent to the same conversation
+	 * AI is instructed to wait until all chunks are received before responding
 	 */
 	async generateWithChunking(event: IpcMainInvokeEvent, config: AzureOpenAIConfig, diff: string): Promise<string> {
 		// Calculate base prompt tokens once (shared across all chunks)
 		const basePromptTokens = countTokens(config.prompt, 'cl100k_base');
 
 		// Calculate chunk context overhead (the "Part X of Y" text added to each chunk)
-		const estimatedChunkContextTokens = 100; // Conservative estimate for chunk header text
+		const estimatedChunkContextTokens = 150; // Conservative estimate for chunk header text
 
 		// Configure chunking: each chunk should be AT the rate limit
 		// Rate limit = base prompt + diff content + chunk context overhead
@@ -196,7 +197,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 		this.sendProgress(event, {
 			stage: 'chunking',
 			progress: 10,
-			message: `Processing ${chunks.length} chunks sequentially (${chunks.reduce((sum, c) => sum + c.fileCount, 0)} files total, rate limit: ${(config.azureRateLimitTokensPerMinute || 95000).toLocaleString()} tokens/min)...`,
+			message: `Processing ${chunks.length} chunks in threaded conversation (${chunks.reduce((sum, c) => sum + c.fileCount, 0)} files total, rate limit: ${(config.azureRateLimitTokensPerMinute || 95000).toLocaleString()} tokens/min)...`,
 			timestamp: Date.now(),
 		});
 
@@ -206,15 +207,30 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 		let tokensInCurrentWindow = 0;
 		let windowStartTime = Date.now();
 
-		// Process chunks sequentially with rate limiting
-		const results: string[] = [];
+		// Maintain conversation history for thread-based chunking
+		const conversationHistory: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+			{
+				role: 'system',
+				content: 'You are an expert code reviewer.',
+			},
+			{
+				role: 'user',
+				content: config.prompt,
+			},
+		];
+
 		let totalProcessingTime = 0;
 		let cumulativeInputTokens = 0;
 
+		// Create Azure OpenAI client once for the entire conversation
+		const client = this.createClient(config.endpoint, config.apiKey, config.deploymentName);
+
+		// Send all chunks in the same conversation thread
 		for (let i = 0; i < chunks.length; i++) {
 			const chunk = chunks[i];
+			const isLastChunk = i === chunks.length - 1;
 
-			// Calculate total tokens for this request (base prompt + chunk content)
+			// Calculate total tokens for this request
 			const chunkTotalTokens = basePromptTokens + chunk.tokenCount;
 
 			// Check if we need to wait for rate limit window
@@ -223,7 +239,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 				const waitTime = RATE_LIMIT_WINDOW_MS - elapsedSinceWindowStart;
 				this.sendProgress(event, {
 					stage: 'rate-limit-wait',
-					progress: 10 + (i / chunks.length) * 80,
+					progress: 10 + (i / chunks.length) * 70,
 					message: `Rate limit: waiting ${(waitTime / 1000).toFixed(0)}s before chunk ${i + 1}/${chunks.length} (${tokensInCurrentWindow.toLocaleString()}/${RATE_LIMIT_TOKENS.toLocaleString()} tokens used)...`,
 					timestamp: Date.now(),
 					actualInputTokens: cumulativeInputTokens,
@@ -239,28 +255,127 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 			// Update progress for this chunk
 			this.sendProgress(event, {
 				stage: 'processing-chunk',
-				progress: 10 + (i / chunks.length) * 80,
-				message: `Processing chunk ${i + 1}/${chunks.length} (${chunk.fileCount} files, ${chunkTotalTokens.toLocaleString()} tokens)...`,
+				progress: 10 + (i / chunks.length) * 70,
+				message: `Sending chunk ${i + 1}/${chunks.length} to thread (${chunk.fileCount} files, ${chunkTotalTokens.toLocaleString()} tokens)...`,
 				timestamp: Date.now(),
 				actualInputTokens: cumulativeInputTokens,
 			});
 
 			try {
-				// Build prompt for this chunk
-				const chunkPrompt = this.buildChunkPrompt(config.prompt, chunk, i, chunks.length);
+				// Build chunk message with instructions
+				const chunkMessage = this.buildThreadChunkMessage(chunk, i, chunks.length, isLastChunk);
 
-				// Generate response for this chunk
-				const chunkConfig: AzureOpenAIConfig = {
-					...config,
-					prompt: chunkPrompt,
-				};
+				// Add chunk to conversation
+				conversationHistory.push({
+					role: 'user',
+					content: chunkMessage,
+				});
 
 				const startTime = Date.now();
-				const response = await this.generate(event, chunkConfig, true); // Suppress individual chunk progress
-				const duration = Date.now() - startTime;
-				totalProcessingTime += duration;
 
-				results.push(response);
+				// For all chunks except the last, request acknowledgment only
+				if (!isLastChunk) {
+					// Send chunk and get acknowledgment
+					const stream = await client.chat.completions.create({
+						model: config.deploymentName,
+						messages: conversationHistory,
+						temperature: 0.1,
+						max_tokens: 50, // Minimal tokens for acknowledgment
+						stream: true,
+					});
+
+					let ackText = '';
+					for await (const part of stream) {
+						const delta = part.choices[0]?.delta?.content || '';
+						ackText += delta;
+					}
+
+					// Add AI acknowledgment to conversation history
+					conversationHistory.push({
+						role: 'assistant',
+						content: ackText.trim() || 'Acknowledged.',
+					});
+
+					const duration = Date.now() - startTime;
+					totalProcessingTime += duration;
+				} else {
+					// Last chunk: request full review response
+					const stream = await client.chat.completions.create({
+						model: config.deploymentName,
+						messages: conversationHistory,
+						temperature: 0.1,
+						max_tokens: 4000, // Full response for review
+						stream: true,
+					});
+
+					let responseText = '';
+					let chunkCount = 0;
+					let usage = null;
+
+					// Update progress to show we're generating the final response
+					this.sendProgress(event, {
+						stage: 'generating',
+						progress: 85,
+						message: 'Generating final review from all chunks...',
+						timestamp: Date.now(),
+						actualInputTokens: cumulativeInputTokens,
+					});
+
+					// Process the stream for final response
+					for await (const part of stream) {
+						const delta = part.choices[0]?.delta?.content || '';
+						if (delta) {
+							responseText += delta;
+							chunkCount++;
+
+							// Send streaming progress every few chunks
+							if (chunkCount % 3 === 0) {
+								const currentTime = Date.now();
+								const elapsed = (currentTime - startTime) / 1000;
+								const estimatedTokens = countTokens(responseText, 'cl100k_base');
+								const tokensPerSecond = elapsed > 0 ? estimatedTokens / elapsed : 0;
+
+								this.sendProgress(event, {
+									stage: 'streaming',
+									progress: Math.min(85 + responseText.length / 200, 98),
+									message: `Receiving final review... (${estimatedTokens} tokens, ${tokensPerSecond.toFixed(1)} t/s)`,
+									timestamp: currentTime,
+									streamingContent: responseText,
+									isStreaming: true,
+									tokens: estimatedTokens,
+									tokensPerSecond: tokensPerSecond,
+									processingTime: elapsed,
+								});
+							}
+						}
+
+						// Capture usage information when available
+						if (part.usage) {
+							usage = part.usage;
+						}
+					}
+
+					const duration = Date.now() - startTime;
+					totalProcessingTime += duration;
+
+					const totalTokens = usage?.completion_tokens || countTokens(responseText, 'cl100k_base');
+
+					this.sendProgress(event, {
+						stage: 'complete',
+						progress: 100,
+						message: `Review complete (${chunks.length} chunks processed in thread in ${(totalProcessingTime / 1000).toFixed(1)}s)`,
+						timestamp: Date.now(),
+						responseTime: totalProcessingTime,
+						actualInputTokens: usage?.prompt_tokens || cumulativeInputTokens,
+						actualOutputTokens: usage?.completion_tokens,
+						totalActualTokens: usage?.total_tokens,
+						tokens: totalTokens,
+						streamingContent: responseText,
+						isStreaming: false,
+					});
+
+					return responseText;
+				}
 
 				// Update rate limit tracking with full token count
 				tokensInCurrentWindow += chunkTotalTokens;
@@ -277,7 +392,7 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 				if (err.status === 429) {
 					this.sendProgress(event, {
 						stage: 'rate-limit-retry',
-						progress: 10 + (i / chunks.length) * 80,
+						progress: 10 + (i / chunks.length) * 70,
 						message: `Rate limit hit on chunk ${i + 1}. Waiting 60 seconds...`,
 						timestamp: Date.now(),
 						actualInputTokens: cumulativeInputTokens,
@@ -297,62 +412,39 @@ export class AzureOpenAIProvider implements IAIProvider<AzureOpenAIConfig> {
 			}
 		}
 
-		// Combine results
-		this.sendProgress(event, {
-			stage: 'combining',
-			progress: 95,
-			message: 'Combining results from all chunks...',
-			timestamp: Date.now(),
-		});
-
-		const combinedResult = this.combineChunkResults(results, chunks);
-
-		this.sendProgress(event, {
-			stage: 'complete',
-			progress: 100,
-			message: `Review complete (${chunks.length} chunks processed in ${(totalProcessingTime / 1000).toFixed(1)}s)`,
-			timestamp: Date.now(),
-			responseTime: totalProcessingTime,
-			actualInputTokens: cumulativeInputTokens,
-		});
-
-		return combinedResult;
+		// Should not reach here as last chunk returns the response
+		throw new Error('Chunking process completed without generating final response');
 	}
 
 	/**
-	 * Build a prompt for a specific chunk with context
+	 * Build a message for a specific chunk in the threaded conversation
+	 * Instructs AI to acknowledge receipt for non-final chunks, or provide full review for final chunk
 	 */
-	private buildChunkPrompt(basePrompt: string, chunk: DiffChunk, chunkIndex: number, totalChunks: number): string {
-		const chunkContext =
-			totalChunks > 1
-				? `\n\n## Chunk ${chunkIndex + 1} of ${totalChunks}\n` +
-					`This is part ${chunkIndex + 1} of a ${totalChunks}-part review. ` +
-					`This chunk contains ${chunk.fileCount} file(s): ${chunk.files.join(', ')}\n\n`
-				: '';
-
-		return `${basePrompt}${chunkContext}${chunk.content}`;
-	}
-
-	/**
-	 * Combine results from multiple chunks into a single review
-	 */
-	private combineChunkResults(results: string[], chunks: DiffChunk[]): string {
-		if (results.length === 1) {
-			return results[0];
+	private buildThreadChunkMessage(chunk: DiffChunk, chunkIndex: number, totalChunks: number, isLastChunk: boolean): string {
+		if (!isLastChunk) {
+			// For non-final chunks: send the chunk and ask for acknowledgment only
+			return (
+				`## Code Review - Part ${chunkIndex + 1} of ${totalChunks}\n\n` +
+				`I am sending you a large code diff split into ${totalChunks} parts. This is part ${chunkIndex + 1}.\n` +
+				`**IMPORTANT: Do NOT provide your review yet. Simply acknowledge receipt of this chunk.**\n\n` +
+				`This chunk contains ${chunk.fileCount} file(s): ${chunk.files.join(', ')}\n\n` +
+				`Please respond with ONLY: "Received part ${chunkIndex + 1} of ${totalChunks}. Ready for next part."\n\n` +
+				`Here is the code diff for part ${chunkIndex + 1}:\n\n` +
+				`${chunk.content}`
+			);
+		} else {
+			// For the final chunk: send the chunk and request the complete review
+			return (
+				`## Code Review - Part ${chunkIndex + 1} of ${totalChunks} (FINAL)\n\n` +
+				`This is the final part (${chunkIndex + 1} of ${totalChunks}).\n` +
+				`This chunk contains ${chunk.fileCount} file(s): ${chunk.files.join(', ')}\n\n` +
+				`Here is the code diff for the final part:\n\n` +
+				`${chunk.content}\n\n` +
+				`---\n\n` +
+				`**You have now received ALL ${totalChunks} parts of the code diff.**\n` +
+				`Please provide your complete code review now, considering all ${totalChunks} parts together as a cohesive whole.`
+			);
 		}
-
-		let combined = '# Code Review (Multi-Part)\n\n';
-		combined += `This review was split into ${results.length} parts due to size. Below are the combined results:\n\n`;
-		combined += '---\n\n';
-
-		for (let i = 0; i < results.length; i++) {
-			combined += `## Part ${i + 1} of ${results.length}\n`;
-			combined += `**Files reviewed:** ${chunks[i].files.join(', ')}\n\n`;
-			combined += results[i];
-			combined += '\n\n---\n\n';
-		}
-
-		return combined;
 	}
 
 	/**

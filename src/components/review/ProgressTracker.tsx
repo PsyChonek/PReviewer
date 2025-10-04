@@ -91,9 +91,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({ reviewStats, reviewIn
 						{chunkingInfo?.willChunk && (
 							<div className="alert alert-info py-2 text-xs">
 								<i className="fas fa-layer-group"></i>
-								<span>
-									{`Processing chunk ${chunkingInfo.currentChunk} of ${chunkingInfo.chunkCount}`}
-								</span>
+								<span>{`Processing chunk ${chunkingInfo.currentChunk} of ${chunkingInfo.chunkCount}`}</span>
 							</div>
 						)}
 
