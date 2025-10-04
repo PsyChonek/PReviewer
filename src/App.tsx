@@ -4,10 +4,12 @@ import RepositorySection from './components/repository/RepositorySection';
 import OutputSection from './components/review/OutputSection';
 import ConfigModal from './components/config/ConfigModal';
 import ProgressTracker from './components/review/ProgressTracker';
-import { AppState, AIProviderConfig } from './types';
-import { buildPrompt } from './utils/prompts';
+import { AppState, AIProviderConfig, WorktreeInfo } from './types';
+import { buildWorktreePrompt } from './utils/prompts';
 import { useTokenStore } from './store/tokenStore';
 import { useConfigStore } from './store/configStore';
+import { useRepositoryStore } from './store/repositoryStore';
+import { calculateTotalSize } from './utils/fileScanner';
 
 const App: React.FC = () => {
 	const {
@@ -20,7 +22,8 @@ const App: React.FC = () => {
 		estimatedInputTokens: storeEstimatedTokens,
 	} = useTokenStore();
 
-	const { aiConfig, basePrompt, userPrompt, debugMode, azureRateLimitTokensPerMinute, enableAutoChunking } = useConfigStore();
+	const { aiConfig, basePrompt, userPrompt, debugMode, azureRateLimitTokensPerMinute } = useConfigStore();
+	const { activeWorktree, setActiveWorktree, clearActiveWorktree } = useRepositoryStore();
 	const [appState, setAppState] = useState<AppState>({
 		currentRepoPath: null,
 		reviewInProgress: false,
@@ -221,9 +224,14 @@ const App: React.FC = () => {
 		return () => clearTimeout(timer);
 	}, [calculateTokens]);
 
-	const handleStartReview = async () => {
-		if (!appState.currentRepoPath || !fromBranch || !toBranch) {
-			alert('Please select a repository and both branches before starting the review.');
+	const handleStartReview = async (reviewUncommitted: boolean = false) => {
+		if (!appState.currentRepoPath) {
+			alert('Please select a repository before starting the review.');
+			return;
+		}
+
+		if (!reviewUncommitted && (!fromBranch || !toBranch)) {
+			alert('Please select both branches before starting the review.');
 			return;
 		}
 
@@ -237,6 +245,8 @@ const App: React.FC = () => {
 		// Reset review stats and current session tokens
 		setReviewStats(null);
 		resetCurrentSession();
+
+		let worktree: WorktreeInfo | null = null;
 
 		try {
 			if (debugMode) {
@@ -254,39 +264,128 @@ const App: React.FC = () => {
 				});
 			}
 
-			// Get the diff
-			const diff = await window.electronAPI.getGitDiff(appState.currentRepoPath, fromBranch, toBranch);
+			let changedFiles: string[];
+			let scannedFiles;
 
-			if (!diff || diff.trim() === '') {
+			if (reviewUncommitted) {
+				// Review uncommitted changes in working directory
+				if (debugMode) {
+					console.log('Getting uncommitted changes...');
+				}
+
+				changedFiles = await window.electronAPI.getUncommittedChanges(appState.currentRepoPath);
+
+				if (debugMode) {
+					console.log('Uncommitted files:', changedFiles);
+				}
+
+				if (changedFiles.length === 0) {
+					setAppState((prev) => ({
+						...prev,
+						currentOutputMarkdown: '## No Uncommitted Changes\n\nNo uncommitted changes were found in the working directory.',
+						reviewInProgress: false,
+					}));
+					return;
+				}
+
+				// Scan uncommitted files directly from working directory (no worktree needed)
+				if (debugMode) {
+					console.log(`Scanning ${changedFiles.length} uncommitted files...`);
+				}
+
+				scannedFiles = await window.electronAPI.scanUncommittedFiles(appState.currentRepoPath, changedFiles);
+
+				if (debugMode) {
+					console.log('Scanned uncommitted files:', {
+						count: scannedFiles.length,
+						totalSize: calculateTotalSize(scannedFiles),
+					});
+				}
+			} else {
+				// Review branch changes using worktree
+				if (debugMode) {
+					console.log('Getting changed files between branches:', { fromBranch, toBranch });
+				}
+
+				changedFiles = await window.electronAPI.getChangedFiles(appState.currentRepoPath, fromBranch, toBranch);
+
+				if (debugMode) {
+					console.log('Changed files:', changedFiles);
+				}
+
+				if (changedFiles.length === 0) {
+					setAppState((prev) => ({
+						...prev,
+						currentOutputMarkdown: '## No Changes Found\n\nNo differences were found between the selected branches.',
+						reviewInProgress: false,
+					}));
+					return;
+				}
+
+				// Create worktree for the feature branch (fromBranch)
+				if (debugMode) {
+					console.log('Creating worktree for branch:', fromBranch);
+				}
+
+				worktree = await window.electronAPI.createWorktree(appState.currentRepoPath, fromBranch);
+
+				if (debugMode) {
+					console.log('Worktree created:', worktree);
+				}
+
+				// Scan only the changed files in the worktree
+				if (debugMode) {
+					console.log(`Scanning ${changedFiles.length} changed files in worktree...`);
+				}
+
+				scannedFiles = await window.electronAPI.scanChangedFiles(worktree.path, changedFiles);
+
+				if (debugMode) {
+					console.log('Scanned files:', {
+						count: scannedFiles.length,
+						totalSize: calculateTotalSize(scannedFiles),
+					});
+				}
+			}
+
+			if (scannedFiles.length === 0) {
 				setAppState((prev) => ({
 					...prev,
-					currentOutputMarkdown: '## No Changes Found\n\nNo differences were found between the selected branches.',
+					currentOutputMarkdown: '## No Files Found\n\nNo relevant source files were found.',
 					reviewInProgress: false,
 				}));
+				// Delete the worktree if one was created
+				if (worktree) {
+					await window.electronAPI.deleteWorktree(worktree.path);
+				}
 				return;
 			}
 
-			// Build the prompt
-			const fullPrompt = buildPrompt(diff, basePrompt, userPrompt);
+			// Update worktree info with file count (only if we created a worktree)
+			if (worktree) {
+				worktree.fileCount = scannedFiles.length;
+				worktree.totalSize = calculateTotalSize(scannedFiles);
+				setActiveWorktree(worktree);
+			}
+
+			// Build the prompt with full file contents
+			const fullPrompt = buildWorktreePrompt(scannedFiles, basePrompt, userPrompt);
 
 			if (debugMode) {
-				const diffLines = diff.split('\n').length;
-				const diffSize = new TextEncoder().encode(diff).length;
-
-				console.log('Diff Metadata:', {
-					sizeBytes: diffSize,
-					sizeKB: (diffSize / 1024).toFixed(2),
-					lines: diffLines,
-					characters: diff.length,
+				console.log('Worktree Scan Metadata:', {
+					fileCount: scannedFiles.length,
+					totalSize: calculateTotalSize(scannedFiles),
+					promptLength: fullPrompt.length,
 				});
 				console.log('Token Estimation:', {
 					estimated: storeEstimatedTokens,
 					promptLength: fullPrompt.length,
 					basePromptLength: basePrompt.length,
 					userPromptLength: userPrompt.length,
-					diffLength: diff.length,
 				});
-				console.log('Full prompt:', fullPrompt);
+				if (debugMode) {
+					console.log('Full prompt (first 1000 chars):', fullPrompt.substring(0, 1000) + '...');
+				}
 			}
 
 			// Call the appropriate AI service
@@ -308,40 +407,14 @@ const App: React.FC = () => {
 					});
 					result = { success: true, content: response };
 				} else {
-					// Use chunking info from already-calculated state
-					const shouldChunk = chunkingInfo.willChunk;
-
-					if (debugMode) {
-						console.log('Diff Token Analysis:', {
-							estimatedTokens: storeEstimatedTokens,
-							shouldChunk,
-							chunkCount: chunkingInfo.chunkCount,
-							azureRateLimitTokensPerMinute: azureRateLimitTokensPerMinute,
-							autoChunkingEnabled: enableAutoChunking !== false,
-						});
-					}
-
-					if (shouldChunk) {
-						// Use chunked API for large diffs
-						const response = await window.electronAPI.callAzureAIChunked({
-							endpoint: aiConfig.azure.endpoint,
-							apiKey: aiConfig.azure.apiKey,
-							deploymentName: aiConfig.azure.deployment,
-							prompt: buildPrompt('', basePrompt, userPrompt), // Base prompt without diff
-							diff: diff, // Pass raw diff for chunking
-							azureRateLimitTokensPerMinute: azureRateLimitTokensPerMinute,
-						});
-						result = { success: true, content: response };
-					} else {
-						// Use normal API for small diffs
-						const response = await window.electronAPI.callAzureAI({
-							endpoint: aiConfig.azure.endpoint,
-							apiKey: aiConfig.azure.apiKey,
-							deploymentName: aiConfig.azure.deployment,
-							prompt: fullPrompt,
-						});
-						result = { success: true, content: response };
-					}
+					// Call Azure AI with the full prompt
+					const response = await window.electronAPI.callAzureAI({
+						endpoint: aiConfig.azure.endpoint,
+						apiKey: aiConfig.azure.apiKey,
+						deploymentName: aiConfig.azure.deployment,
+						prompt: fullPrompt,
+					});
+					result = { success: true, content: response };
 				}
 
 				if (debugMode) {
@@ -439,6 +512,16 @@ const App: React.FC = () => {
 				currentOutputMarkdown: `## Error\n\nFailed to complete the review: ${error}`,
 				reviewInProgress: false,
 			}));
+
+			// Clean up worktree on error
+			if (worktree) {
+				try {
+					await window.electronAPI.deleteWorktree(worktree.path);
+					clearActiveWorktree();
+				} catch (cleanupError) {
+					console.error('Failed to cleanup worktree after error:', cleanupError);
+				}
+			}
 		}
 	};
 
@@ -477,6 +560,27 @@ const App: React.FC = () => {
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+	};
+
+	const handleDeleteWorktree = async (worktreePath?: string) => {
+		// If no path provided, use active worktree
+		const pathToDelete = worktreePath || activeWorktree?.path;
+
+		if (!pathToDelete) return;
+
+		try {
+			await window.electronAPI.deleteWorktree(pathToDelete);
+
+			// Clear active worktree if we deleted it
+			if (activeWorktree && activeWorktree.path === pathToDelete) {
+				clearActiveWorktree();
+			}
+
+			console.log('Worktree deleted successfully');
+		} catch (error) {
+			console.error('Failed to delete worktree:', error);
+			throw error; // Re-throw so the caller can handle it
+		}
 	};
 
 	const handleOpenConfig = () => {
@@ -559,6 +663,8 @@ const App: React.FC = () => {
 					chunkingInfo={chunkingInfo}
 					isCalculatingTokens={isCalculatingTokens}
 					rateLimitPerMinute={azureRateLimitTokensPerMinute}
+					activeWorktree={activeWorktree}
+					onDeleteWorktree={handleDeleteWorktree}
 				/>
 
 				<ProgressTracker reviewStats={reviewStats} reviewInProgress={appState.reviewInProgress} chunkingInfo={chunkingInfo} />

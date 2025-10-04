@@ -64,6 +64,29 @@ export interface GitOperationResult {
 	summary?: unknown;
 }
 
+export interface WorktreeInfo {
+	path: string;
+	branch: string;
+	createdAt: number;
+	fileCount?: number;
+	totalSize?: number;
+}
+
+export interface ScannedFile {
+	path: string;
+	relativePath: string;
+	content: string;
+	size: number;
+	extension: string;
+}
+
+export interface ScanOptions {
+	includePatterns?: string[];
+	excludePatterns?: string[];
+	maxFileSize?: number;
+	maxTotalFiles?: number;
+}
+
 declare global {
 	interface Window {
 		electronAPI: {
@@ -109,6 +132,14 @@ declare global {
 			saveConfig: (config: Partial<AIProviderConfig>) => Promise<{ success: boolean; error?: string }>;
 			onOllamaProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
 			onAzureAIProgress: (callback: (event: unknown, data: ProgressData) => void) => () => void;
+			createWorktree: (repoPath: string, branch: string) => Promise<WorktreeInfo>;
+			deleteWorktree: (worktreePath: string) => Promise<{ success: boolean; error?: string }>;
+			listWorktrees: (repoPath: string) => Promise<WorktreeInfo[]>;
+			scanWorktreeFiles: (worktreePath: string, options?: ScanOptions) => Promise<ScannedFile[]>;
+			getChangedFiles: (repoPath: string, baseBranch: string, targetBranch: string) => Promise<string[]>;
+			scanChangedFiles: (worktreePath: string, changedFiles: string[]) => Promise<ScannedFile[]>;
+			getUncommittedChanges: (repoPath: string) => Promise<string[]>;
+			scanUncommittedFiles: (repoPath: string, changedFiles: string[]) => Promise<ScannedFile[]>;
 		};
 	}
 }

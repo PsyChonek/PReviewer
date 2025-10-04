@@ -188,3 +188,7 @@ When making commits, the repository uses:
 - TypeScript for type checking (run via `npx tsc --noEmit`)
 
 Always run `npm run check` before committing to ensure all checks pass.
+
+## Design Guide
+
+See [DESIGN_GUIDE.md](DESIGN_GUIDE.md) for detailed UI/UX and code style guidelines.
