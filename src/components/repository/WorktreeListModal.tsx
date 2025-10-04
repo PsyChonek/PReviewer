@@ -124,7 +124,7 @@ const WorktreeListModal: React.FC<WorktreeListModalProps> = ({ isOpen, onClose, 
 											>
 												{isDeleting ? (
 													<>
-														<span className="loading loading-spinner loading-xs"></span>
+														<span className="loading loading-spinner loading-sm"></span>
 														Deleting...
 													</>
 												) : (

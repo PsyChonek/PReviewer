@@ -84,7 +84,7 @@ const WorktreeControls: React.FC<WorktreeControlsProps> = ({ worktree, onDelete,
 			{showConfirmModal && (
 				<div className="modal modal-open">
 					<div className="modal-box">
-						<h3 className="font-bold text-lg">Delete Worktree?</h3>
+						<h3 className="font-bold text-lg mb-4">Delete Worktree?</h3>
 						<p className="py-4">
 							Are you sure you want to delete this worktree?
 							<br />
@@ -95,6 +95,7 @@ const WorktreeControls: React.FC<WorktreeControlsProps> = ({ worktree, onDelete,
 						</p>
 						<div className="modal-action">
 							<button className="btn btn-ghost" onClick={() => setShowConfirmModal(false)} disabled={isDeleting}>
+								<i className="fas fa-times"></i>
 								Cancel
 							</button>
 							<button className={`btn btn-error ${isDeleting ? 'btn-disabled' : ''}`} onClick={handleDelete} disabled={isDeleting}>
@@ -104,7 +105,10 @@ const WorktreeControls: React.FC<WorktreeControlsProps> = ({ worktree, onDelete,
 										Deleting...
 									</>
 								) : (
-									'Delete'
+									<>
+										<i className="fas fa-trash"></i>
+										Delete
+									</>
 								)}
 							</button>
 						</div>
