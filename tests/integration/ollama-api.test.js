@@ -560,35 +560,5 @@ describe('Ollama API Integration', () => {
 			).rejects.toThrow();
 		});
 
-		test.skip('should handle partial stream interruption', async () => {
-			const mockStream = {
-				on: jest.fn((event, callback) => {
-					if (event === 'data') {
-						setTimeout(() => {
-							callback(Buffer.from('{"response": "Partial", "done": false}\n'));
-							// Simulate interruption - no "done" signal
-						}, 10);
-					} else if (event === 'end') {
-						setTimeout(callback, 50);
-					} else if (event === 'error') {
-						// No error simulation in this test
-					}
-				}),
-			};
-
-			mockedAxios.post.mockResolvedValueOnce({
-				data: mockStream,
-			});
-
-			// The current implementation may not properly handle stream interruption
-			// so we expect it to return the partial response instead of throwing
-			const result = await ollamaHandlers.callOllamaAPI(mockEvent, {
-				url: 'http://localhost:11434/api/generate',
-				model: 'codellama',
-				prompt: 'test prompt',
-			});
-
-			expect(result).toBe('Partial');
-		}, 5000); // Reduce timeout since we expect it to resolve
 	});
 });
