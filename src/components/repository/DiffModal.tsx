@@ -50,11 +50,12 @@ const DiffModal: React.FC<DiffModalProps> = ({ isOpen, onClose, diffContent, fro
 				)}
 
 				<div className="modal-action">
-					<button className="btn btn-outline btn-sm" onClick={handleCopyDiff} disabled={!diffContent || isLoading} title="Copy diff to clipboard">
+					<button className="btn btn-outline" onClick={handleCopyDiff} disabled={!diffContent || isLoading} title="Copy diff to clipboard">
 						<i className="fas fa-copy"></i>
 						Copy
 					</button>
-					<button className="btn btn-primary btn-sm" onClick={onClose}>
+					<button className="btn btn-ghost" onClick={onClose}>
+						<i className="fas fa-times"></i>
 						Close
 					</button>
 				</div>

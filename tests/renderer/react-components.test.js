@@ -57,7 +57,6 @@ describe('React Components', () => {
 		jest.clearAllMocks();
 	});
 
-
 	describe('BranchSelector Component', () => {
 		const defaultProps = {
 			id: 'test-branch-selector',
@@ -238,7 +237,4 @@ describe('React Components', () => {
 			expect(screen.getByText('Connection successful!')).toBeInTheDocument();
 		});
 	});
-
-
-
 });

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import { AIProviderConfig, ProgressData, GitOperationResult } from './types';
+import { AIProviderConfig, ProgressData, GitOperationResult, WorktreeInfo, ScannedFile, ScanOptions } from './types';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('select-directory'),
 
 	getGitBranches: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('get-git-branches', repoPath),
+
+	getCurrentBranch: (repoPath: string): Promise<string> => ipcRenderer.invoke('get-current-branch', repoPath),
 
 	gitFetch: (repoPath: string): Promise<GitOperationResult> => ipcRenderer.invoke('git-fetch', repoPath),
 
@@ -78,4 +80,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
 		ipcRenderer.on('azure-ai-progress', callback);
 		return () => ipcRenderer.removeListener('azure-ai-progress', callback);
 	},
+
+	// Worktree operations
+	createWorktree: (repoPath: string, branch: string): Promise<WorktreeInfo> => ipcRenderer.invoke('create-worktree', repoPath, branch),
+
+	deleteWorktree: (worktreePath: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('delete-worktree', worktreePath),
+
+	listWorktrees: (repoPath: string): Promise<WorktreeInfo[]> => ipcRenderer.invoke('list-worktrees', repoPath),
+
+	scanWorktreeFiles: (worktreePath: string, options?: ScanOptions): Promise<ScannedFile[]> => ipcRenderer.invoke('scan-worktree-files', worktreePath, options),
+
+	getChangedFiles: (repoPath: string, baseBranch: string, targetBranch: string): Promise<string[]> =>
+		ipcRenderer.invoke('get-changed-files', repoPath, baseBranch, targetBranch),
+
+	scanChangedFiles: (worktreePath: string, changedFiles: string[]): Promise<ScannedFile[]> =>
+		ipcRenderer.invoke('scan-changed-files', worktreePath, changedFiles),
+
+	getUncommittedChanges: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('get-uncommitted-changes', repoPath),
+
+	scanUncommittedFiles: (repoPath: string, changedFiles: string[]): Promise<ScannedFile[]> =>
+		ipcRenderer.invoke('scan-uncommitted-files', repoPath, changedFiles),
 });

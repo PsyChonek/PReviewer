@@ -166,9 +166,11 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onTestConnec
 
 				<div className="modal-action">
 					<button type="button" className="btn btn-primary" onClick={handleSave}>
+						<i className="fas fa-save"></i>
 						Save Settings
 					</button>
-					<button className="btn" onClick={handleCancel}>
+					<button className="btn btn-ghost" onClick={handleCancel}>
+						<i className="fas fa-times"></i>
 						Cancel
 					</button>
 				</div>

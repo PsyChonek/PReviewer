@@ -559,6 +559,5 @@ describe('Ollama API Integration', () => {
 				})
 			).rejects.toThrow();
 		});
-
 	});
 });

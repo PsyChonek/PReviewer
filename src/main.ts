@@ -353,6 +353,17 @@ ipcMain.handle('git-pull', async (_event: IpcMainInvokeEvent, repoPath: string):
 	}
 });
 
+ipcMain.handle('get-current-branch', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<string> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+		const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+		return currentBranch.trim();
+	} catch (error) {
+		const err = error as Error;
+		throw new Error(`Failed to get current branch: ${err.message}`);
+	}
+});
+
 ipcMain.handle('get-git-branches', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<string[]> => {
 	try {
 		const git: SimpleGit = simpleGit(repoPath);
@@ -467,6 +478,9 @@ const azureProvider = new AzureOpenAIProvider();
 import { buildPrompt } from './utils/prompts';
 import { countTokens } from './utils/tokenEstimation';
 import { needsChunking, DEFAULT_CHUNK_CONFIG, ChunkConfig } from './utils/diffChunker';
+import { scanWorktree, scanSpecificFiles } from './utils/fileScanner';
+import { WorktreeInfo, ScannedFile, ScanOptions } from './types';
+import os from 'os';
 
 // IPC handler for calculating tokens with chunking info
 ipcMain.handle(
@@ -588,6 +602,263 @@ ipcMain.handle(
 	}
 );
 
+// Store for tracking active worktrees (cleanup on app close)
+const activeWorktrees = new Set<string>();
+
+// IPC handlers for Git Worktree operations
+ipcMain.handle('create-worktree', async (_event: IpcMainInvokeEvent, repoPath: string, branch: string): Promise<WorktreeInfo> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+
+		// Create unique temporary directory for worktree
+		const timestamp = Date.now();
+		const worktreePath = path.join(os.tmpdir(), `previewer-wt-${timestamp}`);
+
+		console.log('Creating worktree:', { repoPath, branch, worktreePath });
+
+		// Check if the requested branch is the current branch
+		const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+		const normalizedBranch = branch.replace(/^remotes\/origin\//, '');
+
+		if (currentBranch.trim() === normalizedBranch) {
+			// Branch is currently checked out, use commit SHA instead
+			console.log('Branch is current branch, creating worktree from commit SHA:', { branch });
+			const commitSha = await git.revparse([branch]);
+			await git.raw(['worktree', 'add', worktreePath, commitSha.trim()]);
+		} else {
+			// Create the worktree normally
+			await git.raw(['worktree', 'add', worktreePath, branch]);
+		}
+
+		// Track this worktree for cleanup
+		activeWorktrees.add(worktreePath);
+
+		const worktreeInfo: WorktreeInfo = {
+			path: worktreePath,
+			branch,
+			createdAt: timestamp,
+		};
+
+		console.log('Worktree created successfully:', worktreeInfo);
+
+		return worktreeInfo;
+	} catch (error) {
+		const err = error as Error;
+		let errorMessage = `Failed to create worktree: ${err.message}`;
+
+		if (err.message.includes('already exists')) {
+			errorMessage += '\n\nThe worktree directory already exists. Try deleting it first.';
+		} else if (err.message.includes('not found') || err.message.includes('unknown revision')) {
+			errorMessage += '\n\nThe branch does not exist. Make sure to fetch the latest changes.';
+		} else if (err.message.includes('already checked out')) {
+			errorMessage += '\n\nThis branch is already checked out in another worktree.';
+		}
+
+		throw new Error(errorMessage);
+	}
+});
+
+ipcMain.handle('delete-worktree', async (_event: IpcMainInvokeEvent, worktreePath: string): Promise<{ success: boolean; error?: string }> => {
+	try {
+		// Find the main repository path by checking the worktree's git directory
+		const gitDirPath = path.join(worktreePath, '.git');
+		const gitDirContent = await fs.readFile(gitDirPath, 'utf8');
+
+		// Extract main repo path from .git file (format: "gitdir: /path/to/main/.git/worktrees/name")
+		const match = gitDirContent.match(/gitdir: (.+)$/m);
+		if (!match) {
+			throw new Error('Could not determine main repository path');
+		}
+
+		// Get the main .git directory (remove /worktrees/name part)
+		const mainGitDir = match[1].split('/worktrees/')[0];
+		const repoPath = path.dirname(mainGitDir);
+
+		const git: SimpleGit = simpleGit(repoPath);
+
+		console.log('Deleting worktree:', worktreePath);
+
+		// Remove the worktree
+		await git.raw(['worktree', 'remove', worktreePath, '--force']);
+
+		// Remove from tracking set
+		activeWorktrees.delete(worktreePath);
+
+		console.log('Worktree deleted successfully');
+
+		return { success: true };
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to delete worktree:', err);
+
+		// Try to clean up the directory even if git command failed
+		try {
+			await fs.rm(worktreePath, { recursive: true, force: true });
+			activeWorktrees.delete(worktreePath);
+			return { success: true };
+		} catch {
+			return {
+				success: false,
+				error: `Failed to delete worktree: ${err.message}`,
+			};
+		}
+	}
+});
+
+ipcMain.handle('list-worktrees', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<WorktreeInfo[]> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+
+		// Get worktree list in porcelain format
+		const result = await git.raw(['worktree', 'list', '--porcelain']);
+
+		const worktrees: WorktreeInfo[] = [];
+		const lines = result.trim().split('\n');
+
+		let currentWorktree: Partial<WorktreeInfo> = {};
+
+		for (const line of lines) {
+			if (line.startsWith('worktree ')) {
+				const worktreePath = line.substring('worktree '.length);
+				currentWorktree.path = worktreePath;
+			} else if (line.startsWith('branch ')) {
+				const branch = line.substring('branch '.length).replace('refs/heads/', '');
+				currentWorktree.branch = branch;
+			} else if (line === '') {
+				// Empty line marks end of a worktree entry
+				if (currentWorktree.path && currentWorktree.branch) {
+					// Only include non-main worktrees (temporary ones in /tmp)
+					if (currentWorktree.path.includes(os.tmpdir())) {
+						worktrees.push({
+							path: currentWorktree.path,
+							branch: currentWorktree.branch,
+							createdAt: 0, // We don't have this info from git
+						});
+					}
+				}
+				currentWorktree = {};
+			}
+		}
+
+		return worktrees;
+	} catch (error) {
+		console.error('Failed to list worktrees:', error);
+		return [];
+	}
+});
+
+ipcMain.handle('scan-worktree-files', async (_event: IpcMainInvokeEvent, worktreePath: string, options?: ScanOptions): Promise<ScannedFile[]> => {
+	try {
+		console.log('Scanning worktree files:', worktreePath);
+		const files = await scanWorktree(worktreePath, options);
+		console.log(`Found ${files.length} files in worktree`);
+		return files;
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to scan worktree files:', err);
+		throw new Error(`Failed to scan worktree files: ${err.message}`);
+	}
+});
+
+// Get list of changed files between branches (file names only, not full diff)
+ipcMain.handle('get-changed-files', async (_event: IpcMainInvokeEvent, repoPath: string, baseBranch: string, targetBranch: string): Promise<string[]> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+
+		// Normalize branch names (same logic as get-git-diff)
+		const normalizeBranchName = (branchName: string): string => {
+			if (branchName.startsWith('remotes/origin/')) {
+				return branchName.replace('remotes/origin/', '');
+			}
+			if (branchName.startsWith('remotes/')) {
+				return branchName.replace(/^remotes\/[^/]+\//, '');
+			}
+			return branchName;
+		};
+
+		const branchExists = async (branchName: string): Promise<boolean> => {
+			try {
+				await git.revparse(['--verify', branchName]);
+				return true;
+			} catch {
+				return false;
+			}
+		};
+
+		const resolvedBaseBranch = (await branchExists(normalizeBranchName(baseBranch))) ? normalizeBranchName(baseBranch) : baseBranch;
+		const resolvedTargetBranch = (await branchExists(normalizeBranchName(targetBranch))) ? normalizeBranchName(targetBranch) : targetBranch;
+
+		// Get list of changed files (--name-only shows just file paths)
+		const result = await git.raw(['diff', '--name-only', resolvedTargetBranch, resolvedBaseBranch]);
+
+		// Split by newlines and filter out empty lines
+		const changedFiles = result
+			.split('\n')
+			.map((file) => file.trim())
+			.filter((file) => file.length > 0);
+
+		console.log(`Found ${changedFiles.length} changed files between ${resolvedTargetBranch} and ${resolvedBaseBranch}`);
+
+		return changedFiles;
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to get changed files:', err);
+		throw new Error(`Failed to get changed files: ${err.message}`);
+	}
+});
+
+// Scan specific files in worktree (optimized for changed files only)
+ipcMain.handle('scan-changed-files', async (_event: IpcMainInvokeEvent, worktreePath: string, changedFiles: string[]): Promise<ScannedFile[]> => {
+	try {
+		console.log(`Scanning ${changedFiles.length} changed files in worktree:`, worktreePath);
+		const files = await scanSpecificFiles(worktreePath, changedFiles);
+		console.log(`Successfully scanned ${files.length} files`);
+		return files;
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to scan changed files:', err);
+		throw new Error(`Failed to scan changed files: ${err.message}`);
+	}
+});
+
+// Get uncommitted changes (working directory changes)
+ipcMain.handle('get-uncommitted-changes', async (_event: IpcMainInvokeEvent, repoPath: string): Promise<string[]> => {
+	try {
+		const git: SimpleGit = simpleGit(repoPath);
+
+		// Get both staged and unstaged changes
+		const result = await git.raw(['diff', '--name-only', 'HEAD']);
+
+		// Split by newlines and filter out empty lines
+		const changedFiles = result
+			.split('\n')
+			.map((file) => file.trim())
+			.filter((file) => file.length > 0);
+
+		console.log(`Found ${changedFiles.length} uncommitted changed files`);
+
+		return changedFiles;
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to get uncommitted changes:', err);
+		throw new Error(`Failed to get uncommitted changes: ${err.message}`);
+	}
+});
+
+// Scan uncommitted files directly from the working directory
+ipcMain.handle('scan-uncommitted-files', async (_event: IpcMainInvokeEvent, repoPath: string, changedFiles: string[]): Promise<ScannedFile[]> => {
+	try {
+		console.log(`Scanning ${changedFiles.length} uncommitted files in:`, repoPath);
+		const files = await scanSpecificFiles(repoPath, changedFiles);
+		console.log(`Successfully scanned ${files.length} uncommitted files`);
+		return files;
+	} catch (error) {
+		const err = error as Error;
+		console.error('Failed to scan uncommitted files:', err);
+		throw new Error(`Failed to scan uncommitted files: ${err.message}`);
+	}
+});
+
 app.whenReady().then(() => {
 	// Remove the application menu
 	Menu.setApplicationMenu(null);
@@ -599,6 +870,45 @@ app.whenReady().then(() => {
 			createWindow();
 		}
 	});
+});
+
+// Clean up worktrees before app quits
+async function cleanupWorktrees(): Promise<void> {
+	console.log('Cleaning up active worktrees...');
+	for (const worktreePath of activeWorktrees) {
+		try {
+			console.log('Cleaning up worktree:', worktreePath);
+			// Try to remove via git first
+			const gitDirPath = path.join(worktreePath, '.git');
+			const gitDirContent = await fs.readFile(gitDirPath, 'utf8');
+			const match = gitDirContent.match(/gitdir: (.+)$/m);
+
+			if (match) {
+				const mainGitDir = match[1].split('/worktrees/')[0];
+				const repoPath = path.dirname(mainGitDir);
+				const git: SimpleGit = simpleGit(repoPath);
+				await git.raw(['worktree', 'remove', worktreePath, '--force']);
+			}
+		} catch (error) {
+			console.error('Error cleaning up worktree via git:', error);
+			// Fallback to direct deletion
+			try {
+				await fs.rm(worktreePath, { recursive: true, force: true });
+			} catch (rmError) {
+				console.error('Error removing worktree directory:', rmError);
+			}
+		}
+	}
+	activeWorktrees.clear();
+	console.log('Worktree cleanup complete');
+}
+
+app.on('before-quit', async (event) => {
+	if (activeWorktrees.size > 0) {
+		event.preventDefault();
+		await cleanupWorktrees();
+		app.quit();
+	}
 });
 
 app.on('window-all-closed', () => {

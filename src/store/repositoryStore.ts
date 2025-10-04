@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { BranchInfo } from '../types';
+import { BranchInfo, WorktreeInfo } from '../types';
 
 interface RepositoryState {
 	// Repository path
@@ -19,6 +19,11 @@ interface RepositoryState {
 	isLoadingBranches: boolean;
 	setLoadingBranches: (loading: boolean) => void;
 
+	// Worktree management
+	activeWorktree: WorktreeInfo | null;
+	setActiveWorktree: (worktree: WorktreeInfo | null) => void;
+	clearActiveWorktree: () => void;
+
 	// Computed properties
 	canStartReview: () => boolean;
 
@@ -33,6 +38,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
 	toBranch: '',
 	branches: [],
 	isLoadingBranches: false,
+	activeWorktree: null,
 
 	// Repository path actions
 	setCurrentRepoPath: (path) => set({ currentRepoPath: path }),
@@ -45,6 +51,10 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
 	// Branch data actions
 	setBranchList: (branches) => set({ branches }),
 	setLoadingBranches: (loading) => set({ isLoadingBranches: loading }),
+
+	// Worktree actions
+	setActiveWorktree: (worktree) => set({ activeWorktree: worktree }),
+	clearActiveWorktree: () => set({ activeWorktree: null }),
 
 	// Computed properties
 	canStartReview: () => {
@@ -60,5 +70,6 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
 			toBranch: '',
 			branches: [],
 			isLoadingBranches: false,
+			activeWorktree: null,
 		}),
 }));
